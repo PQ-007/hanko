@@ -23,6 +23,16 @@ init();
 async function init() {
   await populateDeckSelect();
 
+  // Pull the account's decks/words so the dropdown includes website decks, not
+  // just local ones (no-op when signed out / unconfigured).
+  if (globalThis.VocabSync && VocabSync.configured()) {
+    VocabSync.fullSync()
+      .then((r) => {
+        if (r && r.signedIn) populateDeckSelect(deckSelect.value || undefined);
+      })
+      .catch(() => {});
+  }
+
   deckSelect.addEventListener('change', () => {
     newDeckRow.classList.toggle('visible', deckSelect.value === '__new__');
   });
