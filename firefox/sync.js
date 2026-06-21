@@ -267,14 +267,22 @@ const VocabSync = (() => {
     let redirect;
     try {
       redirect = await new Promise((resolve, reject) => {
-        ctx.identity.launchWebAuthFlow({ url, interactive: true }, (responseUrl) => {
-          const err = ctx.runtime.lastError;
+        const onDone = (responseUrl) => {
+          const err = ctx.runtime && ctx.runtime.lastError;
           if (err || !responseUrl) {
             reject(new Error(err ? err.message : "Sign-in cancelled"));
           } else {
             resolve(responseUrl);
           }
-        });
+        };
+        // Chrome delivers the result via the callback; Firefox ignores the
+        // callback and returns a Promise. Support both.
+        const maybe = ctx.identity.launchWebAuthFlow({ url, interactive: true }, onDone);
+        if (maybe && typeof maybe.then === "function") {
+          maybe.then(resolve, (e) =>
+            reject(e instanceof Error ? e : new Error(String(e)))
+          );
+        }
       });
     } catch (e) {
       return { ok: false, error: e.message };
