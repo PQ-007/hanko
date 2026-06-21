@@ -263,6 +263,8 @@ const VocabSync = (() => {
     const url =
       `${cfg.SITE_URL.replace(/\/$/, "")}/extension/connect` +
       `?cb=${encodeURIComponent(redirectUri)}`;
+    console.log("[VocabSync] signIn redirect URI:", redirectUri);
+    console.log("[VocabSync] opening connect page:", url);
 
     let redirect;
     try {
@@ -285,17 +287,26 @@ const VocabSync = (() => {
         }
       });
     } catch (e) {
+      console.error("[VocabSync] launchWebAuthFlow failed:", e);
       return { ok: false, error: e.message };
     }
 
+    console.log("[VocabSync] returned redirect URL:", redirect);
     const hash = new URL(redirect).hash.slice(1);
     const params = new URLSearchParams(hash);
     const access_token = params.get("access_token");
     const refresh_token = params.get("refresh_token");
+    console.log(
+      "[VocabSync] parsed tokens — access:",
+      !!access_token,
+      "refresh:",
+      !!refresh_token
+    );
     if (!access_token || !refresh_token) {
       return { ok: false, error: params.get("error") || "No session returned" };
     }
     await setSession({ access_token, refresh_token });
+    console.log("[VocabSync] session stored, running first sync");
     await fullSync();
     return { ok: true };
   }
