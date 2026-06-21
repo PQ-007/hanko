@@ -1,90 +1,103 @@
-# Vocab Decks — companion to 10ten Japanese Reader
+# Vocab Decks — Япон үг цээжлэх туслах
 
-A small browser extension that lets you save words you look up (with 10ten,
-or just by selecting text) into your own decks, then export a deck as a file
-Anki can import directly. 10ten itself doesn't support saving words, so this
-runs alongside it rather than modifying it.
+10ten Japanese Reader-тэй хамт ажилладаг жижиг browser өргөтгөл, дагалдах
+вэбсайттай. Япон текст уншиж байхдаа таалагдсан үгээ өөрийн **багц**-даа
+хадгалаад, дараа нь **Anki** руу экспортлох боломжтой. Бүх UI **монгол хэл**
+дээр, утгыг нь **монгол руу** автоматаар орчуулна.
 
-## How to use it day to day
+## Юу хийдэг вэ
 
-1. Browse normally, look words up with 10ten as usual.
-2. When you want to keep a word: select the text, then either
-   - right-click it and choose **"Save '...' to vocab deck"**, or
-   - press **Alt+Shift+S** (works on whatever's currently selected).
-3. A small panel appears with the reading and meaning already filled in
-   (via Jisho's dictionary API) — edit them if you want, pick or create a
-   deck, and click **Save word**.
-4. Click the extension icon any time to see your decks, review/delete
-   words, or export a deck.
+- **Үг хадгалах** — дурын хуудаснаас (10ten-ээр эсвэл текст сонгоод) япон үг
+  багцдаа хадгална. Дуудлага, англи утга нь Jisho-оос, монгол орчуулга нь
+  Google Translate-ээс автоматаар бөглөгдөнө.
+- **Anki руу экспорт** — жинхэнэ `.apkg` файл (дуудлагын аудио шигтгэсэн) эсвэл
+  энгийн `.txt` файл татаж аваад Anki-д импортлоно.
+- **Багц зохион байгуулалт** — вэбсайт дээр **хавтас** үүсгэж, багцуудаа чирч
+  (drag & drop) ангилна. **Хайлт**-аар бүх үгсээ шүүнэ.
+- **Олон төхөөрөмж хооронд синк** — Google-ээр нэвтэрвэл багцууд бүх browser/
+  төхөөрөмж дээр синк хийгдэнэ.
 
-## Installing in Chrome
+## Өдөр тутмын хэрэглээ (өргөтгөл)
 
-1. Go to `chrome://extensions`.
-2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked**.
-4. Select the `chrome/` folder from this project.
-5. Pin the extension icon if you want quick access to the deck dashboard.
+1. Хэвийнээр уншиж, 10ten-ээр үг хайна.
+2. Үг хадгалахдаа текстээ сонгоод дараахын аль нэгийг:
+   - баруун товч → **«…»-г багцад хадгалах**, эсвэл
+   - **Alt+Shift+S** дарна (сонгосон үг дээр ажиллана).
+3. Жижиг цонх гарч ирэн дуудлага, утга, **монгол** орчуулга нь бэлэн
+   бөглөгдсөн байна — засаад, багцаа сонгож/үүсгээд **Үг хадгалах** дарна.
+4. PDF болон `file://` хуудсан дээр (Firefox-ийн PDF харагч өргөтгөл оруулахыг
+   зөвшөөрдөггүй) ижил маягийн **тусдаа цонх** нээгдэнэ.
+5. Өргөтгөлийн дүрс дээр дарж багцаа харах, үг устгах, экспортлох боломжтой.
 
-## Installing in Firefox
+## Chrome дээр суулгах
 
-1. Go to `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on…**.
-3. Select the `manifest.json` file inside the `firefox/` folder.
-4. Note: temporary add-ons are removed when Firefox restarts. For a
-   permanent install you'd package and self-sign it, or submit it to
-   addons.mozilla.org (even as an unlisted/private add-on) — ask me if
-   you want help with that step later.
+1. `chrome://extensions` руу орно.
+2. Баруун дээд талын **Developer mode**-ийг асаана.
+3. **Load unpacked** дарна.
+4. Энэ төслийн `chrome/` хавтсыг сонгоно.
 
-## Exporting to Anki
+## Firefox дээр суулгах
 
-Click the extension icon → pick a deck → **Export deck for Anki (.txt)**.
-This downloads a tab-separated file with one word per line:
+1. `about:debugging#/runtime/this-firefox` руу орно.
+2. **Load Temporary Add-on…** дарна.
+3. `firefox/` доторх `manifest.json`-г сонгоно.
+4. Анхаар: түр суулгасан өргөтгөл Firefox-ийг дахин асаахад устдаг. Байнгын
+   суулголтод багцлаад өөрөө гарын үсэг зурах эсвэл addons.mozilla.org руу
+   (хувийн/unlisted байдлаар ч болно) илгээнэ.
+
+## Багцаа удирдах вэбсайт
+
+`web/` доторх Next.js + Supabase вэб дээр:
+
+- **Google-ээр нэвтрэх** → багцууд таны бүртгэлд хадгалагдана.
+- **Карт / Жагсаалт** хоёр харагдац. Карт дээр hover хийхэд **эргэж** (flip)
+  утгаа харуулна.
+- **Үг засах** — карт дээр дарахад **modal** цонхонд бүрэн засна.
+- **Хавтас** — drag & drop-оор багцаа хавтас руу оруулах/гаргах.
+- **Хайлт** — үг/дуудлага/англи/монголоор бүх үгээс хайна.
+- **Экспорт** — `.apkg` (аудиотай) болон `.txt`.
+- **Дуудлага** — үг бүрд аудио үүсгэж сонсоно.
+
+## Anki руу экспортлох
+
+Багц сонгоод **`.apkg татах`** дарна → Anki-д **File → Import** хийхэд карт
+автоматаар үүснэ (Урд тал: `үг (дуудлага)`, Ард тал: англи + монгол утга).
+`.txt` хувилбар нь tab-аар тусгаарласан: `үг (дуудлага)    утга    шошго`.
+
+## Нэвтрэх ба синк хийх
+
+1. `chrome/config.js`, `firefox/config.js` дотор Supabase URL, publishable key,
+   вэбсайтын хаягийг (SITE_URL) бөглөнө.
+2. Өргөтгөлийн цонхон дээрх **Нэвтрэх** дарж Google-ээр нэвтэрнэ.
+3. Нэвтэрсэн товчоор тэмдэглэгдэх ба өргөтгөл болон вэбсайт хоёр ижил
+   бүртгэлээр синк хийгдэнэ. Нэвтрээгүй үед өргөтгөл хуучин шигээ зөвхөн
+   локалаар (storage.local) ажиллана.
+
+## Тэмдэглэл
+
+- Үг автоматаар бөглөх нь Jisho-ийн нийтийн API ашигладаг. Албан бус тул унтарвал
+  талбарууд хоосон үлдэх бөгөөд гараар бичиж болно — хадгалалт ажилласаар байна.
+- Монгол орчуулга Google Translate-ийн (түлхүүргүй) endpoint ашиглана.
+- Гарын товчлолыг (`Alt+Shift+S`) `chrome://extensions/shortcuts` (Chrome) эсвэл
+  Firefox-ийн өргөтгөлийн тохиргооноос өөрчилж болно.
+
+## Төслийн бүтэц
 
 ```
-term (reading)    meaning    deck-name-as-tag
+src/                 өргөтгөлийн нийтлэг код (sync модуль, config жишээ)
+chrome/              Chrome build (Manifest V3, service worker)
+firefox/             Firefox build (Manifest V3, scripts background)
+icons/               дүрс зураг (語 тамга)
+web/                 дагалдах вэбсайт (Next.js + Supabase)
+supabase/            өгөгдлийн сангийн migration файлууд
 ```
 
-In Anki:
+`web/` доторх бүтэц нь компонент тус бүрээр салгагдсан:
+`_lib/` (Supabase client, монгол текст, төрлүүд), `_components/` (Sidebar,
+DeckHeader, DeckDetail, WordRow, WordEditModal, AddWordForm, SearchResults).
 
-1. **File → Import…**
-2. Select the downloaded `.txt` file.
-3. Set **Type** to "Notetype: Basic" (or whatever note type you prefer).
-4. Set **Fields separated by** to **Tab**.
-5. Map column 1 → **Front**, column 2 → **Back**. Column 3 (the tag) can
-   be mapped to **Tags** if you want every imported card auto-tagged with
-   the deck name, or just leave it unmapped/ignored.
-6. Pick the destination Anki deck and click **Import**.
+## Бүрэн тохиргоо
 
-## Notes & limitations
-
-- Dictionary auto-fill uses Jisho's public API. It's a well-known, widely
-  used endpoint but unofficial, so if it ever goes down the reading/meaning
-  fields just stay blank and you can type them in manually — saving still
-  works.
-- By default everything is stored locally in the browser via `storage.local`.
-  Sign in (see below) to sync your decks to your account and back them up in
-  the cloud. Signed out, the extension stays fully local as before.
-- The keyboard shortcut can be changed at `chrome://extensions/shortcuts`
-  (Chrome) or in the add-on's settings (Firefox) if Alt+Shift+S conflicts
-  with something else.
-
-## Project structure
-
-```
-src/                 shared source files (sync module, config example)
-chrome/              ready-to-load Chrome build (Manifest V3, service worker)
-firefox/             ready-to-load Firefox build (Manifest V3, scripts background)
-icons/               shared placeholder icons
-web/                 companion website (Next.js + Supabase)
-supabase/            database schema migration
-```
-
-## Companion website & cross-device sync
-
-The `web/` app lets you sign in with Google, manage your decks in a fuller
-dashboard, sync them across every browser/device, generate **real `.apkg`**
-files (with embedded audio), and pull in **pronunciation audio** per word.
-Saved words from the extension sync to the same account.
-
-See **[SETUP.md](SETUP.md)** for the full walkthrough (Supabase project, Google
-sign-in, running the site, and connecting the extension).
+Supabase төсөл үүсгэх, migration ажиллуулах, Google нэвтрэлт тохируулах,
+вэбсайтыг ажиллуулах, өргөтгөлийг холбох бүх алхмыг **[SETUP.md](SETUP.md)**-аас
+үзнэ үү.
