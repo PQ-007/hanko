@@ -17,13 +17,12 @@
 // you call too fast). We cache results in-memory and return "" on any failure so
 // the Mongolian field just stays manually editable.
 
-const cache = new Map<string, string>();
-
-export async function translateToMongolian(text: string): Promise<string> {
+// Optional, only used when BOLOR_TOLI_API_KEY is set. The default translation
+// provider is Google Translate (see translate.ts) — no key required.
+export async function translateViaBolorToli(text: string): Promise<string> {
   const key = process.env.BOLOR_TOLI_API_KEY;
   const word = text.trim();
   if (!key || !word) return "";
-  if (cache.has(word)) return cache.get(word)!;
 
   const endpoint =
     process.env.BOLOR_TOLI_ENDPOINT ?? "https://bolor-toli.com/pub/translate";
@@ -48,9 +47,7 @@ export async function translateToMongolian(text: string): Promise<string> {
     throw new Error(`bolor-toli non-JSON response: ${body.slice(0, 60)}`);
   }
 
-  const mongolian = extractMongolian(data, max);
-  if (mongolian) cache.set(word, mongolian);
-  return mongolian;
+  return extractMongolian(data, max);
 }
 
 interface BolorToliVar {

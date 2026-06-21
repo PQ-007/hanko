@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { translateToMongolian } from "@/lib/bolortoli";
+import { translateToMongolian } from "@/lib/translate";
 
 export const runtime = "nodejs";
 
