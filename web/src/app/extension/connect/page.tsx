@@ -7,12 +7,18 @@ import { createClient } from "@supabase/supabase-js";
 // tokens come back in the URL hash — which is exactly what we need to forward
 // to the browser extension. (The main app uses the cookie-based SSR client; this
 // page is a separate, self-contained bridge.)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
-  { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: false } }
-);
+//
+// Built lazily inside the browser-only effect: creating it at module scope would
+// run during Vercel's build-time prerender, where the env vars aren't inlined
+// yet, and throw "supabaseUrl is required".
+function makeSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+    { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: false } }
+  );
+}
 
 function ConnectInner() {
   const [message, setMessage] = useState("Connecting…");
@@ -23,6 +29,7 @@ function ConnectInner() {
     started.current = true;
 
     (async () => {
+      const supabase = makeSupabase();
       // The extension passes its identity redirect URL as ?cb=...
       const cb = new URLSearchParams(window.location.search).get("cb");
 
