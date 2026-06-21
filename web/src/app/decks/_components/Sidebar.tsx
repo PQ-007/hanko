@@ -100,7 +100,7 @@ export default function Sidebar({
         style={{ paddingLeft: 12 + depth * 16 }}
         className={`flex w-full cursor-grab items-center gap-1.5 py-1 pr-2 text-left transition hover:bg-gray-100 active:cursor-grabbing ${
           d.id === selectedId
-            ? "bg-indigo-100 font-medium text-indigo-800"
+            ? "bg-gray-900 font-medium text-white"
             : "text-gray-700"
         }`}
       >
@@ -121,7 +121,7 @@ export default function Sidebar({
           <button
             onClick={() => setAddingFolder((v) => !v)}
             title={T.newFolderTitle}
-            className="rounded p-1 text-amber-600 transition hover:bg-amber-50"
+            className="rounded p-1 text-gray-600 transition hover:bg-gray-50"
           >
             <FolderPlus size={16} />
           </button>
@@ -139,7 +139,7 @@ export default function Sidebar({
             />
             <button
               onClick={createFolder}
-              className="rounded bg-amber-600 px-3 py-1 text-sm font-medium text-white transition hover:bg-amber-700"
+              className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white transition hover:bg-gray-800"
             >
               {T.add}
             </button>
@@ -165,7 +165,7 @@ export default function Sidebar({
                 }}
                 onDragLeave={() => setDragOver((p) => (p === f.id ? null : p))}
                 onDrop={(e) => onDrop(e, f.id)}
-                className={dragOver === f.id ? "rounded bg-amber-50 ring-1 ring-amber-200" : ""}
+                className={dragOver === f.id ? "rounded bg-gray-50 ring-1 ring-gray-300" : ""}
               >
                 <div className="group flex items-center hover:bg-gray-100">
                   <button
@@ -178,9 +178,9 @@ export default function Sidebar({
                       <ChevronDown size={14} className="shrink-0 text-gray-400" />
                     )}
                     {isCollapsed ? (
-                      <FolderClosed size={15} className="shrink-0 text-amber-500" />
+                      <FolderClosed size={15} className="shrink-0 text-gray-500" />
                     ) : (
-                      <FolderOpen size={15} className="shrink-0 text-amber-500" />
+                      <FolderOpen size={15} className="shrink-0 text-gray-500" />
                     )}
                     <span className="truncate font-medium">{f.name}</span>
                     <span className="ml-auto shrink-0 pr-1 text-xs text-gray-400">
@@ -190,7 +190,7 @@ export default function Sidebar({
                   <button
                     onClick={() => deleteFolder(f)}
                     title={T.delete}
-                    className="px-2 text-gray-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100"
+                    className="px-2 text-gray-300 opacity-0 transition hover:text-gray-900 group-hover:opacity-100"
                   >
                     <X size={14} />
                   </button>
@@ -214,7 +214,7 @@ export default function Sidebar({
             onDragLeave={() => setDragOver((p) => (p === "ungrouped" ? null : p))}
             onDrop={(e) => onDrop(e, null)}
             className={`mt-1 min-h-[2rem] ${
-              dragOver === "ungrouped" ? "rounded bg-indigo-50 ring-1 ring-indigo-200" : ""
+              dragOver === "ungrouped" ? "rounded bg-gray-50 ring-1 ring-gray-300" : ""
             }`}
           >
             {folders.length > 0 && (
@@ -238,7 +238,7 @@ export default function Sidebar({
           />
           <button
             onClick={createDeck}
-            className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white transition hover:bg-indigo-700"
+            className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white transition hover:bg-gray-800"
           >
             {T.add}
           </button>

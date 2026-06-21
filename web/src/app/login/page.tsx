@@ -24,8 +24,11 @@ function LoginInner() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-semibold">Vocab Decks</h1>
+      <div className="flex flex-col items-center text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hanko.svg" alt="" className="mb-3 h-14 w-14" />
+        <h1 className="text-3xl font-semibold">Hanko</h1>
+        <p className="text-sm italic text-gray-400">Verba non Acta</p>
         <p className="mt-2 text-sm text-gray-500">
           Үгсийн багцаа удирдах, төхөөрөмж хооронд синк хийх, Anki руу
           экспортлохын тулд нэвтэрнэ үү.
@@ -33,7 +36,7 @@ function LoginInner() {
       </div>
 
       {error && (
-        <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">
+        <p className="rounded border border-gray-300 bg-gray-100 px-4 py-2 text-sm text-gray-800">
           Нэвтрэлт амжилтгүй боллоо. Дахин оролдоно уу.
         </p>
       )}

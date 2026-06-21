@@ -28,7 +28,7 @@ export default function SearchResults({
                 </div>
                 {w.meaning && <div className="break-words text-sm text-gray-600">{w.meaning}</div>}
                 {w.meaning_mn && (
-                  <div className="break-words text-sm text-indigo-700">{w.meaning_mn}</div>
+                  <div className="break-words text-sm text-gray-900">{w.meaning_mn}</div>
                 )}
               </div>
               {w.deck?.name && (

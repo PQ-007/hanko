@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vocab Decks",
+  title: "Hanko - Verba non Acta",
   description: "Manage your vocabulary decks, sync across devices, and export to Anki.",
 };
 

@@ -13,7 +13,13 @@ export default async function DecksLayout({
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6">
-        <h1 className="text-lg font-semibold">Vocab Decks</h1>
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hanko.svg" alt="" className="h-7 w-7" />
+          <span>
+            Hanko <span className="font-normal italic text-gray-400">— Verba non Acta</span>
+          </span>
+        </h1>
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span className="hidden sm:inline">{user?.email}</span>
           <form action="/auth/signout" method="post">

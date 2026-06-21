@@ -65,7 +65,7 @@ export default function WordEditModal({
 
   const labelCls = "mb-1 block text-xs font-medium text-gray-500";
   const inputCls =
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100";
+    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200";
   const areaCls = `${inputCls} min-h-[72px] resize-y leading-snug`;
 
   return (
@@ -118,7 +118,7 @@ export default function WordEditModal({
           <button
             onClick={save}
             disabled={saving || !term.trim()}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
           >
             {T.save}
           </button>

@@ -87,7 +87,7 @@ export default function AddWordForm({
         <button
           onClick={add}
           disabled={busy || !term.trim()}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60 sm:col-span-2 lg:col-span-1"
+          className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60 sm:col-span-2 lg:col-span-1"
         >
           {T.addWord}
         </button>

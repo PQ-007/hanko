@@ -56,12 +56,12 @@ export default function WordRow({
     </button>
   );
   const editBtn = (
-    <button onClick={onEdit} title={T.edit} className="text-gray-300 transition hover:text-indigo-600">
+    <button onClick={onEdit} title={T.edit} className="text-gray-300 transition hover:text-gray-900">
       <Pencil size={15} />
     </button>
   );
   const removeBtn = (
-    <button onClick={remove} title={T.removeWord} className="text-gray-300 transition hover:text-red-500">
+    <button onClick={remove} title={T.removeWord} className="text-gray-300 transition hover:text-gray-900">
       <Trash2 size={15} />
     </button>
   );
@@ -84,7 +84,7 @@ export default function WordRow({
           {/* Back — the answer (opaque so the front never shows through) */}
           <div
             style={{ WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
-            className="absolute inset-0 flex flex-col overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm backface-hidden rotate-y-180"
+            className="absolute inset-0 flex flex-col overflow-hidden rounded-xl border border-gray-300 bg-gray-50 p-4 shadow-sm backface-hidden rotate-y-180"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -99,7 +99,7 @@ export default function WordRow({
             </div>
             <div className="mt-2 flex-1 overflow-hidden">
               {word.meaning_mn && (
-                <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-indigo-700">
+                <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-gray-900">
                   {word.meaning_mn}
                 </div>
               )}
@@ -109,7 +109,7 @@ export default function WordRow({
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-3 border-t border-indigo-100 pt-2">
+            <div className="flex justify-end gap-3 border-t border-gray-200 pt-2">
               {editBtn}
               {removeBtn}
             </div>
@@ -130,7 +130,7 @@ export default function WordRow({
         </div>
         {word.meaning && <div className="break-words text-sm text-gray-600">{word.meaning}</div>}
         {word.meaning_mn && (
-          <div className="break-words text-sm text-indigo-700">{word.meaning_mn}</div>
+          <div className="break-words text-sm text-gray-900">{word.meaning_mn}</div>
         )}
       </button>
       <div className="flex shrink-0 items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100">

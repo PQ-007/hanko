@@ -105,7 +105,7 @@ export default function DeckHeader({
             onClick={() => onView("grid")}
             title={T.gridView}
             className={`p-1.5 transition ${
-              view === "grid" ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-50"
+              view === "grid" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
             }`}
           >
             <LayoutGrid size={16} />
@@ -114,14 +114,14 @@ export default function DeckHeader({
             onClick={() => onView("list")}
             title={T.listView}
             className={`p-1.5 transition ${
-              view === "list" ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-50"
+              view === "list" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
             }`}
           >
             <LayoutList size={16} />
           </button>
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded border border-gray-300 px-2 py-1 sm:flex-none">
-          <FolderClosed size={15} className="shrink-0 text-amber-500" />
+          <FolderClosed size={15} className="shrink-0 text-gray-500" />
           <select
             value={deck.folder_id ?? ""}
             onChange={(e) => moveToFolder(e.target.value)}
@@ -140,7 +140,7 @@ export default function DeckHeader({
           className={`flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium transition ${
             adding
               ? "border border-gray-300 text-gray-700 hover:bg-gray-50"
-              : "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-900 text-white hover:bg-gray-800"
           }`}
         >
           {adding ? (
@@ -154,7 +154,7 @@ export default function DeckHeader({
         <button
           onClick={() => download("apkg")}
           disabled={exporting !== null}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
+          className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
         >
           {exporting === "apkg" ? T.building : T.exportApkg}
         </button>
@@ -167,7 +167,7 @@ export default function DeckHeader({
         </button>
         <button
           onClick={remove}
-          className="rounded border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
         >
           {T.delete}
         </button>
