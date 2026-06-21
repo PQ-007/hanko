@@ -20,11 +20,14 @@
 const VocabSync = (() => {
   const ctx = typeof browser !== "undefined" ? browser : chrome;
   const cfg = globalThis.VOCAB_CONFIG || {};
+  // Accept either the new publishable key (sb_publishable_...) or a legacy anon
+  // key — both work as the Supabase apikey for client requests.
+  const ANON = cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_ANON_KEY || "";
   const REST = () => `${cfg.SUPABASE_URL}/rest/v1`;
   const AUTH = () => `${cfg.SUPABASE_URL}/auth/v1`;
 
   function configured() {
-    return Boolean(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && cfg.SITE_URL);
+    return Boolean(cfg.SUPABASE_URL && ANON && cfg.SITE_URL);
   }
 
   // ---- session storage ----
@@ -58,7 +61,7 @@ const VocabSync = (() => {
 
     const res = await fetch(`${AUTH()}/token?grant_type=refresh_token`, {
       method: "POST",
-      headers: { apikey: cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      headers: { apikey: ANON, "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: session.refresh_token }),
     });
     if (!res.ok) {
@@ -75,7 +78,7 @@ const VocabSync = (() => {
 
   async function rest(path, { method = "GET", token, body, prefer } = {}) {
     const headers = {
-      apikey: cfg.SUPABASE_ANON_KEY,
+      apikey: ANON,
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     };

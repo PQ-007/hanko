@@ -1,9 +1,9 @@
-// Copy to config.js (in each of chrome/ and firefox/) and fill in. These are
-// the same public values the website uses — the anon key is safe to ship
-// because Supabase Row Level Security protects every row.
+// Public Supabase values for the extension. The publishable key is safe to
+// ship — Supabase Row Level Security protects every row.
 globalThis.VOCAB_CONFIG = {
-  SUPABASE_URL: "https://YOUR-PROJECT.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-ANON-KEY",
-  // Where the website is hosted (used for the sign-in / connect page).
+  SUPABASE_URL: "https://rnbngwcodocafpjzrnue.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_ME4fhpxsmhWfublUA7cveA_6_zW1Z49",
+  // Where the website is hosted (the sign-in / connect page lives here).
+  // Use http://localhost:3000 while developing, or your deployed URL.
   SITE_URL: "http://localhost:3000",
 };
