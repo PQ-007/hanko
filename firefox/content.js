@@ -7,6 +7,24 @@ const ctx = typeof browser !== 'undefined' ? browser : chrome;
 
 let activeOverlay = null;
 
+// Sign-in bridge: on the website's /extension/connect page, the page posts the
+// Supabase session to the window after Google sign-in. Forward it to the
+// background to store. Guarded to the connect page so other sites can't inject
+// a fake session.
+if (location.pathname.replace(/\/+$/, '').endsWith('/extension/connect')) {
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || event.origin !== location.origin) return;
+    const d = event.data;
+    if (d && d.source === 'vocab-decks' && d.access_token && d.refresh_token) {
+      ctx.runtime.sendMessage({
+        type: 'STORE_SESSION',
+        access_token: d.access_token,
+        refresh_token: d.refresh_token
+      });
+    }
+  });
+}
+
 ctx.runtime.onMessage.addListener((message) => {
   if (message?.type === 'SHOW_SAVE_OVERLAY') {
     if (message.text) showOverlay(message.text);

@@ -188,6 +188,15 @@ ctx.runtime.onMessage.addListener((message, sender, sendResponse) => {
     backgroundSync();
     return false;
   }
+  if (message && message.type === 'STORE_SESSION') {
+    // Session handed over by the connect-page bridge after Google sign-in.
+    if (globalThis.VocabSync) {
+      VocabSync.storeSession(message.access_token, message.refresh_token)
+        .then(() => notify('Signed in', 'Your vocab decks will now sync.'))
+        .catch((err) => console.warn('storeSession failed:', err));
+    }
+    return false;
+  }
   return false;
 });
 

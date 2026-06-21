@@ -253,60 +253,22 @@ const VocabSync = (() => {
     };
   }
 
-  // Drive the OAuth flow via the website's /extension/connect page, capturing
-  // the returned session through identity.launchWebAuthFlow. On success, stores
-  // the session and runs a first full sync (which uploads any existing local
-  // decks/words). Returns { ok } or { ok: false, error }.
-  async function signIn() {
+  // Sign in by opening the website's /extension/connect page in a normal tab.
+  // The user completes Google sign-in there; the page hands the session to our
+  // content-script bridge (see content.js), which forwards it to the background
+  // to store (STORE_SESSION). This avoids identity.launchWebAuthFlow, which is
+  // unreliable in Firefox.
+  function signIn() {
     if (!configured()) return { ok: false, error: "Extension not configured" };
-    const redirectUri = ctx.identity.getRedirectURL();
-    const url =
-      `${cfg.SITE_URL.replace(/\/$/, "")}/extension/connect` +
-      `?cb=${encodeURIComponent(redirectUri)}`;
-    console.log("[VocabSync] signIn redirect URI:", redirectUri);
-    console.log("[VocabSync] opening connect page:", url);
+    const url = `${cfg.SITE_URL.replace(/\/$/, "")}/extension/connect`;
+    ctx.tabs.create({ url });
+    return { ok: true };
+  }
 
-    let redirect;
-    try {
-      redirect = await new Promise((resolve, reject) => {
-        const onDone = (responseUrl) => {
-          const err = ctx.runtime && ctx.runtime.lastError;
-          if (err || !responseUrl) {
-            reject(new Error(err ? err.message : "Sign-in cancelled"));
-          } else {
-            resolve(responseUrl);
-          }
-        };
-        // Chrome delivers the result via the callback; Firefox ignores the
-        // callback and returns a Promise. Support both.
-        const maybe = ctx.identity.launchWebAuthFlow({ url, interactive: true }, onDone);
-        if (maybe && typeof maybe.then === "function") {
-          maybe.then(resolve, (e) =>
-            reject(e instanceof Error ? e : new Error(String(e)))
-          );
-        }
-      });
-    } catch (e) {
-      console.error("[VocabSync] launchWebAuthFlow failed:", e);
-      return { ok: false, error: e.message };
-    }
-
-    console.log("[VocabSync] returned redirect URL:", redirect);
-    const hash = new URL(redirect).hash.slice(1);
-    const params = new URLSearchParams(hash);
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
-    console.log(
-      "[VocabSync] parsed tokens — access:",
-      !!access_token,
-      "refresh:",
-      !!refresh_token
-    );
-    if (!access_token || !refresh_token) {
-      return { ok: false, error: params.get("error") || "No session returned" };
-    }
+  // Store a session received from the connect-page bridge, then sync.
+  async function storeSession(access_token, refresh_token) {
+    if (!access_token || !refresh_token) return { ok: false };
     await setSession({ access_token, refresh_token });
-    console.log("[VocabSync] session stored, running first sync");
     await fullSync();
     return { ok: true };
   }
@@ -318,7 +280,7 @@ const VocabSync = (() => {
     return { signedIn: true, configured: configured(), email, userId: sub };
   }
 
-  return { fullSync, signIn, signOut, status, configured };
+  return { fullSync, signIn, signOut, status, configured, storeSession };
 })();
 
 globalThis.VocabSync = VocabSync;

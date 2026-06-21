@@ -40,17 +40,26 @@ function ConnectInner() {
       } = await supabase.auth.getSession();
 
       if (session) {
+        // Hand the session to the extension's content-script bridge, which runs
+        // on this page and forwards it to the extension background to store.
+        window.postMessage(
+          {
+            source: "vocab-decks",
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          },
+          window.location.origin
+        );
+
         if (cb) {
+          // Legacy launchWebAuthFlow path (kept for compatibility).
           const hash = new URLSearchParams({
             access_token: session.access_token,
             refresh_token: session.refresh_token,
           }).toString();
-          setMessage("Connected! Returning to the extension…");
           window.location.replace(`${cb}#${hash}`);
-        } else {
-          // Opened directly in a browser (not via the extension).
-          setMessage("Signed in. You can close this tab.");
         }
+        setMessage("Signed in! You can close this tab — your decks will sync.");
         return;
       }
 
