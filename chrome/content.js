@@ -131,27 +131,27 @@ async function showOverlay(term) {
         <span class="term">${escapeHtml(term)}</span>
         <button class="close" title="Close">✕</button>
       </div>
-      <div class="loading" data-loading>Looking up reading and meaning…</div>
+      <div class="loading" data-loading>Дуудлага, утгыг хайж байна…</div>
 
-      <label>Reading</label>
+      <label>Дуудлага</label>
       <input type="text" data-reading placeholder="ねこ" />
 
-      <label>Meaning</label>
+      <label>Утга</label>
       <textarea data-meaning placeholder="cat"></textarea>
 
       <label>Монгол</label>
       <textarea data-mongolian placeholder="муур"></textarea>
 
-      <label>Deck</label>
+      <label>Багц</label>
       <select data-deck-select></select>
       <div class="new-deck-row" data-new-deck-row>
-        <input type="text" data-new-deck-name placeholder="New deck name" />
-        <button class="secondary" data-confirm-new-deck>Add</button>
+        <input type="text" data-new-deck-name placeholder="Шинэ багцын нэр" />
+        <button class="secondary" data-confirm-new-deck>Нэмэх</button>
       </div>
 
       <div class="actions">
-        <button class="secondary" data-cancel>Cancel</button>
-        <button class="primary" data-save>Save word</button>
+        <button class="secondary" data-cancel>Болих</button>
+        <button class="primary" data-save>Үг хадгалах</button>
       </div>
     </div>
   `;
@@ -227,7 +227,7 @@ function flashSaved(panel) {
   panel.style.transition = 'opacity 0.2s';
   panel.style.opacity = '0.5';
   const note = document.createElement('div');
-  note.textContent = 'Saved ✓';
+  note.textContent = 'Хадгаллаа ✓';
   note.style.textAlign = 'center';
   note.style.fontSize = '12px';
   note.style.color = '#1F2933';
@@ -284,7 +284,7 @@ async function populateDeckSelect(selectEl, selectId) {
   if (store.decks.length === 0) {
     const opt = document.createElement('option');
     opt.value = '__new__';
-    opt.textContent = '(no decks yet — create one)';
+    opt.textContent = '(багц алга — үүсгэнэ үү)';
     selectEl.appendChild(opt);
   } else {
     store.decks.forEach((deck) => {
@@ -295,7 +295,7 @@ async function populateDeckSelect(selectEl, selectId) {
     });
     const newOpt = document.createElement('option');
     newOpt.value = '__new__';
-    newOpt.textContent = '+ New deck…';
+    newOpt.textContent = '+ Шинэ багц…';
     selectEl.appendChild(newOpt);
   }
   if (selectId) selectEl.value = selectId;

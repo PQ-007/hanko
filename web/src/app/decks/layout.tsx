@@ -21,7 +21,7 @@ export default async function DecksLayout({
               type="submit"
               className="rounded border border-gray-300 px-3 py-1 font-medium text-gray-700 transition hover:bg-gray-50"
             >
-              Sign out
+              Гарах
             </button>
           </form>
         </div>

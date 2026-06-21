@@ -8,28 +8,28 @@
 <body>
   <header>
     <h1>Vocab Decks</h1>
-    <p class="subtitle">Words you've saved, ready for Anki.</p>
+    <p class="subtitle">Хадгалсан үгс — Anki-д бэлэн.</p>
     <div id="accountBar" class="account-bar">
-      <span id="accountStatus" class="account-status">Not signed in</span>
-      <button id="authBtn" class="secondary">Sign in</button>
+      <span id="accountStatus" class="account-status">Нэвтрээгүй</span>
+      <button id="authBtn" class="secondary">Нэвтрэх</button>
     </div>
   </header>
 
   <div class="deck-bar">
     <select id="deckSelect"></select>
-    <button id="newDeckBtn" class="secondary" title="Create a new deck">+ Deck</button>
+    <button id="newDeckBtn" class="secondary" title="Шинэ багц үүсгэх">+ Багц</button>
   </div>
 
   <div id="newDeckForm" class="new-deck-form hidden">
-    <input id="newDeckName" type="text" placeholder="Deck name" />
-    <button id="confirmNewDeck" class="secondary">Add</button>
+    <input id="newDeckName" type="text" placeholder="Багцын нэр" />
+    <button id="confirmNewDeck" class="secondary">Нэмэх</button>
   </div>
 
   <main id="wordList"></main>
 
   <footer>
-    <button id="exportBtn" class="primary">Export deck for Anki (.txt)</button>
-    <button id="deleteDeckBtn" class="danger">Delete deck</button>
+    <button id="exportBtn" class="primary">Anki руу экспорт (.txt)</button>
+    <button id="deleteDeckBtn" class="danger">Багц устгах</button>
   </footer>
 
   <script src="config.js"></script>

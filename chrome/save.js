@@ -16,7 +16,7 @@ const deckSelect = $('deckSelect');
 const newDeckRow = $('newDeckRow');
 
 termEl.textContent = term;
-document.title = term ? `Save: ${term}` : 'Save word';
+document.title = term ? `Хадгалах: ${term}` : 'Үг хадгалах';
 
 init();
 
@@ -62,7 +62,7 @@ async function init() {
 async function onSave() {
   let deckId = deckSelect.value;
   if (deckId === '__new__') {
-    const name = $('newDeckName').value.trim() || 'Untitled deck';
+    const name = $('newDeckName').value.trim() || 'Нэргүй багц';
     const deck = await createDeck(name);
     deckId = deck.id;
   }
@@ -77,7 +77,7 @@ async function onSave() {
   });
 
   // Brief confirmation, then close the window.
-  document.body.innerHTML = '<div class="saved">Saved ✓</div>';
+  document.body.innerHTML = '<div class="saved">Хадгаллаа ✓</div>';
   setTimeout(() => window.close(), 600);
 }
 
@@ -121,7 +121,7 @@ async function populateDeckSelect(selectId) {
   if (decks.length === 0) {
     const opt = document.createElement('option');
     opt.value = '__new__';
-    opt.textContent = '(no decks yet — create one)';
+    opt.textContent = '(багц алга — үүсгэнэ үү)';
     deckSelect.appendChild(opt);
     newDeckRow.classList.add('visible');
   } else {
@@ -133,7 +133,7 @@ async function populateDeckSelect(selectId) {
     });
     const newOpt = document.createElement('option');
     newOpt.value = '__new__';
-    newOpt.textContent = '+ New deck…';
+    newOpt.textContent = '+ Шинэ багц…';
     deckSelect.appendChild(newOpt);
   }
   // Default to the last-used deck when present.

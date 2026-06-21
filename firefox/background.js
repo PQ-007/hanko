@@ -31,7 +31,7 @@ function createMenus() {
       ctx.contextMenus.create(
         {
           id: 'save-word-to-deck',
-          title: 'Save "%s" to vocab deck',
+          title: '“%s”-г багцад хадгалах',
           contexts: ['selection']
         },
         () => {
@@ -143,9 +143,9 @@ async function backgroundQuickSave(term) {
 
   let deck =
     store.decks.find((d) => d.id === lastDeckId && !d.deleted) ||
-    store.decks.find((d) => !d.deleted && d.name === 'Quick saves');
+    store.decks.find((d) => !d.deleted && d.name === 'Шуурхай хадгалсан');
   if (!deck) {
-    deck = { id: crypto.randomUUID(), name: 'Quick saves', createdAt: now, updatedAt: now, deleted: false };
+    deck = { id: crypto.randomUUID(), name: 'Шуурхай хадгалсан', createdAt: now, updatedAt: now, deleted: false };
     store.decks.push(deck);
   }
 
@@ -163,7 +163,7 @@ async function backgroundQuickSave(term) {
 
   await setStore(store);
   await ctx.storage.local.set({ lastDeckId: deck.id });
-  notify(`Saved to "${deck.name}"`, lookup.reading ? `${term} (${lookup.reading})` : term);
+  notify(`“${deck.name}”-д хадгаллаа`, lookup.reading ? `${term} (${lookup.reading})` : term);
   backgroundSync();
 }
 
@@ -192,7 +192,7 @@ ctx.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Session handed over by the connect-page bridge after Google sign-in.
     if (globalThis.VocabSync) {
       VocabSync.storeSession(message.access_token, message.refresh_token)
-        .then(() => notify('Signed in', 'Your vocab decks will now sync.'))
+        .then(() => notify('Нэвтэрлээ', 'Таны багцууд одоо синк хийгдэнэ.'))
         .catch((err) => console.warn('storeSession failed:', err));
     }
     return false;

@@ -52,17 +52,17 @@ async function init() {
 
 async function refreshAuthUI() {
   if (!window.VocabSync || !VocabSync.configured()) {
-    accountStatus.textContent = 'Sync not configured';
+    accountStatus.textContent = 'Синк тохируулаагүй';
     authBtn.style.display = 'none';
     return;
   }
   const s = await VocabSync.status();
   if (s.signedIn) {
-    accountStatus.textContent = s.email ? `Synced · ${s.email}` : 'Synced';
-    authBtn.textContent = 'Sign out';
+    accountStatus.textContent = s.email ? `Синк хийсэн · ${s.email}` : 'Синк хийсэн';
+    authBtn.textContent = 'Гарах';
   } else {
-    accountStatus.textContent = 'Not signed in';
-    authBtn.textContent = 'Sign in';
+    accountStatus.textContent = 'Нэвтрээгүй';
+    authBtn.textContent = 'Нэвтрэх';
   }
 }
 
@@ -73,9 +73,9 @@ async function onAuthClick() {
   if (s.signedIn) {
     await VocabSync.signOut();
   } else {
-    accountStatus.textContent = 'Signing in…';
+    accountStatus.textContent = 'Нэвтэрч байна…';
     const res = await VocabSync.signIn();
-    if (!res.ok) alert(`Sign-in failed: ${res.error}`);
+    if (!res.ok) alert(`Нэвтрэлт амжилтгүй: ${res.error}`);
   }
   authBtn.disabled = false;
   await refreshAuthUI();
@@ -123,7 +123,7 @@ async function refreshDeckSelect(selectId) {
   if (decks.length === 0) {
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = 'No decks yet';
+    opt.textContent = 'Багц алга';
     deckSelect.appendChild(opt);
     return;
   }
@@ -146,12 +146,12 @@ async function renderWords() {
   wordList.innerHTML = '';
 
   if (!deckId) {
-    wordList.innerHTML = '<div class="empty-state">Create a deck, then save words to it from any page (right-click a selected word, or use the keyboard shortcut).</div>';
+    wordList.innerHTML = '<div class="empty-state">Багц үүсгээд, дурын хуудаснаас үг хадгална уу (сонгосон үг дээр баруун товч дарах, эсвэл товчлуур ашиглах).</div>';
     return;
   }
 
   if (words.length === 0) {
-    wordList.innerHTML = '<div class="empty-state">No words saved to this deck yet.</div>';
+    wordList.innerHTML = '<div class="empty-state">Энэ багцад хадгалсан үг алга.</div>';
     return;
   }
 
@@ -194,7 +194,7 @@ async function exportCurrentDeck() {
 
   const words = activeWords(store, deckId);
   if (words.length === 0) {
-    alert('This deck has no words to export yet.');
+    alert('Энэ багцад экспортлох үг алга.');
     return;
   }
 
@@ -228,7 +228,7 @@ async function deleteCurrentDeck() {
   const store = await getStore();
   const deck = store.decks.find((d) => d.id === deckId);
   if (!deck) return;
-  if (!confirm(`Delete deck "${deck.name}" and all its saved words? This can't be undone.`)) return;
+  if (!confirm(`“${deck.name}” багц болон доторх бүх үгийг устгах уу? Буцаах боломжгүй.`)) return;
 
   // Tombstone the deck and its words so the deletion propagates on sync.
   const now = Date.now();

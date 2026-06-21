@@ -112,6 +112,7 @@ const VocabSync = (() => {
       id: d.id,
       user_id: userId,
       name: d.name,
+      folder_id: d.folderId || null,
       created_at: iso(d.createdAt),
       updated_at: iso(d.updatedAt || d.createdAt),
       deleted: !!d.deleted,
@@ -121,6 +122,7 @@ const VocabSync = (() => {
     return {
       id: r.id,
       name: r.name,
+      folderId: r.folder_id || null,
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
       deleted: !!r.deleted,

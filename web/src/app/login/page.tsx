@@ -27,13 +27,14 @@ function LoginInner() {
       <div className="text-center">
         <h1 className="text-3xl font-semibold">Vocab Decks</h1>
         <p className="mt-2 text-sm text-gray-500">
-          Sign in to manage your decks, sync across devices, and export to Anki.
+          Үгсийн багцаа удирдах, төхөөрөмж хооронд синк хийх, Anki руу
+          экспортлохын тулд нэвтэрнэ үү.
         </p>
       </div>
 
       {error && (
         <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">
-          Sign-in failed. Please try again.
+          Нэвтрэлт амжилтгүй боллоо. Дахин оролдоно уу.
         </p>
       )}
 
@@ -43,7 +44,7 @@ function LoginInner() {
         className="flex items-center gap-3 rounded-lg border border-gray-300 bg-white px-6 py-3 font-medium text-gray-800 shadow-sm transition hover:bg-gray-50 disabled:opacity-60"
       >
         <GoogleIcon />
-        {loading ? "Redirecting…" : "Continue with Google"}
+        {loading ? "Шилжүүлж байна…" : "Google-ээр нэвтрэх"}
       </button>
     </main>
   );
