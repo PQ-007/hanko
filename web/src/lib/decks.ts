@@ -41,3 +41,12 @@ export function frontText(word: Word): string {
     ? `${word.term} (${word.reading})`
     : word.term;
 }
+
+// Back field: English meaning plus the Mongolian translation on its own line
+// (newline-separated; callers turn "\n" into <br> as needed).
+export function backText(word: Word): string {
+  return [word.meaning ?? "", word.meaning_mn ?? ""]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n");
+}

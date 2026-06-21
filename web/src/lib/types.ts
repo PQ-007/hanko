@@ -16,6 +16,7 @@ export interface Word {
   term: string;
   reading: string | null;
   meaning: string | null;
+  meaning_mn: string | null;
   audio_path: string | null;
   date_added: string;
   updated_at: string;

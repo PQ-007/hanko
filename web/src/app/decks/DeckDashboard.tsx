@@ -344,6 +344,7 @@ function AddWordForm({
   const [term, setTerm] = useState("");
   const [reading, setReading] = useState("");
   const [meaning, setMeaning] = useState("");
+  const [meaningMn, setMeaningMn] = useState("");
   const [busy, setBusy] = useState(false);
   const [looking, setLooking] = useState(false);
 
@@ -357,9 +358,25 @@ function AddWordForm({
         const data = await res.json();
         if (data.reading && !reading) setReading(data.reading);
         if (data.meaning && !meaning) setMeaning(data.meaning);
+        if (data.meaning_mn && !meaningMn) setMeaningMn(data.meaning_mn);
       }
     } finally {
       setLooking(false);
+    }
+  }
+
+  // Translate the English meaning to Mongolian via bolor-toli (server-side).
+  async function translateMn() {
+    const text = meaning.trim();
+    if (!text || meaningMn.trim()) return;
+    try {
+      const res = await fetch(`/api/translate?text=${encodeURIComponent(text)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.mongolian) setMeaningMn(data.mongolian);
+      }
+    } catch {
+      // leave blank; user can type it
     }
   }
 
@@ -377,18 +394,20 @@ function AddWordForm({
         term: t,
         reading: reading.trim() || null,
         meaning: meaning.trim() || null,
+        meaning_mn: meaningMn.trim() || null,
       });
     }
     setTerm("");
     setReading("");
     setMeaning("");
+    setMeaningMn("");
     setBusy(false);
     onAdded();
   }
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_2fr_auto]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
         <input
           value={term}
           onChange={(e) => setTerm(e.target.value)}
@@ -405,8 +424,15 @@ function AddWordForm({
         <input
           value={meaning}
           onChange={(e) => setMeaning(e.target.value)}
+          onBlur={translateMn}
+          placeholder="Meaning (English)"
+          className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+        />
+        <input
+          value={meaningMn}
+          onChange={(e) => setMeaningMn(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Meaning"
+          placeholder="Монгол"
           className="rounded border border-gray-300 px-2 py-1.5 text-sm"
         />
         <button
@@ -471,6 +497,9 @@ function WordRow({ word, onChanged }: { word: Word; onChanged: () => void }) {
         </div>
         {word.meaning && (
           <div className="truncate text-sm text-gray-600">{word.meaning}</div>
+        )}
+        {word.meaning_mn && (
+          <div className="truncate text-sm text-indigo-700">{word.meaning_mn}</div>
         )}
       </div>
       <button

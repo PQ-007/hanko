@@ -4,6 +4,7 @@ import {
   sanitizeFilename,
   sanitizeTag,
   frontText,
+  backText,
 } from "@/lib/decks";
 
 // POST /api/decks/[id]/txt
@@ -25,7 +26,7 @@ export async function POST(
 
   const tag = sanitizeTag(deck.name);
   const lines = words.map((w) => {
-    const back = (w.meaning ?? "").replace(/\t/g, " ").replace(/\n/g, "<br>");
+    const back = backText(w).replace(/\t/g, " ").replace(/\n/g, "<br>");
     return [frontText(w), back, tag].join("\t");
   });
 

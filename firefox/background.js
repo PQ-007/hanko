@@ -155,6 +155,7 @@ async function backgroundQuickSave(term) {
     term,
     reading: lookup.reading || '',
     meaning: lookup.meaning || '',
+    meaningMn: lookup.mongolian || '',
     dateAdded: now,
     updatedAt: now,
     deleted: false
@@ -208,5 +209,23 @@ async function lookupWord(term) {
     .filter(Boolean)
     .join('; ');
 
-  return { reading, meaning };
+  const mongolian = await translateToMongolian(meaning);
+  return { reading, meaning, mongolian };
+}
+
+// English -> Mongolian via the website's /api/translate proxy (keeps the
+// bolor-toli key server-side). Returns '' if the site isn't configured/reachable.
+async function translateToMongolian(text) {
+  const siteUrl = (globalThis.VOCAB_CONFIG && globalThis.VOCAB_CONFIG.SITE_URL) || '';
+  if (!siteUrl || !text) return '';
+  try {
+    const res = await fetch(
+      `${siteUrl.replace(/\/$/, '')}/api/translate?text=${encodeURIComponent(text)}`
+    );
+    if (!res.ok) return '';
+    const data = await res.json();
+    return data.mongolian || '';
+  } catch (e) {
+    return '';
+  }
 }

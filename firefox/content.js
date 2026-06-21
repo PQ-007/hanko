@@ -121,6 +121,9 @@ async function showOverlay(term) {
       <label>Meaning</label>
       <textarea data-meaning placeholder="cat"></textarea>
 
+      <label>Монгол</label>
+      <textarea data-mongolian placeholder="муур"></textarea>
+
       <label>Deck</label>
       <select data-deck-select></select>
       <div class="new-deck-row" data-new-deck-row>
@@ -168,11 +171,13 @@ async function showOverlay(term) {
     }
     const reading = $('[data-reading]').value.trim();
     const meaning = $('[data-meaning]').value.trim();
+    const meaningMn = $('[data-mongolian]').value.trim();
     await saveWord({
       deckId,
       term,
       reading,
       meaning,
+      meaningMn,
       sourceUrl: location.href,
       sourceTitle: document.title
     });
@@ -195,6 +200,7 @@ async function showOverlay(term) {
     if (response && response.ok && response.result) {
       if (response.result.reading) $('[data-reading]').value = response.result.reading;
       if (response.result.meaning) $('[data-meaning]').value = response.result.meaning;
+      if (response.result.mongolian) $('[data-mongolian]').value = response.result.mongolian;
     }
   });
 }

@@ -11,6 +11,7 @@ const termEl = $('term');
 const loadingEl = $('loading');
 const readingEl = $('reading');
 const meaningEl = $('meaning');
+const mongolianEl = $('mongolian');
 const deckSelect = $('deckSelect');
 const newDeckRow = $('newDeckRow');
 
@@ -43,6 +44,7 @@ async function init() {
     if (response && response.ok && response.result) {
       if (response.result.reading) readingEl.value = response.result.reading;
       if (response.result.meaning) meaningEl.value = response.result.meaning;
+      if (response.result.mongolian) mongolianEl.value = response.result.mongolian;
     }
   });
 }
@@ -60,7 +62,8 @@ async function onSave() {
     deckId,
     term,
     reading: readingEl.value.trim(),
-    meaning: meaningEl.value.trim()
+    meaning: meaningEl.value.trim(),
+    meaningMn: mongolianEl.value.trim()
   });
 
   // Brief confirmation, then close the window.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { loadDeckWithWords, sanitizeFilename, sanitizeTag, frontText } from "@/lib/decks";
+import { loadDeckWithWords, sanitizeFilename, sanitizeTag, frontText, backText } from "@/lib/decks";
 import { buildApkg, type ApkgNote } from "@/lib/anki/apkg";
 
 // sql.js (wasm), node crypto, and fs require the Node.js runtime.
@@ -29,7 +29,7 @@ export async function POST(
     const note: ApkgNote = {
       guidSeed: w.id, // stable: re-export updates the same card
       front: frontText(w),
-      back: (w.meaning ?? "").replace(/\n/g, "<br>"),
+      back: backText(w).replace(/\n/g, "<br>"),
       tags: tag ? [tag] : [],
     };
 

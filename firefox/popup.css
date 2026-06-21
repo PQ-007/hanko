@@ -137,6 +137,13 @@ main {
   word-break: break-word;
 }
 
+.word-mongolian {
+  font-size: 12px;
+  margin-top: 1px;
+  color: var(--seal);
+  word-break: break-word;
+}
+
 .word-remove {
   border: none;
   background: none;

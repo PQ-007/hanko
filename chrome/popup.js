@@ -165,6 +165,7 @@ async function renderWords() {
           <span class="word-term">${escapeHtml(word.term)}</span>
           ${word.reading ? `<span class="word-reading">${escapeHtml(word.reading)}</span>` : ''}
           <div class="word-meaning">${escapeHtml(word.meaning || '')}</div>
+          ${word.meaningMn ? `<div class="word-mongolian">${escapeHtml(word.meaningMn)}</div>` : ''}
         </div>
         <button class="word-remove" title="Remove" data-id="${word.id}">✕</button>
       `;
