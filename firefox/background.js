@@ -80,15 +80,25 @@ ctx.contextMenus.onClicked.addListener((info, tab) => {
 
   // Try to show the in-page panel first (the nice editable overlay). If the
   // content script isn't reachable — e.g. Firefox's built-in PDF viewer or
-  // file:// pages, where extensions can't inject — fall back to saving the word
-  // directly from the background.
+  // file:// pages, where extensions can't inject — open the same editable form
+  // as a small popup window instead.
   if (tab && tab.id != null) {
     Promise.resolve(ctx.tabs.sendMessage(tab.id, { type: 'SHOW_SAVE_OVERLAY', text }))
-      .catch(() => backgroundQuickSave(text));
+      .catch(() => openSaveWindow(text));
   } else {
-    backgroundQuickSave(text);
+    openSaveWindow(text);
   }
 });
+
+// Open the editable save form (save.html) as a small popup window — the
+// fallback used on PDFs / file pages where the in-page overlay can't render.
+// If even that fails, fall back to a silent background save.
+function openSaveWindow(text) {
+  const url = ctx.runtime.getURL('save.html') + '?term=' + encodeURIComponent(text);
+  Promise.resolve(
+    ctx.windows.create({ url, type: 'popup', width: 380, height: 520 })
+  ).catch(() => backgroundQuickSave(text));
+}
 
 // ---- storage + direct-save fallback (used on PDFs / file pages) ----
 

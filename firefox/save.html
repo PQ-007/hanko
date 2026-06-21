@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Save word</title>
+<style>
+  :root {
+    --paper: #FAF7F0; --paper-dim: #F0EBDD; --ink: #1F2933;
+    --ink-soft: #8A8270; --line: #D8D0BE; --seal: #B03A2E; --seal-dark: #9A3026;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    padding: 16px;
+  }
+  .term {
+    font-size: 20px; font-weight: 600;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; margin-bottom: 4px;
+  }
+  .loading { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+  label {
+    display: block; font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 10px 0 3px;
+  }
+  input, select, textarea {
+    width: 100%; font-size: 13px; padding: 7px 8px; border: 1px solid var(--line);
+    border-radius: 6px; background: #fff; color: var(--ink); font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 52px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--seal); outline-offset: 1px; }
+  .new-deck { display: none; gap: 6px; margin-top: 6px; }
+  .new-deck.visible { display: flex; }
+  .new-deck input { flex: 1; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; }
+  button {
+    flex: 1; padding: 9px 10px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent;
+  }
+  button.primary { background: var(--seal); color: var(--paper); }
+  button.primary:hover { background: var(--seal-dark); }
+  button.secondary { background: transparent; color: var(--ink); border-color: var(--line); }
+  button.secondary:hover { background: var(--paper-dim); }
+  .new-deck button { flex: 0 0 auto; }
+  .saved { text-align: center; font-size: 13px; color: var(--ink); margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="term" id="term"></div>
+  <div class="loading" id="loading">Looking up reading and meaning…</div>
+
+  <label>Reading</label>
+  <input type="text" id="reading" placeholder="ねこ" />
+
+  <label>Meaning</label>
+  <textarea id="meaning" placeholder="cat"></textarea>
+
+  <label>Deck</label>
+  <select id="deckSelect"></select>
+  <div class="new-deck" id="newDeckRow">
+    <input type="text" id="newDeckName" placeholder="New deck name" />
+    <button class="secondary" id="addDeck">Add</button>
+  </div>
+
+  <div class="actions">
+    <button class="secondary" id="cancel">Cancel</button>
+    <button class="primary" id="save">Save word</button>
+  </div>
+
+  <script src="save.js"></script>
+</body>
+</html>
