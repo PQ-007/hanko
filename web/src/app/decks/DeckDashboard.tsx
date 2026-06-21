@@ -365,7 +365,7 @@ function AddWordForm({
     }
   }
 
-  // Translate the English meaning to Mongolian via bolor-toli (server-side).
+  // Translate the English meaning to Mongolian (server-side).
   async function translateMn() {
     const text = meaning.trim();
     if (!text || meaningMn.trim()) return;

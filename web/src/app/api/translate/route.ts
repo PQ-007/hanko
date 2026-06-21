@@ -4,7 +4,7 @@ import { translateToMongolian } from "@/lib/translate";
 export const runtime = "nodejs";
 
 // GET /api/translate?text=... -> { mongolian }
-// English -> Mongolian via bolor-toli (server-side; key stays secret).
+// English -> Mongolian via Google Translate (server-side, no key).
 // Public endpoint (translation isn't user-specific) so the extension can call
 // it too without auth.
 export async function GET(request: Request) {
