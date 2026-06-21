@@ -12,6 +12,8 @@ const T = {
   allDecks: "Бүх багц",
   noFolder: "Хавтасгүй",
   newFolder: "Шинэ хавтасны нэр",
+  newFolderTitle: "Шинэ хавтас нэмэх",
+  emptyFolder: "хоосон",
   decks: "Багцууд",
   newDeck: "Шинэ багцын нэр",
   add: "Нэмэх",
@@ -35,6 +37,9 @@ const T = {
   clickToRename: "Нэр солих бол дарна уу",
   playAudio: "Дуудлага сонсох",
   removeWord: "Үг устгах",
+  edit: "Засах",
+  save: "Хадгалах",
+  cancel: "Болих",
   noFolderOption: "— Хавтасгүй —",
   audioFailed: "Дуу үүсгэж чадсангүй",
   deleteDeckConfirm: (n: string) =>
@@ -43,13 +48,11 @@ const T = {
     `“${n}” хавтсыг устгах уу? Доторх багцууд устахгүй, хавтасгүй болно.`,
 };
 
-type FolderFilter = "all" | "none" | string;
 type WordHit = Word & { deck?: { name: string } | null };
 
 export default function DeckDashboard() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
-  const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [words, setWords] = useState<Word[]>([]);
   const [loadingDecks, setLoadingDecks] = useState(true);
@@ -150,24 +153,15 @@ export default function DeckDashboard() {
     return () => clearTimeout(handle);
   }, [query]);
 
-  const visibleDecks = decks.filter((d) =>
-    folderFilter === "all"
-      ? true
-      : folderFilter === "none"
-        ? !d.folder_id
-        : d.folder_id === folderFilter
-  );
   const selectedDeck = decks.find((d) => d.id === selectedId) ?? null;
   const searching = results !== null;
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 p-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 sm:p-6 lg:flex-row lg:gap-6">
       <Sidebar
         folders={folders}
-        decks={visibleDecks}
+        decks={decks}
         loading={loadingDecks}
-        folderFilter={folderFilter}
-        onFolderFilter={setFolderFilter}
         selectedId={selectedId}
         onSelect={(id) => {
           setSelectedId(id);
@@ -176,12 +170,12 @@ export default function DeckDashboard() {
         onFoldersChanged={loadFolders}
         onDecksChanged={loadDecks}
       />
-      <section className="flex-1">
+      <section className="min-w-0 flex-1">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={T.search}
-          className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm"
+          className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
         {error && (
           <p className="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-600">
@@ -223,8 +217,6 @@ function Sidebar({
   folders,
   decks,
   loading,
-  folderFilter,
-  onFolderFilter,
   selectedId,
   onSelect,
   onFoldersChanged,
@@ -233,8 +225,6 @@ function Sidebar({
   folders: Folder[];
   decks: DeckWithCount[];
   loading: boolean;
-  folderFilter: FolderFilter;
-  onFolderFilter: (f: FolderFilter) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onFoldersChanged: () => void;
@@ -242,6 +232,12 @@ function Sidebar({
 }) {
   const [deckName, setDeckName] = useState("");
   const [folderName, setFolderName] = useState("");
+  const [addingFolder, setAddingFolder] = useState(false);
+  // Folders are expanded by default; track only the collapsed ones.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const decksIn = (folderId: string | null) =>
+    decks.filter((d) => (d.folder_id ?? null) === folderId);
 
   async function createDeck() {
     const name = deckName.trim();
@@ -249,11 +245,7 @@ function Sidebar({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user) {
-      const folder_id =
-        folderFilter !== "all" && folderFilter !== "none" ? folderFilter : null;
-      await supabase.from("decks").insert({ name, user_id: user.id, folder_id });
-    }
+    if (user) await supabase.from("decks").insert({ name, user_id: user.id });
     setDeckName("");
     onDecksChanged();
   }
@@ -266,96 +258,128 @@ function Sidebar({
     } = await supabase.auth.getUser();
     if (user) await supabase.from("folders").insert({ name, user_id: user.id });
     setFolderName("");
+    setAddingFolder(false);
     onFoldersChanged();
   }
 
   async function deleteFolder(f: Folder) {
     if (!confirm(T.deleteFolderConfirm(f.name))) return;
     await supabase.from("folders").update({ deleted: true }).eq("id", f.id);
-    if (folderFilter === f.id) onFolderFilter("all");
     onFoldersChanged();
     onDecksChanged();
   }
 
-  const filterBtn = (active: boolean) =>
-    `flex w-full items-center justify-between px-4 py-1.5 text-left text-sm transition hover:bg-gray-50 ${
-      active ? "bg-amber-50 font-medium text-amber-800" : "text-gray-700"
-    }`;
+  function DeckItem({ d }: { d: DeckWithCount }) {
+    return (
+      <button
+        onClick={() => onSelect(d.id)}
+        className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-sm transition hover:bg-gray-50 ${
+          d.id === selectedId ? "bg-indigo-50 font-medium text-indigo-700" : "text-gray-700"
+        }`}
+      >
+        <span className="truncate">{d.name}</span>
+        <span className="shrink-0 text-xs text-gray-400">{d.word_count}</span>
+      </button>
+    );
+  }
+
+  const ungrouped = decksIn(null);
 
   return (
-    <aside className="w-64 shrink-0 space-y-4">
-      {/* Folders */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700">
-          {T.folders}
-        </div>
-        <ul>
-          <li>
-            <button className={filterBtn(folderFilter === "all")} onClick={() => onFolderFilter("all")}>
-              {T.allDecks}
-            </button>
-          </li>
-          <li>
-            <button className={filterBtn(folderFilter === "none")} onClick={() => onFolderFilter("none")}>
-              {T.noFolder}
-            </button>
-          </li>
-          {folders.map((f) => (
-            <li key={f.id} className="group flex items-center">
-              <button className={filterBtn(folderFilter === f.id)} onClick={() => onFolderFilter(f.id)}>
-                <span className="truncate">📁 {f.name}</span>
-              </button>
-              <button
-                onClick={() => deleteFolder(f)}
-                title={T.delete}
-                className="px-2 text-gray-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100"
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="flex gap-2 border-t border-gray-100 p-3">
-          <input
-            value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && createFolder()}
-            placeholder={T.newFolder}
-            className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
-          />
+    <aside className="w-full shrink-0 lg:w-64">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <span className="text-sm font-semibold text-gray-700">{T.decks}</span>
           <button
-            onClick={createFolder}
-            className="rounded bg-amber-600 px-3 py-1 text-sm font-medium text-white transition hover:bg-amber-700"
+            onClick={() => setAddingFolder((v) => !v)}
+            title={T.newFolderTitle}
+            className="rounded px-2 py-0.5 text-sm text-amber-700 transition hover:bg-amber-50"
           >
-            {T.add}
+            + 📁
           </button>
         </div>
-      </div>
 
-      {/* Decks */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700">
-          {T.decks}
-        </div>
-        <ul className="max-h-[45vh] overflow-auto">
-          {loading && <li className="px-4 py-3 text-sm text-gray-400">{T.loading}</li>}
-          {!loading && decks.length === 0 && (
-            <li className="px-4 py-3 text-sm text-gray-400">{T.noDecks}</li>
+        {addingFolder && (
+          <div className="flex gap-2 border-b border-gray-100 p-3">
+            <input
+              autoFocus
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createFolder()}
+              placeholder={T.newFolder}
+              className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+            />
+            <button
+              onClick={createFolder}
+              className="rounded bg-amber-600 px-3 py-1 text-sm font-medium text-white transition hover:bg-amber-700"
+            >
+              {T.add}
+            </button>
+          </div>
+        )}
+
+        <div className="max-h-[55vh] overflow-auto p-2">
+          {loading && <div className="px-2 py-3 text-sm text-gray-400">{T.loading}</div>}
+          {!loading && decks.length === 0 && folders.length === 0 && (
+            <div className="px-2 py-3 text-sm text-gray-400">{T.noDecks}</div>
           )}
-          {decks.map((d) => (
-            <li key={d.id}>
-              <button
-                onClick={() => onSelect(d.id)}
-                className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-gray-50 ${
-                  d.id === selectedId ? "bg-indigo-50 font-medium text-indigo-700" : ""
-                }`}
-              >
-                <span className="truncate">{d.name}</span>
-                <span className="ml-2 shrink-0 text-xs text-gray-400">{d.word_count}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+
+          {/* Folders with their decks */}
+          {folders.map((f) => {
+            const isCollapsed = !!collapsed[f.id];
+            const children = decksIn(f.id);
+            return (
+              <div key={f.id} className="mb-1">
+                <div className="group flex items-center rounded hover:bg-gray-50">
+                  <button
+                    onClick={() => setCollapsed((c) => ({ ...c, [f.id]: !isCollapsed }))}
+                    className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1.5 text-left text-sm font-medium text-gray-700"
+                  >
+                    <span className="w-3 shrink-0 text-xs text-gray-400">
+                      {isCollapsed ? "▸" : "▾"}
+                    </span>
+                    <span className="shrink-0">📁</span>
+                    <span className="truncate">{f.name}</span>
+                    <span className="ml-auto shrink-0 text-xs text-gray-400">
+                      {children.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => deleteFolder(f)}
+                    title={T.delete}
+                    className="px-2 text-gray-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {!isCollapsed && (
+                  <div className="ml-3 border-l border-gray-100 pl-2">
+                    {children.length === 0 ? (
+                      <div className="px-2 py-1 text-xs text-gray-300">{T.emptyFolder}</div>
+                    ) : (
+                      children.map((d) => <DeckItem key={d.id} d={d} />)
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Ungrouped decks */}
+          {ungrouped.length > 0 && (
+            <div className="mt-1">
+              {folders.length > 0 && (
+                <div className="px-2 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+                  {T.noFolder}
+                </div>
+              )}
+              {ungrouped.map((d) => (
+                <DeckItem key={d.id} d={d} />
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-2 border-t border-gray-100 p-3">
           <input
             value={deckName}
@@ -387,7 +411,7 @@ function SearchResults({
   onOpenDeck: (deckId: string) => void;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
+    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700">
         {T.searchResults} ({hits.length})
       </div>
@@ -402,9 +426,9 @@ function SearchResults({
                   <span className="font-medium">{w.term}</span>
                   {w.reading && <span className="text-sm text-gray-500">{w.reading}</span>}
                 </div>
-                {w.meaning && <div className="truncate text-sm text-gray-600">{w.meaning}</div>}
+                {w.meaning && <div className="break-words text-sm text-gray-600">{w.meaning}</div>}
                 {w.meaning_mn && (
-                  <div className="truncate text-sm text-indigo-700">{w.meaning_mn}</div>
+                  <div className="break-words text-sm text-indigo-700">{w.meaning_mn}</div>
                 )}
               </div>
               {w.deck?.name && (
@@ -437,17 +461,34 @@ function DeckDetail({
   words: Word[];
   onWordsChanged: () => void;
 }) {
+  const [adding, setAdding] = useState(false);
+  // Only one word card is editable at a time; opening another closes the first.
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   return (
     <div className="space-y-4">
-      <DeckHeader deck={deck} folders={folders} onChanged={onWordsChanged} />
-      <AddWordForm deck={deck} onAdded={onWordsChanged} />
-      <div className="rounded-lg border border-gray-200 bg-white">
+      <DeckHeader
+        deck={deck}
+        folders={folders}
+        adding={adding}
+        onToggleAdd={() => setAdding((v) => !v)}
+        onChanged={onWordsChanged}
+      />
+      {adding && <AddWordForm deck={deck} onAdded={onWordsChanged} />}
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         {words.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-gray-400">{T.noWords}</p>
         ) : (
           <ul className="divide-y divide-gray-100">
             {words.map((w) => (
-              <WordRow key={w.id} word={w} onChanged={onWordsChanged} />
+              <WordRow
+                key={w.id}
+                word={w}
+                editing={editingId === w.id}
+                onEdit={() => setEditingId(w.id)}
+                onClose={() => setEditingId(null)}
+                onChanged={onWordsChanged}
+              />
             ))}
           </ul>
         )}
@@ -459,10 +500,14 @@ function DeckDetail({
 function DeckHeader({
   deck,
   folders,
+  adding,
+  onToggleAdd,
   onChanged,
 }: {
   deck: DeckWithCount;
   folders: Folder[];
+  adding: boolean;
+  onToggleAdd: () => void;
   onChanged: () => void;
 }) {
   const [renaming, setRenaming] = useState(false);
@@ -516,7 +561,7 @@ function DeckHeader({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       {renaming ? (
         <input
           autoFocus
@@ -539,11 +584,11 @@ function DeckHeader({
           <span className="text-sm font-normal text-gray-400">({deck.word_count})</span>
         </h2>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <select
           value={deck.folder_id ?? ""}
           onChange={(e) => moveToFolder(e.target.value)}
-          className="rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-700"
+          className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-700 sm:flex-none"
         >
           <option value="">{T.noFolderOption}</option>
           {folders.map((f) => (
@@ -552,6 +597,16 @@ function DeckHeader({
             </option>
           ))}
         </select>
+        <button
+          onClick={onToggleAdd}
+          className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+            adding
+              ? "border border-gray-300 text-gray-700 hover:bg-gray-50"
+              : "bg-indigo-600 text-white hover:bg-indigo-700"
+          }`}
+        >
+          {adding ? T.cancel : `+ ${T.addWord}`}
+        </button>
         <button
           onClick={() => download("apkg")}
           disabled={exporting !== null}
@@ -643,7 +698,7 @@ function AddWordForm({ deck, onAdded }: { deck: Deck; onAdded: () => void }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
         <input
           value={term}
           onChange={(e) => setTerm(e.target.value)}
@@ -674,7 +729,7 @@ function AddWordForm({ deck, onAdded }: { deck: Deck; onAdded: () => void }) {
         <button
           onClick={add}
           disabled={busy || !term.trim()}
-          className="rounded bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60 sm:col-span-2 lg:col-span-1"
         >
           {T.addWord}
         </button>
@@ -683,12 +738,72 @@ function AddWordForm({ deck, onAdded }: { deck: Deck; onAdded: () => void }) {
   );
 }
 
-function WordRow({ word, onChanged }: { word: Word; onChanged: () => void }) {
+function WordRow({
+  word,
+  editing,
+  onEdit,
+  onClose,
+  onChanged,
+}: {
+  word: Word;
+  editing: boolean;
+  onEdit: () => void;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
   const [genAudio, setGenAudio] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [term, setTerm] = useState(word.term);
+  const [reading, setReading] = useState(word.reading ?? "");
+  const [meaning, setMeaning] = useState(word.meaning ?? "");
+  const [meaningMn, setMeaningMn] = useState(word.meaning_mn ?? "");
+
+  // When this row enters edit mode, populate the fields from the word.
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (editing) {
+      setTerm(word.term);
+      setReading(word.reading ?? "");
+      setMeaning(word.meaning ?? "");
+      setMeaningMn(word.meaning_mn ?? "");
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [editing, word]);
 
   async function remove() {
     await supabase.from("words").update({ deleted: true }).eq("id", word.id);
     onChanged();
+  }
+
+  async function translateMn() {
+    const text = meaning.trim();
+    if (!text || meaningMn.trim()) return;
+    try {
+      const res = await fetch(`/api/translate?text=${encodeURIComponent(text)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.mongolian) setMeaningMn(data.mongolian);
+      }
+    } catch {
+      // leave as-is
+    }
+  }
+
+  async function save() {
+    if (!term.trim()) return;
+    setSaving(true);
+    await supabase
+      .from("words")
+      .update({
+        term: term.trim(),
+        reading: reading.trim() || null,
+        meaning: meaning.trim() || null,
+        meaning_mn: meaningMn.trim() || null,
+      })
+      .eq("id", word.id);
+    setSaving(false);
+    onChanged();
+    onClose();
   }
 
   async function play() {
@@ -712,8 +827,38 @@ function WordRow({ word, onChanged }: { word: Word; onChanged: () => void }) {
     if (data?.signedUrl) new Audio(data.signedUrl).play();
   }
 
+  const inputCls = "rounded border border-gray-300 px-2 py-1.5 text-sm";
+
+  if (editing) {
+    return (
+      <li className="px-4 py-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={T.term} className={inputCls} />
+          <input value={reading} onChange={(e) => setReading(e.target.value)} placeholder={T.reading} className={inputCls} />
+          <input value={meaning} onChange={(e) => setMeaning(e.target.value)} onBlur={translateMn} placeholder={T.meaningEn} className={inputCls} />
+          <input value={meaningMn} onChange={(e) => setMeaningMn(e.target.value)} placeholder={T.mongolian} className={inputCls} />
+        </div>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={save}
+            disabled={saving || !term.trim()}
+            className="rounded bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {T.save}
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            {T.cancel}
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   return (
-    <li className="flex items-center gap-3 px-4 py-2">
+    <li className="group flex items-center gap-3 px-4 py-2">
       <button
         onClick={play}
         disabled={genAudio}
@@ -722,23 +867,32 @@ function WordRow({ word, onChanged }: { word: Word; onChanged: () => void }) {
       >
         {genAudio ? "…" : "▶"}
       </button>
-      <div className="min-w-0 flex-1">
+      <button onClick={onEdit} className="min-w-0 flex-1 text-left" title={T.edit}>
         <div className="flex items-baseline gap-2">
           <span className="font-medium">{word.term}</span>
           {word.reading && <span className="text-sm text-gray-500">{word.reading}</span>}
         </div>
-        {word.meaning && <div className="truncate text-sm text-gray-600">{word.meaning}</div>}
+        {word.meaning && <div className="break-words text-sm text-gray-600">{word.meaning}</div>}
         {word.meaning_mn && (
-          <div className="truncate text-sm text-indigo-700">{word.meaning_mn}</div>
+          <div className="break-words text-sm text-indigo-700">{word.meaning_mn}</div>
         )}
-      </div>
-      <button
-        onClick={remove}
-        title={T.removeWord}
-        className="shrink-0 text-gray-300 transition hover:text-red-500"
-      >
-        ✕
       </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          onClick={onEdit}
+          title={T.edit}
+          className="text-gray-300 transition hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          ✎
+        </button>
+        <button
+          onClick={remove}
+          title={T.removeWord}
+          className="text-gray-300 transition hover:text-red-500"
+        >
+          ✕
+        </button>
+      </div>
     </li>
   );
 }

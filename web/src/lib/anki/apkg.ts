@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -6,6 +6,31 @@ import initSqlJs from "sql.js";
 import JSZip from "jszip";
 
 const nodeRequire = createRequire(import.meta.url);
+
+// Find sql.js's wasm file on disk. We can't rely on require.resolve under
+// Turbopack — it returns a virtual id like "[externals]/sql.js …", not a real
+// path — so we probe concrete filesystem locations and use the first that
+// exists. (On Vercel the file is included via outputFileTracingIncludes.)
+function locateWasm(): string {
+  const candidates: string[] = [];
+  try {
+    const resolved = nodeRequire.resolve("sql.js");
+    if (resolved.startsWith("/")) {
+      candidates.push(join(dirname(resolved), "sql-wasm.wasm"));
+    }
+  } catch {
+    // ignore — fall back to cwd-based paths
+  }
+  candidates.push(
+    join(process.cwd(), "node_modules", "sql.js", "dist", "sql-wasm.wasm"),
+    join(process.cwd(), "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm")
+  );
+  const found = candidates.find((p) => existsSync(p));
+  if (!found) {
+    throw new Error(`sql-wasm.wasm not found. Tried: ${candidates.join(", ")}`);
+  }
+  return found;
+}
 
 // Builds a real Anki .apkg package (a zip of a SQLite "collection.anki2" plus
 // media files), equivalent to what the genanki library produces. We implement
@@ -41,9 +66,14 @@ function getSql() {
     // statically so the bundler doesn't try to process it as a module. This
     // works in dev and when bundled for serverless (see outputFileTracingIncludes
     // in next.config.ts).
-    const sqlJsDir = dirname(nodeRequire.resolve("sql.js"));
-    const wasmBinary = readFileSync(join(sqlJsDir, "sql-wasm.wasm"));
-    sqlPromise = initSqlJs({ wasmBinary });
+    const wasmBinary = readFileSync(locateWasm());
+    // sql.js is CommonJS; depending on how the bundler interops it, the default
+    // import can arrive as the function itself or as { default: fn }.
+    const factory =
+      typeof initSqlJs === "function"
+        ? initSqlJs
+        : (initSqlJs as unknown as { default: typeof initSqlJs }).default;
+    sqlPromise = factory({ wasmBinary });
   }
   return sqlPromise;
 }

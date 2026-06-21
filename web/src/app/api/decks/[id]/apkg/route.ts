@@ -24,37 +24,47 @@ export async function POST(
   const supabase = await createClient();
   const tag = sanitizeTag(deck.name);
 
-  const notes: ApkgNote[] = [];
-  for (const w of words) {
-    const note: ApkgNote = {
-      guidSeed: w.id, // stable: re-export updates the same card
-      front: frontText(w),
-      back: backText(w).replace(/\n/g, "<br>"),
-      tags: tag ? [tag] : [],
-    };
+  try {
+    const notes: ApkgNote[] = [];
+    for (const w of words) {
+      const note: ApkgNote = {
+        guidSeed: w.id, // stable: re-export updates the same card
+        front: frontText(w),
+        back: backText(w).replace(/\n/g, "<br>"),
+        tags: tag ? [tag] : [],
+      };
 
-    if (w.audio_path) {
-      const { data: blob } = await supabase.storage
-        .from("word-audio")
-        .download(w.audio_path);
-      if (blob) {
-        note.audio = {
-          filename: `vocabdecks-${w.id}.mp3`,
-          bytes: new Uint8Array(await blob.arrayBuffer()),
-        };
+      if (w.audio_path) {
+        const { data: blob } = await supabase.storage
+          .from("word-audio")
+          .download(w.audio_path);
+        if (blob) {
+          note.audio = {
+            filename: `vocabdecks-${w.id}.mp3`,
+            bytes: new Uint8Array(await blob.arrayBuffer()),
+          };
+        }
       }
+      notes.push(note);
     }
-    notes.push(note);
+
+    const apkg = await buildApkg(deck.name, notes);
+    const body = Buffer.from(apkg); // Node Buffer streams reliably
+
+    return new NextResponse(body, {
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": String(body.length),
+        "Content-Disposition": `attachment; filename="${sanitizeFilename(
+          deck.name
+        )}.apkg"`,
+      },
+    });
+  } catch (e) {
+    console.error("apkg export failed:", e);
+    return NextResponse.json(
+      { error: `Export failed: ${e instanceof Error ? e.message : String(e)}` },
+      { status: 500 }
+    );
   }
-
-  const apkg = await buildApkg(deck.name, notes);
-
-  return new NextResponse(apkg as BodyInit, {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${sanitizeFilename(
-        deck.name
-      )}.apkg"`,
-    },
-  });
 }
