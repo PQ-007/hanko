@@ -139,6 +139,8 @@ async function refreshDeckSelect(selectId) {
 async function renderWords() {
   const store = await getStore();
   const deckId = deckSelect.value;
+  // Remember the selected deck so the background quick-save (PDFs) targets it.
+  if (deckId) ctx.storage.local.set({ lastDeckId: deckId });
   const words = activeWords(store, deckId);
 
   wordList.innerHTML = '';

@@ -242,6 +242,8 @@ async function saveWord(word) {
   const now = Date.now();
   store.words.push({ id: crypto.randomUUID(), dateAdded: now, updatedAt: now, deleted: false, ...word });
   await setStore(store);
+  // Remember the deck so the background quick-save (used on PDFs) targets it.
+  if (word.deckId) await ctx.storage.local.set({ lastDeckId: word.deckId });
   // Ask the background to sync this new word up to the user's account (no-op
   // when signed out / unconfigured).
   try {

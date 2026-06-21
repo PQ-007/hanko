@@ -3,7 +3,7 @@
   "name": "Vocab Decks (for 10ten Japanese Reader)",
   "version": "1.0.0",
   "description": "Save words you look up with 10ten Japanese Reader into decks, then export them as an Anki-ready file.",
-  "permissions": ["contextMenus", "storage", "activeTab", "identity", "alarms"],
+  "permissions": ["contextMenus", "storage", "activeTab", "identity", "alarms", "notifications"],
   "host_permissions": ["https://jisho.org/*", "https://*.supabase.co/*"],
   "background": {
     "service_worker": "background.js"
