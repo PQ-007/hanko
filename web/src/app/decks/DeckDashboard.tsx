@@ -1,6 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type DragEvent, useCallback, useEffect, useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  FolderClosed,
+  FolderOpen,
+  FolderPlus,
+  Layers,
+  LayoutGrid,
+  LayoutList,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Deck, DeckWithCount, Folder, Word } from "@/lib/types";
 
@@ -40,6 +56,8 @@ const T = {
   edit: "Засах",
   save: "Хадгалах",
   cancel: "Болих",
+  gridView: "Картаар харах",
+  listView: "Жагсаалтаар харах",
   noFolderOption: "— Хавтасгүй —",
   audioFailed: "Дуу үүсгэж чадсангүй",
   deleteDeckConfirm: (n: string) =>
@@ -157,7 +175,7 @@ export default function DeckDashboard() {
   const searching = results !== null;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 sm:p-6 lg:flex-row lg:gap-6">
+    <div className="mx-auto flex max-w-[1700px] flex-col gap-4 p-4 sm:px-8 sm:py-6 lg:flex-row lg:gap-6">
       <Sidebar
         folders={folders}
         decks={decks}
@@ -171,12 +189,18 @@ export default function DeckDashboard() {
         onDecksChanged={loadDecks}
       />
       <section className="min-w-0 flex-1">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={T.search}
-          className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-        />
+        <div className="relative mb-4">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={T.search}
+            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
         {error && (
           <p className="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-600">
             {error}
@@ -235,9 +259,27 @@ function Sidebar({
   const [addingFolder, setAddingFolder] = useState(false);
   // Folders are expanded by default; track only the collapsed ones.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Drag-and-drop: which drop target ("ungrouped" or a folder id) is hovered.
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   const decksIn = (folderId: string | null) =>
     decks.filter((d) => (d.folder_id ?? null) === folderId);
+
+  // Move a dragged deck into a folder (or out, when target is null).
+  async function moveDeck(deckId: string, folderId: string | null) {
+    setDragOver(null);
+    const deck = decks.find((d) => d.id === deckId);
+    if (!deck || (deck.folder_id ?? null) === folderId) return;
+    await supabase.from("decks").update({ folder_id: folderId }).eq("id", deckId);
+    onDecksChanged();
+  }
+
+  function onDrop(e: DragEvent, folderId: string | null) {
+    e.preventDefault();
+    e.stopPropagation();
+    const deckId = e.dataTransfer.getData("text/plain");
+    if (deckId) moveDeck(deckId, folderId);
+  }
 
   async function createDeck() {
     const name = deckName.trim();
@@ -269,16 +311,25 @@ function Sidebar({
     onDecksChanged();
   }
 
-  function DeckItem({ d }: { d: DeckWithCount }) {
+  function DeckItem({ d, depth = 0 }: { d: DeckWithCount; depth?: number }) {
     return (
       <button
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/plain", d.id);
+          e.dataTransfer.effectAllowed = "move";
+        }}
         onClick={() => onSelect(d.id)}
-        className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-sm transition hover:bg-gray-50 ${
-          d.id === selectedId ? "bg-indigo-50 font-medium text-indigo-700" : "text-gray-700"
+        style={{ paddingLeft: 12 + depth * 16 }}
+        className={`flex w-full cursor-grab items-center gap-1.5 py-1 pr-2 text-left transition hover:bg-gray-100 active:cursor-grabbing ${
+          d.id === selectedId
+            ? "bg-indigo-100 font-medium text-indigo-800"
+            : "text-gray-700"
         }`}
       >
+        <Layers size={14} className="shrink-0 text-gray-400" />
         <span className="truncate">{d.name}</span>
-        <span className="shrink-0 text-xs text-gray-400">{d.word_count}</span>
+        <span className="ml-auto shrink-0 pl-2 text-xs text-gray-400">{d.word_count}</span>
       </button>
     );
   }
@@ -293,9 +344,9 @@ function Sidebar({
           <button
             onClick={() => setAddingFolder((v) => !v)}
             title={T.newFolderTitle}
-            className="rounded px-2 py-0.5 text-sm text-amber-700 transition hover:bg-amber-50"
+            className="rounded p-1 text-amber-600 transition hover:bg-amber-50"
           >
-            + 📁
+            <FolderPlus size={16} />
           </button>
         </div>
 
@@ -318,29 +369,44 @@ function Sidebar({
           </div>
         )}
 
-        <div className="max-h-[55vh] overflow-auto p-2">
-          {loading && <div className="px-2 py-3 text-sm text-gray-400">{T.loading}</div>}
+        <div className="max-h-[55vh] overflow-auto py-1 text-[13px]">
+          {loading && <div className="px-3 py-2 text-gray-400">{T.loading}</div>}
           {!loading && decks.length === 0 && folders.length === 0 && (
-            <div className="px-2 py-3 text-sm text-gray-400">{T.noDecks}</div>
+            <div className="px-3 py-2 text-gray-400">{T.noDecks}</div>
           )}
 
-          {/* Folders with their decks */}
+          {/* Folders with their decks (drop a deck here to file it) */}
           {folders.map((f) => {
             const isCollapsed = !!collapsed[f.id];
             const children = decksIn(f.id);
             return (
-              <div key={f.id} className="mb-1">
-                <div className="group flex items-center rounded hover:bg-gray-50">
+              <div
+                key={f.id}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(f.id);
+                }}
+                onDragLeave={() => setDragOver((p) => (p === f.id ? null : p))}
+                onDrop={(e) => onDrop(e, f.id)}
+                className={dragOver === f.id ? "rounded bg-amber-50 ring-1 ring-amber-200" : ""}
+              >
+                <div className="group flex items-center hover:bg-gray-100">
                   <button
                     onClick={() => setCollapsed((c) => ({ ...c, [f.id]: !isCollapsed }))}
-                    className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1.5 text-left text-sm font-medium text-gray-700"
+                    className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1 text-left text-gray-700"
                   >
-                    <span className="w-3 shrink-0 text-xs text-gray-400">
-                      {isCollapsed ? "▸" : "▾"}
-                    </span>
-                    <span className="shrink-0">📁</span>
-                    <span className="truncate">{f.name}</span>
-                    <span className="ml-auto shrink-0 text-xs text-gray-400">
+                    {isCollapsed ? (
+                      <ChevronRight size={14} className="shrink-0 text-gray-400" />
+                    ) : (
+                      <ChevronDown size={14} className="shrink-0 text-gray-400" />
+                    )}
+                    {isCollapsed ? (
+                      <FolderClosed size={15} className="shrink-0 text-amber-500" />
+                    ) : (
+                      <FolderOpen size={15} className="shrink-0 text-amber-500" />
+                    )}
+                    <span className="truncate font-medium">{f.name}</span>
+                    <span className="ml-auto shrink-0 pr-1 text-xs text-gray-400">
                       {children.length}
                     </span>
                   </button>
@@ -349,35 +415,40 @@ function Sidebar({
                     title={T.delete}
                     className="px-2 text-gray-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </div>
-                {!isCollapsed && (
-                  <div className="ml-3 border-l border-gray-100 pl-2">
-                    {children.length === 0 ? (
-                      <div className="px-2 py-1 text-xs text-gray-300">{T.emptyFolder}</div>
-                    ) : (
-                      children.map((d) => <DeckItem key={d.id} d={d} />)
-                    )}
-                  </div>
-                )}
+                {!isCollapsed &&
+                  (children.length === 0 ? (
+                    <div className="py-1 pl-9 text-xs text-gray-300">{T.emptyFolder}</div>
+                  ) : (
+                    children.map((d) => <DeckItem key={d.id} d={d} depth={1} />)
+                  ))}
               </div>
             );
           })}
 
-          {/* Ungrouped decks */}
-          {ungrouped.length > 0 && (
-            <div className="mt-1">
-              {folders.length > 0 && (
-                <div className="px-2 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-gray-400">
-                  {T.noFolder}
-                </div>
-              )}
-              {ungrouped.map((d) => (
-                <DeckItem key={d.id} d={d} />
-              ))}
-            </div>
-          )}
+          {/* Ungrouped decks (drop a deck here to remove it from its folder) */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver("ungrouped");
+            }}
+            onDragLeave={() => setDragOver((p) => (p === "ungrouped" ? null : p))}
+            onDrop={(e) => onDrop(e, null)}
+            className={`mt-1 min-h-[2rem] ${
+              dragOver === "ungrouped" ? "rounded bg-indigo-50 ring-1 ring-indigo-200" : ""
+            }`}
+          >
+            {folders.length > 0 && (
+              <div className="px-3 pb-0.5 pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                {T.noFolder}
+              </div>
+            )}
+            {ungrouped.map((d) => (
+              <DeckItem key={d.id} d={d} depth={0} />
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-2 border-t border-gray-100 p-3">
@@ -464,6 +535,19 @@ function DeckDetail({
   const [adding, setAdding] = useState(false);
   // Only one word card is editable at a time; opening another closes the first.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "grid">("grid");
+
+  const rows = words.map((w) => (
+    <WordRow
+      key={w.id}
+      word={w}
+      grid={view === "grid"}
+      editing={editingId === w.id}
+      onEdit={() => setEditingId(w.id)}
+      onClose={() => setEditingId(null)}
+      onChanged={onWordsChanged}
+    />
+  ));
 
   return (
     <div className="space-y-4">
@@ -472,27 +556,22 @@ function DeckDetail({
         folders={folders}
         adding={adding}
         onToggleAdd={() => setAdding((v) => !v)}
+        view={view}
+        onView={setView}
         onChanged={onWordsChanged}
       />
       {adding && <AddWordForm deck={deck} onAdded={onWordsChanged} />}
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        {words.length === 0 ? (
+      {words.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
           <p className="px-4 py-8 text-center text-sm text-gray-400">{T.noWords}</p>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {words.map((w) => (
-              <WordRow
-                key={w.id}
-                word={w}
-                editing={editingId === w.id}
-                onEdit={() => setEditingId(w.id)}
-                onClose={() => setEditingId(null)}
-                onChanged={onWordsChanged}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+        </div>
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{rows}</div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <ul className="divide-y divide-gray-100">{rows}</ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -502,12 +581,16 @@ function DeckHeader({
   folders,
   adding,
   onToggleAdd,
+  view,
+  onView,
   onChanged,
 }: {
   deck: DeckWithCount;
   folders: Folder[];
   adding: boolean;
   onToggleAdd: () => void;
+  view: "list" | "grid";
+  onView: (v: "list" | "grid") => void;
   onChanged: () => void;
 }) {
   const [renaming, setRenaming] = useState(false);
@@ -585,27 +668,57 @@ function DeckHeader({
         </h2>
       )}
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-        <select
-          value={deck.folder_id ?? ""}
-          onChange={(e) => moveToFolder(e.target.value)}
-          className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-700 sm:flex-none"
-        >
-          <option value="">{T.noFolderOption}</option>
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>
-              📁 {f.name}
-            </option>
-          ))}
-        </select>
+        {/* View toggle: list / card grid */}
+        <div className="flex shrink-0 overflow-hidden rounded border border-gray-300">
+          <button
+            onClick={() => onView("grid")}
+            title={T.gridView}
+            className={`p-1.5 transition ${
+              view === "grid" ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-50"
+            }`}
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button
+            onClick={() => onView("list")}
+            title={T.listView}
+            className={`p-1.5 transition ${
+              view === "list" ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-50"
+            }`}
+          >
+            <LayoutList size={16} />
+          </button>
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded border border-gray-300 px-2 py-1 sm:flex-none">
+          <FolderClosed size={15} className="shrink-0 text-amber-500" />
+          <select
+            value={deck.folder_id ?? ""}
+            onChange={(e) => moveToFolder(e.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-sm text-gray-700 focus:outline-none"
+          >
+            <option value="">{T.noFolderOption}</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           onClick={onToggleAdd}
-          className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+          className={`flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium transition ${
             adding
               ? "border border-gray-300 text-gray-700 hover:bg-gray-50"
               : "bg-indigo-600 text-white hover:bg-indigo-700"
           }`}
         >
-          {adding ? T.cancel : `+ ${T.addWord}`}
+          {adding ? (
+            T.cancel
+          ) : (
+            <>
+              <Plus size={15} /> {T.addWord}
+            </>
+          )}
         </button>
         <button
           onClick={() => download("apkg")}
@@ -740,12 +853,14 @@ function AddWordForm({ deck, onAdded }: { deck: Deck; onAdded: () => void }) {
 
 function WordRow({
   word,
+  grid = false,
   editing,
   onEdit,
   onClose,
   onChanged,
 }: {
   word: Word;
+  grid?: boolean;
   editing: boolean;
   onEdit: () => void;
   onClose: () => void;
@@ -830,8 +945,8 @@ function WordRow({
   const inputCls = "rounded border border-gray-300 px-2 py-1.5 text-sm";
 
   if (editing) {
-    return (
-      <li className="px-4 py-3">
+    const form = (
+      <>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={T.term} className={inputCls} />
           <input value={reading} onChange={(e) => setReading(e.target.value)} placeholder={T.reading} className={inputCls} />
@@ -853,20 +968,80 @@ function WordRow({
             {T.cancel}
           </button>
         </div>
-      </li>
+      </>
+    );
+    return grid ? (
+      <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">{form}</div>
+    ) : (
+      <li className="px-4 py-3">{form}</li>
     );
   }
 
+  const playBtn = (
+    <button
+      onClick={play}
+      disabled={genAudio}
+      title={T.playAudio}
+      className="shrink-0 rounded-full border border-gray-200 p-1.5 text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
+    >
+      <Play size={14} className={genAudio ? "animate-pulse" : ""} />
+    </button>
+  );
+  const editBtn = (
+    <button onClick={onEdit} title={T.edit} className="text-gray-300 transition hover:text-indigo-600">
+      <Pencil size={15} />
+    </button>
+  );
+  const removeBtn = (
+    <button onClick={remove} title={T.removeWord} className="text-gray-300 transition hover:text-red-500">
+      <Trash2 size={15} />
+    </button>
+  );
+
+  // Card view (grid): term + reading on top, Mongolian emphasized as the main
+  // meaning (users are Mongolian), English small and clamped for a clean scan.
+  if (grid) {
+    return (
+      <div className="group flex h-full flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+        <div className="flex items-start justify-between gap-2">
+          <button onClick={onEdit} className="min-w-0 text-left" title={T.edit}>
+            <div className="text-2xl font-bold leading-tight text-gray-900">{word.term}</div>
+            {word.reading && <div className="mt-0.5 text-sm text-gray-400">{word.reading}</div>}
+          </button>
+          {playBtn}
+        </div>
+
+        <div className="mt-3 space-y-1">
+          {word.meaning_mn && (
+            <div
+              title={word.meaning_mn}
+              className="line-clamp-3 break-words text-[15px] font-semibold leading-snug text-indigo-700"
+            >
+              {word.meaning_mn}
+            </div>
+          )}
+          {word.meaning && (
+            <div
+              title={word.meaning}
+              className="line-clamp-2 break-words text-xs leading-snug text-gray-400"
+            >
+              {word.meaning}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-auto flex justify-end gap-3 pt-3 opacity-0 transition group-hover:opacity-100">
+          {editBtn}
+          {removeBtn}
+        </div>
+      </div>
+    );
+  }
+
+  // List view (compact row).
   return (
     <li className="group flex items-center gap-3 px-4 py-2">
-      <button
-        onClick={play}
-        disabled={genAudio}
-        title={T.playAudio}
-        className="shrink-0 rounded-full border border-gray-200 px-2 py-1 text-xs text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
-      >
-        {genAudio ? "…" : "▶"}
-      </button>
+      {playBtn}
       <button onClick={onEdit} className="min-w-0 flex-1 text-left" title={T.edit}>
         <div className="flex items-baseline gap-2">
           <span className="font-medium">{word.term}</span>
@@ -877,21 +1052,9 @@ function WordRow({
           <div className="break-words text-sm text-indigo-700">{word.meaning_mn}</div>
         )}
       </button>
-      <div className="flex shrink-0 items-center gap-2">
-        <button
-          onClick={onEdit}
-          title={T.edit}
-          className="text-gray-300 transition hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100"
-        >
-          ✎
-        </button>
-        <button
-          onClick={remove}
-          title={T.removeWord}
-          className="text-gray-300 transition hover:text-red-500"
-        >
-          ✕
-        </button>
+      <div className="flex shrink-0 items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100">
+        {editBtn}
+        {removeBtn}
       </div>
     </li>
   );
