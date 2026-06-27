@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderClosed, LayoutGrid, LayoutList, Plus } from "lucide-react";
+import { FolderClosed, LayoutGrid, LayoutList, Plus, RefreshCw } from "lucide-react";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
@@ -27,6 +27,13 @@ export default function DeckHeader({
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(deck.name);
   const [exporting, setExporting] = useState<"apkg" | "txt" | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  function refresh() {
+    setRefreshing(true);
+    onChanged(); // reloads this deck's words + deck counts
+    setTimeout(() => setRefreshing(false), 600);
+  }
 
   async function rename() {
     const trimmed = name.trim();
@@ -99,6 +106,13 @@ export default function DeckHeader({
         </h2>
       )}
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <button
+          onClick={refresh}
+          title={T.refresh}
+          className="shrink-0 rounded border border-gray-300 p-1.5 text-gray-500 transition hover:bg-gray-50"
+        >
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+        </button>
         {/* View toggle: list / card grid */}
         <div className="flex shrink-0 overflow-hidden rounded border border-gray-300">
           <button

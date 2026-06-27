@@ -31,6 +31,7 @@ export const T = {
   removeWord: "Үг устгах",
   edit: "Засах",
   editWord: "Үг засах",
+  refresh: "Шинэчлэх",
   research: "Jisho-оос дахин хайх",
   translate: "Орчуулах",
   save: "Хадгалах",
