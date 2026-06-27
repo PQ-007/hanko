@@ -4,6 +4,7 @@ globalThis.VOCAB_CONFIG = {
   SUPABASE_URL: "https://rnbngwcodocafpjzrnue.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_ME4fhpxsmhWfublUA7cveA_6_zW1Z49",
   // Where the website is hosted (the sign-in / connect page lives here).
-  // Use http://localhost:3000 while developing, or your deployed URL.
-  SITE_URL: "http://localhost:3000",
+  // Use your deployed URL in production; switch to http://localhost:3000 only
+  // while running the site locally.
+  SITE_URL: "https://hanko-amber.vercel.app",
 };

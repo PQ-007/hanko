@@ -136,10 +136,10 @@ async function showOverlay(term) {
       <label>Дуудлага</label>
       <input type="text" data-reading placeholder="ねこ" />
 
-      <label>Утга</label>
+      <label>Утга(англи)</label>
       <textarea data-meaning placeholder="cat"></textarea>
 
-      <label>Монгол</label>
+      <label>Утга(монгол)</label>
       <textarea data-mongolian placeholder="муур"></textarea>
 
       <label>Багц</label>
@@ -160,6 +160,26 @@ async function showOverlay(term) {
 
   $('.close').addEventListener('click', removeOverlay);
   $('[data-cancel]').addEventListener('click', removeOverlay);
+
+  // Auto-translate English -> Mongolian when the meaning field is finished
+  // (Enter or blur), only when it actually changed. Editing Mongolian never
+  // translates in reverse.
+  let lastEn = '';
+  function translateMeaning() {
+    const text = $('[data-meaning]').value.trim();
+    if (!text || text === lastEn) return;
+    lastEn = text;
+    ctx.runtime.sendMessage({ type: 'TRANSLATE', text }, (resp) => {
+      if (resp && resp.ok && resp.mongolian) $('[data-mongolian]').value = resp.mongolian;
+    });
+  }
+  $('[data-meaning]').addEventListener('blur', translateMeaning);
+  $('[data-meaning]').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      translateMeaning();
+    }
+  });
 
   const deckSelect = $('[data-deck-select]');
   const newDeckRow = $('[data-new-deck-row]');
@@ -216,9 +236,18 @@ async function showOverlay(term) {
   ctx.runtime.sendMessage({ type: 'LOOKUP_WORD', term }, (response) => {
     $('[data-loading]').remove();
     if (response && response.ok && response.result) {
-      if (response.result.reading) $('[data-reading]').value = response.result.reading;
-      if (response.result.meaning) $('[data-meaning]').value = response.result.meaning;
-      if (response.result.mongolian) $('[data-mongolian]').value = response.result.mongolian;
+      const r = response.result;
+      if (r.word && r.word !== term) {
+        term = r.word; // use the dictionary form (普通形); saveWord reads this
+        const termEl = shadow.querySelector('.term');
+        if (termEl) termEl.textContent = term;
+      }
+      if (r.reading) $('[data-reading]').value = r.reading;
+      if (r.meaning) {
+        $('[data-meaning]').value = r.meaning;
+        lastEn = r.meaning.trim();
+      }
+      if (r.mongolian) $('[data-mongolian]').value = r.mongolian;
     }
   });
 }

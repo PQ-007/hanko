@@ -149,10 +149,12 @@ async function backgroundQuickSave(term) {
     store.decks.push(deck);
   }
 
+  // Save the dictionary form (普通形) when Jisho resolved one.
+  const finalTerm = lookup.word || term;
   store.words.push({
     id: crypto.randomUUID(),
     deckId: deck.id,
-    term,
+    term: finalTerm,
     reading: lookup.reading || '',
     meaning: lookup.meaning || '',
     meaningMn: lookup.mongolian || '',
@@ -163,7 +165,7 @@ async function backgroundQuickSave(term) {
 
   await setStore(store);
   await ctx.storage.local.set({ lastDeckId: deck.id });
-  notify(`“${deck.name}”-д хадгаллаа`, lookup.reading ? `${term} (${lookup.reading})` : term);
+  notify(`“${deck.name}”-д хадгаллаа`, lookup.reading ? `${finalTerm} (${lookup.reading})` : finalTerm);
   backgroundSync();
 }
 
@@ -183,6 +185,12 @@ ctx.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((result) => sendResponse({ ok: true, result }))
       .catch((err) => sendResponse({ ok: false, error: String(err) }));
     return true; // keep the message channel open for the async response
+  }
+  if (message && message.type === 'TRANSLATE') {
+    translateToMongolian(message.text || '')
+      .then((mongolian) => sendResponse({ ok: true, mongolian }))
+      .catch(() => sendResponse({ ok: false, mongolian: '' }));
+    return true; // async response
   }
   if (message && message.type === 'SYNC_NOW') {
     backgroundSync();
@@ -206,10 +214,12 @@ async function lookupWord(term) {
   if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
   const data = await res.json();
   const entry = data && data.data && data.data[0];
-  if (!entry) return { reading: '', meaning: '' };
+  if (!entry) return { word: '', reading: '', meaning: '', mongolian: '' };
 
   const jp = (entry.japanese && entry.japanese[0]) || {};
   const reading = jp.reading || '';
+  // Dictionary / base form (普通形): Jisho deinflects, so 担っています -> 担う.
+  const word = jp.word || entry.slug || reading || '';
 
   const senses = entry.senses || [];
   const meaning = senses
@@ -219,7 +229,7 @@ async function lookupWord(term) {
     .join('; ');
 
   const mongolian = await translateToMongolian(meaning);
-  return { reading, meaning, mongolian };
+  return { word, reading, meaning, mongolian };
 }
 
 // English -> Mongolian via the website's /api/translate proxy (keeps the

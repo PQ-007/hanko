@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Deck } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
@@ -18,6 +18,9 @@ export default function AddWordForm({
   const [meaningMn, setMeaningMn] = useState("");
   const [busy, setBusy] = useState(false);
   const [looking, setLooking] = useState(false);
+  // The English value we last translated from (avoid re-translating on blur if
+  // nothing changed, and never translate Mongolian edits in reverse).
+  const lastEn = useRef("");
 
   async function lookup() {
     const t = term.trim();
@@ -27,20 +30,26 @@ export default function AddWordForm({
       const res = await fetch(`/api/lookup?term=${encodeURIComponent(t)}`);
       if (res.ok) {
         const data = await res.json();
+        // Replace a conjugated term with its dictionary form (担っています → 担う).
+        if (data.word && data.word !== t) setTerm(data.word);
         if (data.reading && !reading) setReading(data.reading);
-        if (data.meaning && !meaning) setMeaning(data.meaning);
-        if (data.meaning_mn && !meaningMn) setMeaningMn(data.meaning_mn);
+        if (data.meaning && !meaning) {
+          setMeaning(data.meaning);
+          translate(data.meaning); // auto-fill Mongolian from the looked-up English
+        }
       }
     } finally {
       setLooking(false);
     }
   }
 
-  async function translateMn() {
-    const text = meaning.trim();
-    if (!text || meaningMn.trim()) return;
+  // English -> Mongolian (overwrite). Only triggered by English changes.
+  async function translate(text: string) {
+    const t = text.trim();
+    if (!t) return;
+    lastEn.current = t;
     try {
-      const res = await fetch(`/api/translate?text=${encodeURIComponent(text)}`);
+      const res = await fetch(`/api/translate?text=${encodeURIComponent(t)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.mongolian) setMeaningMn(data.mongolian);
@@ -48,6 +57,11 @@ export default function AddWordForm({
     } catch {
       // leave blank; user can type it
     }
+  }
+
+  function onMeaningBlur() {
+    const text = meaning.trim();
+    if (text && text !== lastEn.current) translate(text);
   }
 
   async function add() {
@@ -82,7 +96,7 @@ export default function AddWordForm({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
         <input value={term} onChange={(e) => setTerm(e.target.value)} onBlur={lookup} placeholder={T.term} className={inputCls} />
         <input value={reading} onChange={(e) => setReading(e.target.value)} placeholder={looking ? T.lookingUp : T.reading} className={inputCls} />
-        <input value={meaning} onChange={(e) => setMeaning(e.target.value)} onBlur={translateMn} placeholder={T.meaningEn} className={inputCls} />
+        <input value={meaning} onChange={(e) => setMeaning(e.target.value)} onBlur={onMeaningBlur} onKeyDown={(e) => e.key === "Enter" && onMeaningBlur()} placeholder={T.meaningEn} className={inputCls} />
         <input value={meaningMn} onChange={(e) => setMeaningMn(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={T.mongolian} className={inputCls} />
         <button
           onClick={add}

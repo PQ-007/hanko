@@ -2,6 +2,9 @@
 // background script uses). Unofficial but widely used; on failure we just
 // return blanks so the caller can fall back to manual entry.
 export interface LookupResult {
+  // The dictionary / base form (普通形) of the word — Jisho deinflects, so a
+  // conjugated query like 担っています resolves to 担う here.
+  word: string;
   reading: string;
   meaning: string;
 }
@@ -14,10 +17,12 @@ export async function lookupWord(term: string): Promise<LookupResult> {
   if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
   const data = await res.json();
   const entry = data?.data?.[0];
-  if (!entry) return { reading: "", meaning: "" };
+  if (!entry) return { word: "", reading: "", meaning: "" };
 
   const jp = entry.japanese?.[0] ?? {};
   const reading: string = jp.reading ?? "";
+  // Dictionary form: the kanji writing, or the slug, or the reading (kana words).
+  const word: string = jp.word ?? entry.slug ?? reading ?? "";
 
   const meaning: string = (entry.senses ?? [])
     .slice(0, 3)
@@ -27,5 +32,5 @@ export async function lookupWord(term: string): Promise<LookupResult> {
     .filter(Boolean)
     .join("; ");
 
-  return { reading, meaning };
+  return { word, reading, meaning };
 }

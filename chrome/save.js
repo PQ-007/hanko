@@ -4,7 +4,8 @@
 
 const ctx = typeof browser !== 'undefined' ? browser : chrome;
 
-const term = (new URLSearchParams(location.search).get('term') || '').trim();
+// Mutable: Jisho lookup may replace a conjugated form with its dictionary form.
+let term = (new URLSearchParams(location.search).get('term') || '').trim();
 
 const $ = (id) => document.getElementById(id);
 const termEl = $('term');
@@ -17,6 +18,19 @@ const newDeckRow = $('newDeckRow');
 
 termEl.textContent = term;
 document.title = term ? `Хадгалах: ${term}` : 'Үг хадгалах';
+
+// The English value last translated (so blurring unchanged text doesn't
+// re-translate; editing Mongolian never translates in reverse).
+let lastEn = '';
+
+function translateMeaning() {
+  const text = meaningEl.value.trim();
+  if (!text || text === lastEn) return;
+  lastEn = text;
+  ctx.runtime.sendMessage({ type: 'TRANSLATE', text }, (resp) => {
+    if (resp && resp.ok && resp.mongolian) mongolianEl.value = resp.mongolian;
+  });
+}
 
 init();
 
@@ -48,13 +62,30 @@ async function init() {
   $('cancel').addEventListener('click', () => window.close());
   $('save').addEventListener('click', onSave);
 
+  // Auto-translate English -> Mongolian on Enter/blur (only when changed).
+  meaningEl.addEventListener('blur', translateMeaning);
+  meaningEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      translateMeaning();
+    }
+  });
+
   // Kick off the dictionary lookup (handled in the background to dodge page CSP).
   ctx.runtime.sendMessage({ type: 'LOOKUP_WORD', term }, (response) => {
     loadingEl.remove();
     if (response && response.ok && response.result) {
-      if (response.result.reading) readingEl.value = response.result.reading;
-      if (response.result.meaning) meaningEl.value = response.result.meaning;
-      if (response.result.mongolian) mongolianEl.value = response.result.mongolian;
+      const r = response.result;
+      if (r.word && r.word !== term) {
+        term = r.word; // use the dictionary form (普通形)
+        termEl.textContent = term;
+      }
+      if (r.reading) readingEl.value = r.reading;
+      if (r.meaning) {
+        meaningEl.value = r.meaning;
+        lastEn = r.meaning.trim();
+      }
+      if (r.mongolian) mongolianEl.value = r.mongolian;
     }
   });
 }

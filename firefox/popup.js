@@ -6,7 +6,7 @@ const newDeckForm = document.getElementById('newDeckForm');
 const newDeckName = document.getElementById('newDeckName');
 const confirmNewDeck = document.getElementById('confirmNewDeck');
 const wordList = document.getElementById('wordList');
-const exportBtn = document.getElementById('exportBtn');
+const openWebBtn = document.getElementById('openWebBtn');
 const deleteDeckBtn = document.getElementById('deleteDeckBtn');
 const accountStatus = document.getElementById('accountStatus');
 const authBtn = document.getElementById('authBtn');
@@ -43,7 +43,7 @@ async function init() {
     syncNow();
   });
 
-  exportBtn.addEventListener('click', exportCurrentDeck);
+  openWebBtn.addEventListener('click', openWeb);
   deleteDeckBtn.addEventListener('click', deleteCurrentDeck);
   authBtn.addEventListener('click', onAuthClick);
 }
@@ -186,40 +186,16 @@ async function renderWords() {
     });
 }
 
-async function exportCurrentDeck() {
-  const store = await getStore();
-  const deckId = deckSelect.value;
-  const deck = activeDecks(store).find((d) => d.id === deckId);
-  if (!deck) return;
-
-  const words = activeWords(store, deckId);
-  if (words.length === 0) {
-    alert('Энэ багцад экспортлох үг алга.');
+// Open the full web editor (deck dashboard) where you can edit/organize freely
+// and export to .apkg/.txt.
+function openWeb() {
+  const cfg = globalThis.VOCAB_CONFIG || {};
+  const base = (cfg.SITE_URL || '').replace(/\/$/, '');
+  if (!base) {
+    alert('Вэб хаяг тохируулаагүй байна (config.js-ийн SITE_URL).');
     return;
   }
-
-  // Tab-separated, 3 columns: Term (with reading), Meaning, Tags
-  // In Anki: File > Import, choose this .txt file, set "Fields separated by"
-  // to Tab, and map column 1 -> Front, column 2 -> Back (ignore/skip column 3,
-  // or map it to Tags if you'd like every card tagged with the deck name).
-  const lines = words.map((w) => {
-    const front = w.reading && w.reading !== w.term ? `${w.term} (${w.reading})` : w.term;
-    const back = (w.meaning || '').replace(/\t/g, ' ').replace(/\n/g, '<br>');
-    const tag = sanitizeTag(deck.name);
-    return [front, back, tag].join('\t');
-  });
-
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const filename = `${sanitizeFilename(deck.name)}-anki-export.txt`;
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  ctx.tabs.create({ url: `${base}/decks` });
 }
 
 async function deleteCurrentDeck() {
@@ -244,14 +220,6 @@ async function deleteCurrentDeck() {
   await refreshDeckSelect();
   await renderWords();
   syncNow();
-}
-
-function sanitizeFilename(name) {
-  return name.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60) || 'deck';
-}
-
-function sanitizeTag(name) {
-  return name.replace(/\s+/g, '_').replace(/[^\w-]/g, '');
 }
 
 function escapeHtml(s) {
