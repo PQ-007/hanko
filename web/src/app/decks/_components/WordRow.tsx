@@ -5,6 +5,7 @@ import { Pencil, Play, Trash2 } from "lucide-react";
 import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
+import GradeBadge from "./GradeBadge";
 
 export default function WordRow({
   word,
@@ -70,34 +71,34 @@ export default function WordRow({
   // reading (the prompt), back reveals the Mongolian + English answer.
   if (grid) {
     return (
-      <div className="group h-48 perspective-[1000px]">
+      <div className="group relative h-48 perspective-[1000px]">
         <div className="relative h-full w-full transform-3d transition-transform duration-500 group-hover:rotate-y-180">
           {/* Front — the prompt */}
           <div
             style={{ WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm backface-hidden"
+            className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm backface-hidden"
           >
-            <div className="text-3xl font-bold leading-tight text-gray-900">{word.term}</div>
-            {word.reading && <div className="mt-1.5 text-sm text-gray-400">{word.reading}</div>}
+            <GradeBadge word={word} />
+            <div className="relative text-3xl font-bold leading-tight text-gray-900">{word.term}</div>
+            {word.reading && <div className="relative mt-1.5 text-sm text-gray-400">{word.reading}</div>}
           </div>
 
           {/* Back — the answer (opaque so the front never shows through) */}
           <div
             style={{ WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
-            className="absolute inset-0 flex flex-col overflow-hidden rounded-xl border border-gray-300 bg-gray-50 p-4 shadow-sm backface-hidden rotate-y-180"
+            className="absolute inset-0 flex flex-col items-center overflow-hidden rounded-xl border border-gray-300 bg-gray-50 p-4 text-center shadow-sm backface-hidden rotate-y-180"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate text-xl font-bold leading-tight text-gray-900">
-                  {word.term}
-                </div>
-                {word.reading && (
-                  <div className="truncate text-xs text-gray-400">{word.reading}</div>
-                )}
+            <GradeBadge word={word} />
+            <div className="absolute right-2 top-2">{playBtn}</div>
+            <div className="relative max-w-full min-w-0">
+              <div className="truncate text-xl font-bold leading-tight text-gray-900">
+                {word.term}
               </div>
-              {playBtn}
+              {word.reading && (
+                <div className="truncate text-xs text-gray-400">{word.reading}</div>
+              )}
             </div>
-            <div className="mt-2 flex-1 overflow-hidden">
+            <div className="relative mt-2 flex w-full flex-1 flex-col items-center overflow-hidden">
               {word.meaning_mn && (
                 <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-gray-900">
                   {word.meaning_mn}
@@ -109,7 +110,7 @@ export default function WordRow({
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-3 border-t border-gray-200 pt-2">
+            <div className="relative flex w-full justify-center gap-3 border-t border-gray-200 pt-2">
               {editBtn}
               {removeBtn}
             </div>

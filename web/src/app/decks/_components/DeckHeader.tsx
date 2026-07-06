@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FolderClosed, LayoutGrid, LayoutList, Plus, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { FolderClosed, GraduationCap, LayoutGrid, LayoutList, Plus, RefreshCw } from "lucide-react";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
@@ -149,6 +150,12 @@ export default function DeckHeader({
             ))}
           </select>
         </div>
+        <Link
+          href={`/decks/practice?deck=${deck.id}`}
+          className="flex shrink-0 items-center gap-1 rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800"
+        >
+          <GraduationCap size={15} /> {T.practice}
+        </Link>
         <button
           onClick={onToggleAdd}
           className={`flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium transition ${

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { GraduationCap, Search } from "lucide-react";
 import type { Deck, DeckWithCount, Folder, Word } from "@/lib/types";
 import { supabase } from "./_lib/db";
 import { T } from "./_lib/strings";
@@ -131,17 +132,25 @@ export default function DeckDashboard() {
         onDecksChanged={loadDecks}
       />
       <section className="min-w-0 flex-1">
-        <div className="relative mb-4">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={T.search}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
-          />
+        <div className="mb-4 flex gap-2">
+          <div className="relative flex-1">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={T.search}
+              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            />
+          </div>
+          <Link
+            href="/decks/practice"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800"
+          >
+            <GraduationCap size={16} /> {T.practiceAll}
+          </Link>
         </div>
         {error && (
           <p className="mb-4 rounded border border-gray-300 bg-gray-100 px-4 py-2 text-sm text-gray-800">{error}</p>

@@ -44,4 +44,18 @@ export const T = {
     `“${n}” багц болон доторх бүх үгийг устгах уу? Буцаах боломжгүй.`,
   deleteFolderConfirm: (n: string) =>
     `“${n}” хавтсыг устгах уу? Доторх багцууд устахгүй, хавтасгүй болно.`,
+  practice: "Давтах",
+  practiceAll: "Бүгдийг нь давтах",
+  loadingWords: "Үгсийг ачааллаж байна…",
+  noWordsDue: "Одоогоор давтах үг алга. Дараа дахин ирнэ үү!",
+  showAnswer: "Хариулт харах",
+  again: "Дахин",
+  hard: "Хэцүү",
+  good: "Сайн",
+  easy: "Амархан",
+  sessionComplete: "Давтаж дууслаа!",
+  sessionCompleteDesc: (n: number) => `Та ${n} үг дахин үзлээ.`,
+  backToDecks: "Багцууд руу буцах",
+  gradeTitle: "Түвшин",
+  gradeNew: "Шинэ",
 };

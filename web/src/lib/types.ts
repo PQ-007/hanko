@@ -31,6 +31,11 @@ export interface Word {
   date_added: string;
   updated_at: string;
   deleted: boolean;
+  ease_factor: number;
+  interval_days: number;
+  repetitions: number;
+  due_at: string;
+  last_reviewed_at: string | null;
 }
 
 export interface DeckWithCount extends Deck {

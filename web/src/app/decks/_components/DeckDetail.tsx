@@ -6,6 +6,7 @@ import { T } from "../_lib/strings";
 import type { WordView } from "../_lib/types";
 import DeckHeader from "./DeckHeader";
 import AddWordForm from "./AddWordForm";
+import GradeChart from "./GradeChart";
 import WordRow from "./WordRow";
 import WordEditModal from "./WordEditModal";
 
@@ -47,6 +48,7 @@ export default function DeckDetail({
         onChanged={onWordsChanged}
       />
       {adding && <AddWordForm deck={deck} onAdded={onWordsChanged} />}
+      {words.length > 0 && <GradeChart words={words} />}
       {words.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
           <p className="px-4 py-8 text-center text-sm text-gray-400">{T.noWords}</p>

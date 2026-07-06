@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Deck, Word } from "@/lib/types";
 
+export { sanitizeFilename, sanitizeTag, frontText, backText } from "@/lib/wordText";
+
 // Loads a deck and its (non-deleted) words for the current user. RLS ensures a
 // user can only ever read their own deck, so an unauthorized id simply returns
 // null. Used by the export and audio routes.
@@ -25,28 +27,4 @@ export async function loadDeckWithWords(
     .order("date_added", { ascending: true });
 
   return { deck: deck as Deck, words: (words as Word[]) ?? [] };
-}
-
-export function sanitizeFilename(name: string): string {
-  return name.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60) || "deck";
-}
-
-export function sanitizeTag(name: string): string {
-  return name.replace(/\s+/g, "_").replace(/[^\w-]/g, "");
-}
-
-// Front field text: "term (reading)" when the reading adds information.
-export function frontText(word: Word): string {
-  return word.reading && word.reading !== word.term
-    ? `${word.term} (${word.reading})`
-    : word.term;
-}
-
-// Back field: English meaning plus the Mongolian translation on its own line
-// (newline-separated; callers turn "\n" into <br> as needed).
-export function backText(word: Word): string {
-  return [word.meaning ?? "", word.meaning_mn ?? ""]
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join("\n");
 }
