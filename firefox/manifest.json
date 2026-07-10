@@ -42,7 +42,7 @@
   ],
   "commands": {
     "save-word": {
-      "suggested_key": { "default": "Alt+Shift+S" },
+      "suggested_key": { "default": "Ctrl+Shift+L" },
       "description": "Save selected word to a vocab deck"
     }
   }
