@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Vocab Decks (for 10ten Japanese Reader)",
+  "name": "Hanko",
   "version": "1.1.0",
   "description": "Save words you look up with 10ten Japanese Reader into decks, then export them as an Anki-ready file.",
   "permissions": ["contextMenus", "storage", "activeTab", "identity", "alarms", "notifications"],
@@ -10,7 +10,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "vocab-decks@btushq.local",
+      "id": "hanko@btushq.local",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": ["authenticationInfo", "websiteContent"]
@@ -25,7 +25,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Vocab Decks"
+    "default_title": "Hanko"
   },
   "icons": {
     "16": "icons/icon16.png",
