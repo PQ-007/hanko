@@ -207,6 +207,11 @@ async function showOverlay(term) {
       const deck = await createDeck(name);
       deckId = deck.id;
     }
+    // The word may already be in the chosen deck — let the user decide.
+    if (await isDuplicate(deckId, term)) {
+      const ok = confirm(`“${term}” энэ багцад аль хэдийн бүртгэгдсэн байна. Дахин нэмэх үү?`);
+      if (!ok) return;
+    }
     const reading = $('[data-reading]').value.trim();
     const meaning = $('[data-meaning]').value.trim();
     const meaningMn = $('[data-mongolian]').value.trim();
@@ -288,6 +293,11 @@ async function createDeck(name) {
   store.decks.push(deck);
   await setStore(store);
   return deck;
+}
+
+async function isDuplicate(deckId, term) {
+  const store = await getStore();
+  return store.words.some((w) => !w.deleted && w.deckId === deckId && w.term === term);
 }
 
 async function saveWord(word) {

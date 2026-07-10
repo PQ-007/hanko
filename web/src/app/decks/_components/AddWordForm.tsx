@@ -1,15 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Deck } from "@/lib/types";
+import type { Deck, Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
 
 export default function AddWordForm({
   deck,
+  words,
   onAdded,
 }: {
   deck: Deck;
+  words: Word[];
   onAdded: () => void;
 }) {
   const [term, setTerm] = useState("");
@@ -18,6 +20,8 @@ export default function AddWordForm({
   const [meaningMn, setMeaningMn] = useState("");
   const [busy, setBusy] = useState(false);
   const [looking, setLooking] = useState(false);
+  // Term awaiting the user's "add anyway" confirmation (already in the deck).
+  const [dupTerm, setDupTerm] = useState<string | null>(null);
   // The English value we last translated from (avoid re-translating on blur if
   // nothing changed, and never translate Mongolian edits in reverse).
   const lastEn = useRef("");
@@ -64,7 +68,17 @@ export default function AddWordForm({
     if (text && text !== lastEn.current) translate(text);
   }
 
-  async function add() {
+  function add() {
+    const t = term.trim();
+    if (!t) return;
+    if (words.some((w) => w.term === t)) {
+      setDupTerm(t);
+      return;
+    }
+    doAdd();
+  }
+
+  async function doAdd() {
     const t = term.trim();
     if (!t) return;
     setBusy(true);
@@ -106,6 +120,38 @@ export default function AddWordForm({
           {T.addWord}
         </button>
       </div>
+
+      {dupTerm && (
+        <div
+          onClick={() => setDupTerm(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-2xl"
+          >
+            <h3 className="text-base font-semibold text-gray-900">{T.duplicateWord}</h3>
+            <p className="mt-2 text-sm text-gray-600">{T.duplicateWordConfirm(dupTerm)}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setDupTerm(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                {T.cancel}
+              </button>
+              <button
+                onClick={() => {
+                  setDupTerm(null);
+                  doAdd();
+                }}
+                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+              >
+                {T.addAnyway}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

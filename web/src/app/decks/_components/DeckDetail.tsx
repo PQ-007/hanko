@@ -47,7 +47,7 @@ export default function DeckDetail({
         onView={setView}
         onChanged={onWordsChanged}
       />
-      {adding && <AddWordForm deck={deck} onAdded={onWordsChanged} />}
+      {adding && <AddWordForm deck={deck} words={words} onAdded={onWordsChanged} />}
       {words.length > 0 && <GradeChart words={words} />}
       {words.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
