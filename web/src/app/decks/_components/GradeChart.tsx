@@ -10,7 +10,7 @@ import { T } from "../_lib/strings";
 // with "new" (never reviewed) as a neutral gray outside the ramp. Every bar is
 // directly labeled with its count and grade letter, so color is reinforcement,
 // never the only channel.
-export default function GradeChart({ words }: { words: Word[] }) {
+export default function GradeChart({ words, title }: { words: Word[]; title?: string }) {
   const counts = new Map<string, number>(GRADE_ORDER.map((g) => [g, 0]));
   for (const w of words) {
     const g = gradeFor(w);
@@ -20,7 +20,7 @@ export default function GradeChart({ words }: { words: Word[] }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-gray-500">{T.gradeTitle}</h3>
+      <h3 className="mb-4 text-sm font-semibold text-gray-500">{title ?? T.gradeTitle}</h3>
       <div className="flex items-end gap-3">
         {GRADE_ORDER.map((g) => {
           const count = counts.get(g) ?? 0;

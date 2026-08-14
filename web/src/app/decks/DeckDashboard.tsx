@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { GraduationCap, Search } from "lucide-react";
 import type { Deck, DeckWithCount, Folder, Word } from "@/lib/types";
 import { supabase } from "./_lib/db";
@@ -12,6 +13,8 @@ import SearchResults from "./_components/SearchResults";
 import DeckDetail from "./_components/DeckDetail";
 
 export default function DeckDashboard() {
+  // Deep link support (e.g. from the stats dashboard's deck breakdown table).
+  const initialDeckParam = useSearchParams().get("deck");
   const [folders, setFolders] = useState<Folder[]>([]);
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -57,8 +60,14 @@ export default function DeckDashboard() {
     }));
     setDecks(withCounts);
     setLoadingDecks(false);
-    setSelectedId((prev) => prev ?? withCounts[0]?.id ?? null);
-  }, []);
+    setSelectedId((prev) => {
+      if (prev) return prev;
+      if (initialDeckParam && withCounts.some((d) => d.id === initialDeckParam)) {
+        return initialDeckParam;
+      }
+      return withCounts[0]?.id ?? null;
+    });
+  }, [initialDeckParam]);
 
   const loadWords = useCallback(async (deckId: string) => {
     const { data, error: err } = await supabase
