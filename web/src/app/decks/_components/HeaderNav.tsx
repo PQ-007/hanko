@@ -6,8 +6,8 @@ import { LayoutDashboard, Layers } from "lucide-react";
 import { T } from "../_lib/strings";
 
 const LINKS = [
-  { href: "/decks", label: T.decksNav, icon: Layers },
   { href: "/decks/stats", label: T.dashboardNav, icon: LayoutDashboard },
+  { href: "/decks", label: T.decksNav, icon: Layers },
 ];
 
 export default function HeaderNav() {

@@ -25,5 +25,6 @@ export default async function Home({
     // Supabase not configured / unreachable — send to login rather than 500.
   }
 
-  redirect(user ? "/decks" : "/login");
+  // Signed-in users land on the stats dashboard — the "how am I doing" view.
+  redirect(user ? "/decks/stats" : "/login");
 }

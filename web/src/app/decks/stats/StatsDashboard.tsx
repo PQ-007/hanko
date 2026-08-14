@@ -1,63 +1,59 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookMarked, CalendarCheck, Flame, Layers, Sparkles } from "lucide-react";
+import { AlertCircle, BookMarked, CalendarCheck, Layers, Repeat, Sparkles } from "lucide-react";
 import type { Deck, DeckWithCount, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
+import { addDays, currentStreak, localDateKey, longestStreak, startOfDay } from "../_lib/dates";
 import StatTile from "../_components/StatTile";
+import StreakHero from "../_components/StreakHero";
+import ActivityHeatmap from "../_components/ActivityHeatmap";
+import GrowthChart from "../_components/GrowthChart";
 import GradeChart from "../_components/GradeChart";
-import UpcomingReviewsChart from "../_components/UpcomingReviewsChart";
+import WeekdayReviewsChart from "../_components/WeekdayReviewsChart";
 import DeckBreakdownTable from "../_components/DeckBreakdownTable";
 
-// Local calendar date (not UTC — Mongolia is UTC+8, so slicing an ISO string
-// would shift local midnight back to the previous day).
-function localDateKey(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-// Current consecutive-day review streak: walk backwards from today (or from
-// yesterday if today has no review yet, so a streak stays "alive" until the
-// day is over) while each day has at least one reviewed word.
-function computeStreak(reviewedDateKeys: Set<string>): number {
-  const cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
-  if (!reviewedDateKeys.has(localDateKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  let streak = 0;
-  while (reviewedDateKeys.has(localDateKey(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
+interface ReviewLogRow {
+  reviewed_at: string;
 }
 
 export default function StatsDashboard() {
   const router = useRouter();
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
   const [words, setWords] = useState<Word[]>([]);
+  const [reviews, setReviews] = useState<ReviewLogRow[] | null>(null);
+  // True when review_log isn't there yet (migration 0005 not applied), so the
+  // heatmap is running on the approximate last_reviewed_at fallback.
+  const [logMissing, setLogMissing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: deckRows }, { data: wordRows }] = await Promise.all([
+    const since = addDays(startOfDay(new Date()), -400).toISOString();
+    const [decksRes, wordsRes, logRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
       supabase.from("words").select("*").eq("deleted", false),
+      supabase.from("review_log").select("reviewed_at").gte("reviewed_at", since),
     ]);
+
+    const wordRows = (wordsRes.data as Word[]) ?? [];
     const counts = new Map<string, number>();
-    (wordRows ?? []).forEach((w: Word) => counts.set(w.deck_id, (counts.get(w.deck_id) ?? 0) + 1));
-    const withCounts: DeckWithCount[] = ((deckRows as Deck[]) ?? []).map((d) => ({
-      ...d,
-      word_count: counts.get(d.id) ?? 0,
-    }));
-    setDecks(withCounts);
-    setWords((wordRows as Word[]) ?? []);
+    wordRows.forEach((w) => counts.set(w.deck_id, (counts.get(w.deck_id) ?? 0) + 1));
+    setDecks(
+      ((decksRes.data as Deck[]) ?? []).map((d) => ({ ...d, word_count: counts.get(d.id) ?? 0 }))
+    );
+    setWords(wordRows);
+
+    if (logRes.error) {
+      setLogMissing(true);
+      setReviews(null);
+    } else {
+      setLogMissing(false);
+      setReviews((logRes.data as ReviewLogRow[]) ?? []);
+    }
     setLoading(false);
   }, []);
 
@@ -65,6 +61,37 @@ export default function StatsDashboard() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  // Reviews per local calendar day. Prefers the real log; falls back to each
+  // word's most recent review, which undercounts history but keeps the
+  // calendar meaningful before the migration is applied.
+  const activity = useMemo(() => {
+    const map = new Map<string, number>();
+    if (reviews) {
+      for (const r of reviews) {
+        const k = localDateKey(new Date(r.reviewed_at));
+        map.set(k, (map.get(k) ?? 0) + 1);
+      }
+    } else {
+      for (const w of words) {
+        if (!w.last_reviewed_at) continue;
+        const k = localDateKey(new Date(w.last_reviewed_at));
+        map.set(k, (map.get(k) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [reviews, words]);
+
+  // Words added per local calendar day — always exact, since date_added is
+  // stamped once per word and never overwritten.
+  const addedActivity = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const w of words) {
+      const k = localDateKey(new Date(w.date_added));
+      map.set(k, (map.get(k) ?? 0) + 1);
+    }
+    return map;
+  }, [words]);
 
   if (loading) {
     return <p className="p-8 text-center text-sm text-gray-500">{T.loadingStats}</p>;
@@ -78,17 +105,35 @@ export default function StatsDashboard() {
   }).length;
   const masteredPct = words.length === 0 ? 0 : Math.round((mastered / words.length) * 100);
 
-  const weekAgo = new Date(now);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const newThisWeek = words.filter((w) => new Date(w.date_added) >= weekAgo).length;
+  const activeDays = new Set(activity.keys());
+  const streak = currentStreak(activeDays);
+  const best = Math.max(streak, longestStreak(activeDays));
 
-  const reviewedDateKeys = new Set(
-    words.filter((w) => w.last_reviewed_at).map((w) => localDateKey(new Date(w.last_reviewed_at as string)))
-  );
-  const streak = computeStreak(reviewedDateKeys);
+  const todayKey = localDateKey(now);
+  const addedToday = words.filter((w) => localDateKey(new Date(w.date_added)) === todayKey).length;
+
+  const weekStart = addDays(startOfDay(now), -6);
+  let reviewsThisWeek = 0;
+  for (let i = 0; i < 7; i++) {
+    reviewsThisWeek += activity.get(localDateKey(addDays(weekStart, i))) ?? 0;
+  }
 
   return (
     <div className="mx-auto flex max-w-[1700px] flex-col gap-4 p-4 sm:px-8 sm:py-6">
+      <StreakHero
+        streak={streak}
+        bestStreak={best}
+        addedToday={addedToday}
+        masteredPct={masteredPct}
+      />
+
+      {logMissing && (
+        <p className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-4 py-2.5 text-xs text-gray-700">
+          <AlertCircle size={15} className="shrink-0" />
+          {T.migrationHint}
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile icon={BookMarked} label={T.statTotalWords} value={words.length} />
         <StatTile icon={Layers} label={T.statTotalDecks} value={decks.length} />
@@ -99,19 +144,26 @@ export default function StatsDashboard() {
           value={mastered}
           sub={words.length > 0 ? `${masteredPct}%` : undefined}
         />
-        <StatTile
-          icon={Flame}
-          label={T.statStreak}
-          value={T.streakDays(streak)}
-          sub={T.statNewWeek(newThisWeek)}
+        <StatTile icon={Repeat} label={T.reviewsThisWeek} value={reviewsThisWeek} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <ActivityHeatmap counts={activity} title={T.heatmapTitle} formatCount={T.reviewsN} />
+        <ActivityHeatmap
+          counts={addedActivity}
+          title={T.addedHeatmapTitle}
+          formatCount={T.wordsN}
         />
       </div>
 
       {words.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <GradeChart words={words} title={T.overallGradeTitle} />
-          <UpcomingReviewsChart words={words} />
-        </div>
+        <>
+          <GrowthChart words={words} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <GradeChart words={words} title={T.overallGradeTitle} />
+            <WeekdayReviewsChart counts={activity} />
+          </div>
+        </>
       )}
 
       <DeckBreakdownTable
