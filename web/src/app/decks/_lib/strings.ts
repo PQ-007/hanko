@@ -65,6 +65,7 @@ export const T = {
   progressLabel: (done: number, total: number) => `${done} / ${total}`,
   remainingN: (n: number) => `${n} үг үлдсэн`,
   againSoon: "Одоо дахин",
+  intervalMinutes: (n: number) => `${n} мин`,
   intervalDays: (n: number) => `${n} өдөр`,
   intervalMonths: (n: number) => `${n} сар`,
   intervalYears: (n: number) => `${n} жил`,
@@ -117,4 +118,5 @@ export const T = {
   statBestStreak: "Хамгийн урт цуврал",
   migrationHint:
     "Идэвхийн хуанли бүрэн ажиллахын тулд 0005_review_log.sql-г Supabase дээрээ ажиллуулна уу.",
+  saveFailed: "Хариултыг хадгалж чадсангүй. Дахин оролдоно уу.",
 };

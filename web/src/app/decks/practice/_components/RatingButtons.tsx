@@ -1,8 +1,8 @@
 "use client";
 
-import type { Word } from "@/lib/types";
-import { computeNextReview, type Rating } from "@/lib/srs";
-import { formatInterval } from "../../_lib/interval";
+import { previewNext, type Rating } from "@/lib/srs";
+import type { QueueCard } from "../../_lib/types";
+import { formatPreview } from "../../_lib/interval";
 import { T } from "../../_lib/strings";
 
 // Each button states what it will cost you: the label, the resulting interval
@@ -41,21 +41,19 @@ const OPTIONS: {
 ];
 
 export default function RatingButtons({
-  word,
+  card,
   onRate,
 }: {
-  word: Word;
+  card: QueueCard;
   onRate: (rating: Rating) => void;
 }) {
   return (
     <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
       {OPTIONS.map(({ rating, key, label, className }) => {
-        // "Again" re-queues the card inside this session, so promising a
-        // day-based interval there would be a lie.
-        const preview =
-          rating === "again"
-            ? T.againSoon
-            : formatInterval(computeNextReview(word, rating).interval_days);
+        // Every button states its real consequence, including the minute-scale
+        // ones: a card still in the learning steps comes back in minutes, so
+        // labelling that "1 өдөр" would be a lie.
+        const preview = formatPreview(previewNext(card, rating));
         return (
           <button
             key={rating}

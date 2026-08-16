@@ -36,7 +36,15 @@ export default function StatsDashboard() {
     const [decksRes, wordsRes, logRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
       supabase.from("words").select("*").eq("deleted", false),
-      supabase.from("review_log").select("reviewed_at").gte("reviewed_at", since),
+      // Only real reviews count toward streaks and the heatmap: answers the
+      // user took back (undone) and future battle/drill answers are logged but
+      // must not inflate activity. See 0008_review_log_v2.sql.
+      supabase
+        .from("review_log")
+        .select("reviewed_at")
+        .eq("undone", false)
+        .eq("source", "review")
+        .gte("reviewed_at", since),
     ]);
 
     const wordRows = (wordsRes.data as Word[]) ?? [];

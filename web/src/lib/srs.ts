@@ -1,6 +1,16 @@
-// Classic SM-2 spaced-repetition scheduler (the algorithm Anki itself is
-// built on). Pure function: no Supabase/React dependency so it's trivially
-// testable and reusable.
+// Classic SM-2 spaced-repetition scheduler. Pure function: no Supabase/React
+// dependency so it's trivially testable and reusable.
+//
+// IMPORTANT: this is no longer the thing that schedules cards. Since
+// supabase/migrations/0009_review_card.sql, the authoritative scheduler is the
+// `review_card()` Postgres function, so that web, mobile and any future client
+// can't disagree about when a card is next due. What lives here is (a) the
+// grade helper the dashboard uses and (b) the rating-button *previews*, which
+// have to mirror the server closely enough to not lie to the user.
+//
+// If you change the arithmetic below, change 0009_review_card.sql to match, and
+// vice versa. (Anki, incidentally, has defaulted to FSRS rather than SM-2 since
+// 23.10 — see the migration notes before claiming parity anywhere user-facing.)
 
 export type Rating = "again" | "hard" | "good" | "easy";
 
@@ -77,6 +87,66 @@ export function computeNextReview(state: SrsState, rating: Rating, now = new Dat
     due_at: due.toISOString(),
     last_reviewed_at: now.toISOString(),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Rating-button previews
+//
+// Each button shows what it will cost you before you press it. Once learning
+// steps exist, a new card answered "Good" comes back in 10 minutes, not a day —
+// so a preview built on computeNextReview() alone would be wrong for every card
+// that hasn't graduated yet.
+//
+// These constants MUST match v_learn_steps / v_relearn_steps in
+// supabase/migrations/0009_review_card.sql.
+// ---------------------------------------------------------------------------
+export const LEARN_STEPS_MINUTES = [1, 10];
+export const RELEARN_STEPS_MINUTES = [10];
+const GRADUATING_INTERVAL = 1;
+const EASY_INTERVAL = 4;
+
+export type CardState = "new" | "learning" | "review" | "relearning";
+
+export interface PreviewCard extends SrsState {
+  state: CardState;
+  learning_step: number;
+}
+
+export type Preview =
+  | { unit: "minutes"; value: number }
+  | { unit: "days"; value: number };
+
+export function previewNext(card: PreviewCard, rating: Rating): Preview {
+  const step = card.learning_step;
+
+  if (card.state === "new" || card.state === "learning") {
+    if (rating === "again") return { unit: "minutes", value: LEARN_STEPS_MINUTES[0] };
+    // Hard repeats the step the card is sitting on.
+    if (rating === "hard") {
+      return {
+        unit: "minutes",
+        value: LEARN_STEPS_MINUTES[Math.min(step, LEARN_STEPS_MINUTES.length - 1)],
+      };
+    }
+    if (rating === "easy") return { unit: "days", value: EASY_INTERVAL };
+    const next = step + 1;
+    return next >= LEARN_STEPS_MINUTES.length
+      ? { unit: "days", value: GRADUATING_INTERVAL }
+      : { unit: "minutes", value: LEARN_STEPS_MINUTES[next] };
+  }
+
+  if (card.state === "relearning") {
+    return rating === "again"
+      ? { unit: "minutes", value: RELEARN_STEPS_MINUTES[0] }
+      : { unit: "days", value: Math.max(1, card.interval_days) };
+  }
+
+  // Review state: a lapse drops into relearning; anything else follows SM-2.
+  // The server also applies ±5% fuzz, which is deliberately not previewed —
+  // showing "24 өдөр" and then scheduling 25 would read as a bug.
+  return rating === "again"
+    ? { unit: "minutes", value: RELEARN_STEPS_MINUTES[0] }
+    : { unit: "days", value: computeNextReview(card, rating).interval_days };
 }
 
 // Five-tier mastery grade derived from how far out a word's next review sits.

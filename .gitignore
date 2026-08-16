@@ -45,8 +45,10 @@ web/node_modules/
 web/.next/
 web/out/
 
-# Supabase
-/supabase
+# Supabase — local CLI state only. The migrations under supabase/migrations are
+# the schema's source of truth and must stay tracked.
+/supabase/.temp/
+/supabase/.branches/
 
 web/.vercel/
 

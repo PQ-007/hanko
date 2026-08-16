@@ -1,4 +1,13 @@
+import type { Preview } from "@/lib/srs";
 import { T } from "./strings";
+
+// A rating button's consequence, in whichever unit is honest for it: cards in
+// the learning steps come back in minutes, graduated cards in days.
+export function formatPreview(preview: Preview): string {
+  return preview.unit === "minutes"
+    ? T.intervalMinutes(preview.value)
+    : formatInterval(preview.value);
+}
 
 // Human-readable "when will I see this again" label for a scheduling
 // interval, so each rating button can show its consequence up front rather

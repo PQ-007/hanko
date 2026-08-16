@@ -4,20 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Undo2, X } from "lucide-react";
-import type { Word } from "@/lib/types";
-import { computeNextReview, type Rating } from "@/lib/srs";
+import type { Card } from "@/lib/types";
+import type { Rating } from "@/lib/srs";
+import type { QueueCard } from "../../_lib/types";
 import { supabase } from "../../_lib/db";
 import { T } from "../../_lib/strings";
 import PracticeCard from "./PracticeCard";
 import RatingButtons from "./RatingButtons";
 import SessionComplete from "./SessionComplete";
 
-// One answered card, kept so it can be undone: the word exactly as it was
-// before the rating, plus the log row that hasn't been written yet.
+// One answered card, kept so it can be undone. The log id is generated here on
+// the client: review_card() uses it as an idempotency key, so a retried answer
+// is applied exactly once, and undo_review() uses it to find the row.
 interface AnsweredStep {
-  word: Word;
-  rating: Rating;
-  intervalDays: number;
+  logId: string;
+  card: QueueCard;
   requeued: boolean;
 }
 
@@ -25,43 +26,28 @@ export default function PracticeSession() {
   const params = useSearchParams();
   const deckId = params.get("deck");
 
-  const [queue, setQueue] = useState<Word[] | null>(null);
+  const [queue, setQueue] = useState<QueueCard[] | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [history, setHistory] = useState<AnsweredStep[]>([]);
+  const [error, setError] = useState(false);
 
-  // The most recent answer is held here rather than written immediately, so
-  // Undo can drop it. Without this the log would keep a row the user took
-  // back — and review_log is append-only by design (no delete policy).
-  const pending = useRef<AnsweredStep | null>(null);
-
-  const flushPending = useCallback(() => {
-    const step = pending.current;
-    if (!step) return;
-    pending.current = null;
-    supabase
-      .from("review_log")
-      .insert({
-        user_id: step.word.user_id,
-        word_id: step.word.id,
-        deck_id: step.word.deck_id,
-        rating: step.rating,
-        interval_days: step.intervalDays,
-      })
-      .then(undefined, () => {});
-  }, []);
+  // When the current card was first shown, so each answer can report how long
+  // it actually took. review_log.duration_ms is what battle mode later scales
+  // damage against, and it can only be collected here, at answer time.
+  // Set from an effect rather than a render-time initializer: reading the clock
+  // during render is impure and the timer should start when the card is
+  // actually on screen anyway.
+  const shownAt = useRef<number>(0);
 
   const load = useCallback(async () => {
-    let query = supabase
-      .from("words")
-      .select("*")
-      .eq("deleted", false)
-      .lte("due_at", new Date().toISOString())
-      .order("due_at", { ascending: true })
-      .limit(20);
-    if (deckId) query = query.eq("deck_id", deckId);
-    const { data } = await query;
-    setQueue((data as Word[]) ?? []);
+    // The server owns "what's due": the day cutoff and the per-day new/review
+    // caps live in review_queue(), so web and mobile can't disagree about it.
+    const { data } = await supabase.rpc("review_queue", {
+      p_deck_id: deckId,
+      p_limit: 60,
+    });
+    setQueue((data as QueueCard[]) ?? []);
   }, [deckId]);
 
   useEffect(() => {
@@ -69,70 +55,105 @@ export default function PracticeSession() {
     load();
   }, [load]);
 
-  // Never lose the last answer if the tab goes away mid-session.
-  useEffect(() => {
-    const onHide = () => flushPending();
-    window.addEventListener("pagehide", onHide);
-    return () => {
-      window.removeEventListener("pagehide", onHide);
-      flushPending();
-    };
-  }, [flushPending]);
+  const card = queue?.[0] ?? null;
 
-  const word = queue?.[0] ?? null;
+  // Restart the clock whenever a different card comes to the front.
+  useEffect(() => {
+    shownAt.current = Date.now();
+  }, [card?.card_id]);
 
   const rate = useCallback(
     async (rating: Rating) => {
-      if (!word) return;
-      const next = computeNextReview(word, rating);
-      const requeued = rating === "again";
+      if (!card) return;
+      const logId = crypto.randomUUID();
+      const durationMs = shownAt.current ? Date.now() - shownAt.current : null;
 
-      flushPending(); // commit the previous answer; this one becomes undoable
-      pending.current = { word, rating, intervalDays: next.interval_days, requeued };
-      setHistory((h) => [...h, { word, rating, intervalDays: next.interval_days, requeued }]);
-
-      setReviewedCount((c) => c + 1);
+      // Move on immediately; the answer is already committed server-side in one
+      // transaction, so there's nothing to flush later or lose on navigation.
       setRevealed(false);
-      setQueue((prev) => {
-        const rest = (prev ?? []).slice(1);
-        return requeued ? [...rest, word] : rest;
+      setError(false);
+      setReviewedCount((c) => c + 1);
+      setQueue((prev) => (prev ?? []).slice(1));
+
+      const { data, error: rpcError } = await supabase.rpc("review_card", {
+        p_card_id: card.card_id,
+        p_rating: rating,
+        p_duration_ms: durationMs,
+        p_log_id: logId,
       });
 
-      await supabase.from("words").update(next).eq("id", word.id);
+      if (rpcError) {
+        // Put the card back rather than silently dropping the answer, which is
+        // what the old two-call write did when the log insert failed.
+        setError(true);
+        setReviewedCount((c) => Math.max(0, c - 1));
+        setQueue((prev) => [card, ...(prev ?? [])]);
+        setRevealed(true);
+        return;
+      }
+
+      // A card still inside the learning or relearning steps is due again in
+      // minutes, so it comes back before the session ends — that's the whole
+      // point of the steps. Anything that graduated is gone until its day.
+      const updated = data as Card | null;
+      const requeued =
+        updated?.state === "learning" || updated?.state === "relearning";
+
+      setHistory((h) => [...h, { logId, card, requeued }]);
+      if (requeued && updated) {
+        setQueue((prev) => [
+          ...(prev ?? []),
+          {
+            ...card,
+            state: updated.state,
+            learning_step: updated.learning_step,
+            interval_days: updated.interval_days,
+            repetitions: updated.repetitions,
+            ease_factor: updated.ease_factor,
+            due_at: updated.due_at,
+          },
+        ]);
+      }
     },
-    [word, flushPending]
+    [card]
   );
 
   const undo = useCallback(async () => {
     const last = history[history.length - 1];
     if (!last) return;
 
-    pending.current = null; // the answer being undone is never logged
     setHistory((h) => h.slice(0, -1));
     setReviewedCount((c) => Math.max(0, c - 1));
     setRevealed(true); // you were looking at the answer when you mis-clicked
+    setError(false);
 
-    setQueue((prev) => {
-      const rest = [...(prev ?? [])];
-      // "Again" pushed the card to the back — take it out before re-heading it.
-      if (last.requeued) {
-        const at = rest.findIndex((w) => w.id === last.word.id);
-        if (at !== -1) rest.splice(at, 1);
-      }
-      return [last.word, ...rest];
+    // undo_review() restores the card from the snapshot taken before the answer
+    // and marks the log row undone (the log itself is append-only, so nothing
+    // is deleted). Unlike the old in-memory undo, this works across devices.
+    const { data, error: rpcError } = await supabase.rpc("undo_review", {
+      p_log_id: last.logId,
     });
+    if (rpcError) {
+      setError(true);
+      return;
+    }
 
-    // Restore the pre-answer scheduling state.
-    await supabase
-      .from("words")
-      .update({
-        ease_factor: last.word.ease_factor,
-        interval_days: last.word.interval_days,
-        repetitions: last.word.repetitions,
-        due_at: last.word.due_at,
-        last_reviewed_at: last.word.last_reviewed_at,
-      })
-      .eq("id", last.word.id);
+    const restored = data as Card | null;
+    setQueue((prev) => {
+      const rest = (prev ?? []).filter((c) => c.card_id !== last.card.card_id);
+      const head: QueueCard = restored
+        ? {
+            ...last.card,
+            state: restored.state,
+            learning_step: restored.learning_step,
+            interval_days: restored.interval_days,
+            repetitions: restored.repetitions,
+            ease_factor: restored.ease_factor,
+            due_at: restored.due_at,
+          }
+        : last.card;
+      return [head, ...rest];
+    });
   }, [history]);
 
   // Keyboard: space/enter reveals, 1-4 rate, u undoes.
@@ -143,7 +164,7 @@ export default function PracticeSession() {
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
         return;
       }
-      if (!word) return;
+      if (!card) return;
 
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
@@ -163,13 +184,13 @@ export default function PracticeSession() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [word, revealed, rate, undo]);
+  }, [card, revealed, rate, undo]);
 
   if (queue === null) {
     return <p className="p-8 text-center text-sm text-gray-500">{T.loadingWords}</p>;
   }
 
-  if (!word) {
+  if (!card) {
     if (reviewedCount > 0) return <SessionComplete count={reviewedCount} />;
     return (
       <div className="mx-auto max-w-md p-8 text-center">
@@ -206,7 +227,6 @@ export default function PracticeSession() {
             </button>
             <Link
               href="/decks/stats"
-              onClick={flushPending}
               title={T.exitSession}
               className="flex items-center gap-1 rounded px-2 py-1 font-medium text-gray-500 transition hover:bg-gray-100"
             >
@@ -222,10 +242,16 @@ export default function PracticeSession() {
         </div>
       </div>
 
-      <PracticeCard word={word} revealed={revealed} onReveal={() => setRevealed(true)} />
+      {error && (
+        <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-center text-xs text-red-700">
+          {T.saveFailed}
+        </p>
+      )}
+
+      <PracticeCard card={card} revealed={revealed} onReveal={() => setRevealed(true)} />
 
       {revealed ? (
-        <RatingButtons word={word} onRate={rate} />
+        <RatingButtons card={card} onRate={rate} />
       ) : (
         <button
           onClick={() => setRevealed(true)}
