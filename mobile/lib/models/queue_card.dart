@@ -42,6 +42,34 @@ class QueueCard {
   final String? meaningMn;
   final String? audioPath;
 
+  /// Applies the scheduling fields returned by `review_card()` / `undo_review()`
+  /// to the queue row already on screen, so a re-queued learning card keeps its
+  /// word text without a second fetch.
+  QueueCard copyWith({
+    String? state,
+    int? learningStep,
+    int? intervalDays,
+    int? repetitions,
+    double? easeFactor,
+  }) =>
+      QueueCard(
+        cardId: cardId,
+        wordId: wordId,
+        deckId: deckId,
+        template: template,
+        state: state ?? this.state,
+        learningStep: learningStep ?? this.learningStep,
+        dueAt: dueAt,
+        intervalDays: intervalDays ?? this.intervalDays,
+        repetitions: repetitions ?? this.repetitions,
+        easeFactor: easeFactor ?? this.easeFactor,
+        term: term,
+        reading: reading,
+        meaning: meaning,
+        meaningMn: meaningMn,
+        audioPath: audioPath,
+      );
+
   factory QueueCard.fromJson(Map<String, dynamic> json) => QueueCard(
         cardId: json['card_id'] as String,
         wordId: json['word_id'] as String,

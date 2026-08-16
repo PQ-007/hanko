@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/repository.dart';
 import '../../models/queue_card.dart';
+import '../review/review_screen.dart';
 
 final _decksProvider = FutureProvider<List<Map<String, dynamic>>>(
   (ref) => ref.watch(repositoryProvider).decks(),
@@ -41,6 +42,24 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
     });
   }
 
+  /// Both providers are invalidated on the way back: a finished session changes
+  /// what's due, and a stale count here would contradict the session the user
+  /// just completed.
+  Future<void> _startReview(
+    BuildContext context,
+    WidgetRef ref, {
+    String? deckId,
+    String? deckName,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReviewScreen(deckId: deckId, deckName: deckName),
+      ),
+    );
+    ref.invalidate(_dueProvider);
+    ref.invalidate(_decksProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final decks = ref.watch(_decksProvider);
@@ -72,16 +91,33 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
               ),
               data: (d) => Card(
                 margin: const EdgeInsets.all(12),
-                child: ListTile(
-                  title: Text(
-                    '${d.dueNow}',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  subtitle: Text(
-                    d.heldBack > 0
-                        ? 'Өнөөдөр давтах · өдрийн хязгаараас ${d.heldBack} хойшлов'
-                        : 'Өнөөдөр давтах',
-                  ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      title: Text(
+                        '${d.dueNow}',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      subtitle: Text(
+                        d.heldBack > 0
+                            ? 'Өнөөдөр давтах · өдрийн хязгаараас ${d.heldBack} хойшлов'
+                            : 'Өнөөдөр давтах',
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Давтах'),
+                          onPressed: d.dueNow == 0
+                              ? null
+                              : () => _startReview(context, ref),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -99,6 +135,13 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
                     ListTile(
                       leading: const Icon(Icons.folder_outlined),
                       title: Text(deck['name'] as String? ?? '—'),
+                      trailing: const Icon(Icons.chevron_right, size: 18),
+                      onTap: () => _startReview(
+                        context,
+                        ref,
+                        deckId: deck['id'] as String?,
+                        deckName: deck['name'] as String?,
+                      ),
                     ),
                   if (rows.isEmpty)
                     const Padding(
