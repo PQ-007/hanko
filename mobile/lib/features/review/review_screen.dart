@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/audio.dart';
 import '../../core/repository.dart';
 import '../../models/queue_card.dart';
 import 'srs_preview.dart';
@@ -58,6 +61,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         _queue = queue;
         _shownAt = DateTime.now();
       });
+
+      // Pull the session's clips to disk in the background. Unawaited on
+      // purpose: the first card is already on screen and answerable, and a slow
+      // connection must not hold up the review.
+      unawaited(ref.read(audioProvider).precache(
+            queue.map((c) => (wordId: c.wordId, audioPath: c.audioPath)),
+          ));
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     }
@@ -272,16 +282,35 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         ),
                       ),
                       if (_revealed) ...[
-                        if (card.reading != null &&
-                            card.reading!.isNotEmpty &&
-                            card.reading != card.term) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            card.reading!,
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(color: Colors.grey),
-                          ),
-                        ],
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (card.reading != null &&
+                                card.reading!.isNotEmpty &&
+                                card.reading != card.term)
+                              Text(
+                                card.reading!,
+                                style: theme.textTheme.titleMedium
+                                    ?.copyWith(color: Colors.grey),
+                              ),
+                            // Only offered when there is something to play:
+                            // a speaker icon that does nothing is worse than
+                            // no icon at all.
+                            if (card.audioPath != null &&
+                                card.audioPath!.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.volume_up_outlined),
+                                iconSize: 20,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => ref
+                                    .read(audioProvider)
+                                    .play(card.wordId, card.audioPath),
+                              ),
+                            ],
+                          ],
+                        ),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
                           child: Divider(),

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/queue_card.dart';
+import 'reminders.dart';
 
 final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
 
@@ -12,6 +13,12 @@ final authStateProvider = StreamProvider<AuthState>(
 
 final repositoryProvider = Provider<Repository>(
   (ref) => Repository(ref.watch(supabaseProvider)),
+);
+
+/// Built once and reused; initialising the notification plugin twice is
+/// wasteful and the timezone database only needs loading once.
+final remindersProvider = FutureProvider<Reminders>(
+  (ref) => Reminders.create(ref.watch(repositoryProvider)),
 );
 
 /// Everything this app knows how to ask the backend.
@@ -33,11 +40,79 @@ class Repository {
     return List<Map<String, dynamic>>.from(rows);
   }
 
-  /// What's due right now, under the server's day cutoff and daily caps.
-  Future<DueSummary> dueSummary({String? deckId}) async {
+  /// Non-deleted words in a deck, newest first.
+  Future<List<Map<String, dynamic>>> words(String deckId) async {
+    final rows = await _db
+        .from('words')
+        .select()
+        .eq('deck_id', deckId)
+        .eq('deleted', false)
+        .order('date_added', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> createDeck(String name) async {
+    final user = _db.auth.currentUser;
+    if (user == null) throw StateError('not signed in');
+    await _db.from('decks').insert({'user_id': user.id, 'name': name});
+  }
+
+  /// The recognition card is created server-side by a trigger on `words`
+  /// (0006_cards.sql), so nothing here has to know about the cards table —
+  /// same as the extension, which predates it entirely.
+  Future<void> addWord({
+    required String deckId,
+    required String term,
+    String? reading,
+    String? meaning,
+    String? meaningMn,
+  }) async {
+    final user = _db.auth.currentUser;
+    if (user == null) throw StateError('not signed in');
+    await _db.from('words').insert({
+      'deck_id': deckId,
+      'user_id': user.id,
+      'term': term,
+      'reading': reading,
+      'meaning': meaning,
+      'meaning_mn': meaningMn,
+    });
+  }
+
+  Future<void> updateWord({
+    required String wordId,
+    required String term,
+    String? reading,
+    String? meaning,
+    String? meaningMn,
+  }) async {
+    await _db.from('words').update({
+      'term': term,
+      'reading': reading,
+      'meaning': meaning,
+      'meaning_mn': meaningMn,
+    }).eq('id', wordId);
+  }
+
+  /// Tombstone rather than a hard delete: the extension syncs by last-write-wins
+  /// over `updated_at`, and a row that simply vanishes would be re-uploaded from
+  /// whichever client still has it cached.
+  Future<void> deleteWord(String wordId) async {
+    await _db.from('words').update({'deleted': true}).eq('id', wordId);
+  }
+
+  /// What's due, under the server's day cutoff and daily caps.
+  ///
+  /// [at] asks for a future moment instead of now — the daily reminder needs
+  /// the count as it will be when it fires, not as it is when the app happens
+  /// to be open.
+  Future<DueSummary> dueSummary({String? deckId, DateTime? at}) async {
     final rows = await _db.rpc<List<dynamic>>(
       'due_summary',
-      params: {'p_deck_id': deckId},
+      params: {
+        'p_deck_id': deckId,
+        if (at != null) 'p_at': at.toUtc().toIso8601String(),
+      },
     );
     if (rows.isEmpty) {
       return const DueSummary(
@@ -81,6 +156,21 @@ class Repository {
       },
     );
     return row;
+  }
+
+  /// Reviews per SRS day, newest last. The server buckets by the same day
+  /// cutoff the scheduler uses, so a streak can never claim a day the review
+  /// queue disagrees about.
+  Future<Map<DateTime, int>> reviewActivity({int days = 400}) async {
+    final rows = await _db.rpc<List<dynamic>>(
+      'review_activity',
+      params: {'p_days': days},
+    );
+    return {
+      for (final r in rows)
+        DateTime.parse((r as Map)['day'] as String):
+            ((r)['reviews'] as num).toInt(),
+    };
   }
 
   Future<Map<String, dynamic>> undoReview(String logId) async {

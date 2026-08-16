@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/repository.dart';
 import '../../models/queue_card.dart';
 import '../review/review_screen.dart';
+import '../settings/reminder_tile.dart';
+import '../stats/stats_screen.dart';
+import 'deck_detail_screen.dart';
 
 final _decksProvider = FutureProvider<List<Map<String, dynamic>>>(
   (ref) => ref.watch(repositoryProvider).decks(),
@@ -39,6 +42,16 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
       } catch (_) {
         // Non-fatal: the server falls back to UTC.
       }
+      // Re-forecast the reminder against current state. Doing it here means
+      // the count refreshes on every app open, including right after a session
+      // — otherwise tonight's reminder would still quote this morning's
+      // backlog.
+      try {
+        final reminders = await ref.read(remindersProvider.future);
+        await reminders.reschedule();
+      } catch (_) {
+        // A reminder that fails to reschedule must never block the deck list.
+      }
     });
   }
 
@@ -60,6 +73,61 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
     ref.invalidate(_decksProvider);
   }
 
+  Future<void> _openDeck(
+    BuildContext context,
+    WidgetRef ref, {
+    required String deckId,
+    required String deckName,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DeckDetailScreen(deckId: deckId, deckName: deckName),
+      ),
+    );
+    // Adding or reviewing words inside the deck changes both of these.
+    ref.invalidate(_dueProvider);
+    ref.invalidate(_decksProvider);
+  }
+
+  Future<void> _createDeck(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Шинэ багц'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Нэр',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Болих'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Үүсгэх'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    try {
+      await ref.read(repositoryProvider).createDeck(name);
+      ref.invalidate(_decksProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Үүсгэж чадсангүй: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final decks = ref.watch(_decksProvider);
@@ -69,6 +137,18 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
       appBar: AppBar(
         title: const Text('Hanko'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.local_fire_department_outlined),
+            tooltip: 'Статистик',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const StatsScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.create_new_folder_outlined),
+            tooltip: 'Шинэ багц',
+            onPressed: () => _createDeck(context, ref),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => Supabase.instance.client.auth.signOut(),
@@ -136,11 +216,11 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
                       leading: const Icon(Icons.folder_outlined),
                       title: Text(deck['name'] as String? ?? '—'),
                       trailing: const Icon(Icons.chevron_right, size: 18),
-                      onTap: () => _startReview(
+                      onTap: () => _openDeck(
                         context,
                         ref,
-                        deckId: deck['id'] as String?,
-                        deckName: deck['name'] as String?,
+                        deckId: deck['id'] as String,
+                        deckName: deck['name'] as String? ?? '—',
                       ),
                     ),
                   if (rows.isEmpty)
@@ -151,6 +231,9 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
                 ],
               ),
             ),
+            const Divider(),
+            const ReminderTile(),
+            const SizedBox(height: 24),
           ],
         ),
       ),
