@@ -12,7 +12,10 @@
 //   decks: [{ id, name, createdAt, updatedAt, deleted }]
 //   words: [{ id, deckId, term, reading, meaning, dateAdded, updatedAt, deleted, ... }]
 //   session: { access_token, refresh_token }
-//   lastSyncedAt: number (ms)
+//   lastPushedAt: number (ms, *local* clock)  — cursor over our own edits
+//   lastPulledAt: number (ms, *server* clock) — cursor over remote updated_at
+//   lastSyncedAt: number (ms)                 — legacy single cursor, still
+//                                               written for older builds
 //
 // Deletions are tombstones (deleted: true) so they propagate; the UI filters
 // them out. Conflict resolution is last-write-wins by updatedAt.
@@ -25,6 +28,12 @@ const VocabSync = (() => {
   const ANON = cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_ANON_KEY || "";
   const REST = () => `${cfg.SUPABASE_URL}/rest/v1`;
   const AUTH = () => `${cfg.SUPABASE_URL}/auth/v1`;
+
+  // Slack applied to the pull cursor. Covers the Date header's one-second
+  // granularity plus rows committed while a sync is in flight; the pull filter
+  // is `gte`, so a little overlap costs one redundant row and last-write-wins
+  // makes re-applying it a no-op.
+  const SKEW_MARGIN_MS = 5000;
 
   function configured() {
     return Boolean(cfg.SUPABASE_URL && ANON && cfg.SITE_URL);
@@ -39,7 +48,12 @@ const VocabSync = (() => {
     await ctx.storage.local.set({ session });
   }
   async function signOut() {
-    await ctx.storage.local.remove(["session", "lastSyncedAt"]);
+    await ctx.storage.local.remove([
+      "session",
+      "lastSyncedAt",
+      "lastPushedAt",
+      "lastPulledAt",
+    ]);
   }
 
   function decodeJwt(token) {
@@ -93,13 +107,42 @@ const VocabSync = (() => {
     return text ? JSON.parse(text) : null;
   }
 
+  // Postgres stamps updated_at from the *server* clock, so the pull cursor has
+  // to be expressed in server time. The Date response header is the cheapest
+  // way to read that clock — one-second granularity, which SKEW_MARGIN_MS
+  // covers. Returns null if it can't be read, and the caller then leaves the
+  // pull cursor where it is rather than guessing.
+  async function serverNow(token) {
+    try {
+      const res = await fetch(`${REST()}/decks?select=id&limit=1`, {
+        headers: { apikey: ANON, Authorization: `Bearer ${token}` },
+      });
+      const header = res.headers.get("date");
+      const ms = header ? Date.parse(header) : NaN;
+      return Number.isNaN(ms) ? null : ms;
+    } catch {
+      return null;
+    }
+  }
+
   // ---- store access ----
   async function getStore() {
-    const data = await ctx.storage.local.get(["decks", "words", "lastSyncedAt"]);
+    const data = await ctx.storage.local.get([
+      "decks",
+      "words",
+      "lastPushedAt",
+      "lastPulledAt",
+      "lastSyncedAt",
+    ]);
     return {
       decks: data.decks || [],
       words: data.words || [],
-      lastSyncedAt: data.lastSyncedAt || 0,
+      // Upgrading from the single lastSyncedAt: keep it as the push cursor (it
+      // was always local time and still means the right thing), but reset the
+      // pull cursor to 0 so the next sync re-pulls everything once. That one
+      // full pull repairs any rows the old skew-prone cursor jumped over.
+      lastPushedAt: data.lastPushedAt ?? data.lastSyncedAt ?? 0,
+      lastPulledAt: data.lastPulledAt ?? 0,
     };
   }
 
@@ -197,16 +240,26 @@ const VocabSync = (() => {
     if (!token) return { signedIn: false };
     const userId = decodeJwt(token).sub;
 
+    // Read the clock BEFORE snapshotting the store. An edit that lands between
+    // the two is absent from this snapshot, so it must still be >= the cursor
+    // we save — otherwise it belongs to no sync at all and is lost silently.
+    const localStart = Date.now();
     const store = await getStore();
     backfill(store);
-    const since = store.lastSyncedAt || 0;
+    const serverStart = await serverNow(token);
 
-    // PUSH
+    // PUSH — our own edits are stamped with the local clock, so the cursor that
+    // selects them stays in local time.
+    const since = store.lastPushedAt || 0;
+    // `>=`, not `>`: an edit stamped at exactly the cursor would otherwise fall
+    // through the gap between two syncs and never be pushed. Re-pushing a row
+    // occasionally is free — the write is an idempotent upsert under
+    // last-write-wins — whereas dropping one is silent data loss.
     const deckRows = store.decks
-      .filter((d) => (d.updatedAt || 0) > since)
+      .filter((d) => (d.updatedAt || 0) >= since)
       .map((d) => deckToRow(d, userId));
     const wordRows = store.words
-      .filter((w) => (w.updatedAt || 0) > since)
+      .filter((w) => (w.updatedAt || 0) >= since)
       .map((w) => wordToRow(w, userId));
     if (deckRows.length) {
       await rest("decks?on_conflict=id", {
@@ -226,8 +279,14 @@ const VocabSync = (() => {
     }
 
     // PULL (everything changed at/after our cursor, including our own writes —
-    // harmless under LWW). First sync (since=0) pulls everything.
-    const sinceIso = new Date(since).toISOString();
+    // harmless under LWW). First sync (cursor 0) pulls everything.
+    //
+    // This cursor is deliberately NOT the local clock. It used to be, and a
+    // device running even slightly ahead of Postgres would write a cursor in
+    // the future — every row committed inside that window was then filtered out
+    // of every subsequent pull and never seen again. Silent, permanent, and
+    // invisible until someone noticed a missing word.
+    const sinceIso = new Date(store.lastPulledAt || 0).toISOString();
     const remoteDecks = await rest(
       `decks?select=*&updated_at=gte.${encodeURIComponent(sinceIso)}`,
       { token }
@@ -245,7 +304,18 @@ const VocabSync = (() => {
     await ctx.storage.local.set({
       decks: merged.decks,
       words: merged.words,
-      lastSyncedAt: Date.now(),
+      lastPushedAt: localStart,
+      // Only advance the pull cursor when the server clock was actually
+      // readable. If it wasn't, staying put means the next sync re-pulls a
+      // window we've already seen — wasteful but lossless, which is the right
+      // way round for a cursor to fail.
+      lastPulledAt:
+        serverStart != null
+          ? Math.max(0, serverStart - SKEW_MARGIN_MS)
+          : store.lastPulledAt,
+      // Legacy key, still written so an older extension build downgraded onto
+      // this store keeps working.
+      lastSyncedAt: localStart,
     });
 
     return {

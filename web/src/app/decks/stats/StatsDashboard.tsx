@@ -20,11 +20,23 @@ interface ReviewLogRow {
   reviewed_at: string;
 }
 
+// What a session started right now would actually serve, per due_summary()
+// (migration 0011) — the day cutoff and the per-day caps applied server-side,
+// so this tile can't disagree with the practice screen.
+interface DueSummary {
+  due_now: number;
+  review_due: number;
+  new_due: number;
+  review_remaining: number;
+  new_remaining: number;
+}
+
 export default function StatsDashboard() {
   const router = useRouter();
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
   const [words, setWords] = useState<Word[]>([]);
   const [reviews, setReviews] = useState<ReviewLogRow[] | null>(null);
+  const [due, setDue] = useState<DueSummary | null>(null);
   // True when review_log isn't there yet (migration 0005 not applied), so the
   // heatmap is running on the approximate last_reviewed_at fallback.
   const [logMissing, setLogMissing] = useState(false);
@@ -33,7 +45,7 @@ export default function StatsDashboard() {
   const load = useCallback(async () => {
     setLoading(true);
     const since = addDays(startOfDay(new Date()), -400).toISOString();
-    const [decksRes, wordsRes, logRes] = await Promise.all([
+    const [decksRes, wordsRes, logRes, dueRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
       supabase.from("words").select("*").eq("deleted", false),
       // Only real reviews count toward streaks and the heatmap: answers the
@@ -45,7 +57,12 @@ export default function StatsDashboard() {
         .eq("undone", false)
         .eq("source", "review")
         .gte("reviewed_at", since),
+      supabase.rpc("due_summary"),
     ]);
+
+    // Falls back to the client-side count below if 0011 isn't applied yet.
+    const dueRows = dueRes.data as DueSummary[] | null;
+    setDue(dueRes.error ? null : (dueRows?.[0] ?? null));
 
     const wordRows = (wordsRes.data as Word[]) ?? [];
     const counts = new Map<string, number>();
@@ -106,7 +123,12 @@ export default function StatsDashboard() {
   }
 
   const now = new Date();
-  const dueToday = words.filter((w) => new Date(w.due_at) <= now).length;
+  // Prefer the server's answer: it applies the day cutoff and the daily caps,
+  // so the tile matches what the practice session will actually hand you. The
+  // client-side count is the pre-0011 fallback.
+  const backlog = words.filter((w) => new Date(w.due_at) <= now).length;
+  const dueToday = due ? due.due_now : backlog;
+  const heldBack = due ? due.review_due + due.new_due - due.due_now : 0;
   const mastered = words.filter((w) => {
     const g = gradeFor(w);
     return g === "A" || g === "B";
@@ -145,7 +167,14 @@ export default function StatsDashboard() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile icon={BookMarked} label={T.statTotalWords} value={words.length} />
         <StatTile icon={Layers} label={T.statTotalDecks} value={decks.length} />
-        <StatTile icon={CalendarCheck} label={T.statDueToday} value={dueToday} />
+        <StatTile
+          icon={CalendarCheck}
+          label={T.statDueToday}
+          value={dueToday}
+          // When the daily cap holds cards back, say so — otherwise the tile
+          // and the deck breakdown below look like they contradict each other.
+          sub={heldBack > 0 ? T.dueHeldBack(heldBack) : undefined}
+        />
         <StatTile
           icon={Sparkles}
           label={T.statMastered}

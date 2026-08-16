@@ -45,7 +45,11 @@ $$;
 -- Scheduling prefs for a user, with defaults applied even when the profile row
 -- is missing (the left join against a one-row source guarantees exactly one
 -- result row rather than zero).
-create or replace function public.srs_prefs(p_user uuid)
+-- Dropped first for the same reason as review_queue: a table-returning
+-- function's row type can't be changed by `create or replace`.
+drop function if exists public.srs_prefs(uuid);
+
+create function public.srs_prefs(p_user uuid)
 returns table (
   tz              text,
   cutoff          integer,

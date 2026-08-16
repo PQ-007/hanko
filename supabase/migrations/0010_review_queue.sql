@@ -6,7 +6,13 @@
 -- reliable way to make someone quit an SRS app. Putting the queue here means
 -- web and mobile can't disagree about what's due.
 
-create or replace function public.review_queue(
+-- Dropped first: `create or replace` cannot change a function's OUT-parameter
+-- row type, so re-running this file after the column list changed fails with
+-- "cannot change return type of existing function". Dropping makes the file
+-- safe to re-apply as the queue's shape evolves.
+drop function if exists public.review_queue(uuid, integer);
+
+create function public.review_queue(
   p_deck_id uuid    default null,
   p_limit   integer default 60
 ) returns table (

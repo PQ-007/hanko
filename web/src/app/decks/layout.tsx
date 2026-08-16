@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import HeaderNav from "./_components/HeaderNav";
+import EnsureTimezone from "./_components/EnsureTimezone";
 
 export default async function DecksLayout({
   children,
@@ -13,6 +14,7 @@ export default async function DecksLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900">
+      <EnsureTimezone userId={user?.id} />
       <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6">
         <h1 className="flex items-center gap-2 text-lg font-semibold">
           {/* eslint-disable-next-line @next/next/no-img-element */}

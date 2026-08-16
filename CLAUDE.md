@@ -76,11 +76,25 @@ Every item here is cheap now and expensive after mobile ships and there are thre
 clients and a year of review history. All of it is done in the existing repo with
 the web app as the test client.
 
-**Status: migrations `0006`–`0010` are written and verified** against Postgres 16
-(applied in sequence from a clean database, then exercised for day-cutoff
-boundaries, learning-step transitions, interval growth, lapses, idempotent
-replay, undo restoration, daily caps, and RLS scoping). Still open: 0.6's port of
-the web practice screen onto the RPC, and 0.7's sync-cursor fix.
+**Status: migrations `0006`–`0011` are written and verified** against Postgres 16
+(applied in sequence from a clean database and re-applied to confirm they're
+safely re-runnable, then exercised for day-cutoff boundaries, learning-step
+transitions, interval growth, lapses, idempotent replay, undo restoration, daily
+caps, queue/summary agreement, and RLS scoping).
+
+**The web app is fully ported**: the practice screen runs on `review_queue()` /
+`review_card()` / `undo_review()`, the dashboard's due count comes from
+`due_summary()` so it can't disagree with the session, and `profiles.timezone`
+is kept in step with the browser (`_components/EnsureTimezone.tsx`) — without
+that the day cutoff silently runs in UTC.
+
+**Phase 0 is complete.** Migrations 0006–0011 are applied to the live Supabase
+project and a real review session on the web app works against them. The sync
+cursor fix (0.7) is in `src/sync.js` and copied into `chrome/` and `firefox/`.
+
+Not yet done, and deliberately deferred: the extension has not been repackaged
+or reloaded with the new `sync.js`, so the cursor fix isn't live in the browser
+until you reload the unpacked extension (or ship a new build).
 
 ### 0.1 Split cards out of words
 `words` conflates "the vocabulary item" with "one scheduled card", which
@@ -168,17 +182,33 @@ swallows every error via `.then(undefined, () => {})` — a failed insert silent
 loses history. It also means **mobile never re-implements SM-2**. Port the web
 practice screen onto this RPC in Phase 0 and verify the dashboard still matches.
 
-### 0.7 Fix the sync cursor, and test the upsert
-In `src/sync.js`:
-- `lastSyncedAt` is the client's local `Date.now()` compared against
-  server-generated `updated_at`. A device clock running ahead of Postgres puts
-  the cursor in the future and those rows are **never** pulled again. Use the
-  server clock, or `max(updated_at)` over the pulled rows.
-- Write an explicit test for what PostgREST's `resolution=merge-duplicates` does
-  to columns absent from the payload. Absent columns are believed to be left
-  untouched (they aren't in the INSERT column list), but if that's wrong, every
-  word edit in the extension silently resets that card's schedule. Confirm it,
-  don't assume it. 0.1 makes this moot for SRS state, but not for word fields.
+### 0.7 Fix the sync cursor (done)
+`src/sync.js` kept one cursor, `lastSyncedAt`, written from the client's local
+`Date.now()` and compared against server-generated `updated_at`. A device clock
+running ahead of Postgres put the cursor in the future, and every row committed
+inside that window was filtered out of all later pulls — silent, permanent loss.
+
+It now keeps two cursors, because they live in two different clock domains:
+- `lastPushedAt` — local time, selects our own edits (which are stamped locally)
+- `lastPulledAt` — server time, read from the REST `Date` response header, minus
+  a 5s margin
+
+Both are captured before the store snapshot, and the push filter is `>=` rather
+than `>`, so an edit can't fall through the gap between two syncs. Upgrading
+resets `lastPulledAt` to 0, forcing one full re-pull that repairs anything the
+old cursor already skipped.
+
+`node src/sync.test.js` covers all of it (device ahead, device behind, local
+edits under skew) with no dependencies or test runner. It fails on every case
+against the pre-fix version — worth keeping, since none of this is visible by
+clicking around.
+
+**Answered, so nobody re-investigates it:** PostgREST's
+`resolution=merge-duplicates` leaves columns absent from the payload untouched.
+Verified against a real PostgREST + Postgres: an extension-shaped word upsert
+(no SRS columns in the body) updated `meaning`/`meaning_mn` and left
+`ease_factor`, `interval_days`, `repetitions` and `due_at` exactly as they were.
+Extension edits never clobbered schedules.
 
 **Phase 0 acceptance**: web practice screen runs entirely through `review_card`,
 the stats dashboard numbers are unchanged, extension sync round-trips a word edit
@@ -311,6 +341,11 @@ timer are noise, and mixing them into SM-2 corrupts real scheduling.
   is out of date. Anki has defaulted to FSRS since 23.10, and FSRS reaches the
   same retention with meaningfully fewer reviews. Don't claim Anki parity in
   user-facing copy. Phase 0.4 makes a later FSRS switch a data migration.
+- Migrations are applied by hand in the Supabase SQL editor (there is no
+  `supabase` CLI or `config.toml` in this repo), so **every migration must be
+  safe to re-run**: guard policies and triggers with `drop ... if exists`, and
+  precede any table-returning function with `drop function if exists` —
+  `create or replace` cannot change a function's OUT-parameter row type.
 - `/api/lookup` is unauthenticated and proxies Jisho. Rate-limit it before mobile
   traffic hits it.
 - The extension has **no build step** — edits to `src/sync.js` must be copied

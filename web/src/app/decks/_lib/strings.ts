@@ -82,6 +82,7 @@ export const T = {
   statTotalWords: "Нийт үг",
   statTotalDecks: "Багц",
   statDueToday: "Өнөөдөр давтах",
+  dueHeldBack: (n: number) => `Өдрийн хязгаараас ${n} үг хойшлов`,
   statMastered: "Эзэмшсэн (A+B)",
   statStreak: "Дараалсан өдөр",
   statNewWeek: (n: number) => `Сүүлийн 7 хоногт ${n} үг нэмэгдсэн`,
