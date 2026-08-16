@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/audio.dart';
-import '../../core/repository.dart';
+import '../../core/offline_review.dart';
 import '../../models/queue_card.dart';
 import 'srs_preview.dart';
 
@@ -40,6 +40,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   String? _error;
   bool _sending = false;
 
+  /// True when the queue came from the local cache rather than the server, and
+  ////or answers are being written to the outbox. Surfaced in the UI: a user who
+  /// reviews forty cards on a train deserves to know they haven't synced yet.
+  bool _offline = false;
+  int _queuedAnswers = 0;
+
   /// When the current card was first shown, so each answer can report how long
   /// it took. review_log.duration_ms is what battle mode later scales damage
   /// against, and it can only be measured here, at answer time.
@@ -53,12 +59,17 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   Future<void> _load() async {
     try {
-      final queue = await ref
-          .read(repositoryProvider)
-          .reviewQueue(deckId: widget.deckId);
+      // Anything queued from a previous offline session goes out first, so the
+      // queue we then fetch already reflects those answers.
+      final offline = ref.read(offlineReviewProvider);
+      await offline.flush();
+
+      final result = await offline.queue(deckId: widget.deckId);
+      final queue = result.cards;
       if (!mounted) return;
       setState(() {
         _queue = queue;
+        _offline = result.fromCache;
         _shownAt = DateTime.now();
       });
 
@@ -96,48 +107,58 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       _shownAt = DateTime.now();
     });
 
-    try {
-      final updated = await ref.read(repositoryProvider).reviewCard(
-            cardId: card.cardId,
-            rating: rating,
-            logId: logId,
-            durationMs: durationMs,
-          );
+    // Returns null when the send failed and the answer went to the outbox
+    // instead — no error state, because nothing was lost and the user has no
+    // action to take.
+    final updated = await ref.read(offlineReviewProvider).answer(
+          cardId: card.cardId,
+          rating: rating,
+          logId: logId,
+          durationMs: durationMs,
+        );
 
-      // A card still inside the learning or relearning steps is due again in
-      // minutes, so it comes back before the session ends — that is the whole
-      // point of the steps. Anything that graduated is gone until its day.
-      final state = updated['state'] as String?;
-      final requeued = state == 'learning' || state == 'relearning';
+    if (!mounted) return;
 
-      if (!mounted) return;
+    if (updated == null) {
+      // Queued offline. Predict the re-queue locally from the same rules the
+      // server uses: an 'again' always returns within the session, and a card
+      // that hasn't graduated stays in learning.
+      final stillLearning = rating == 'again' ||
+          card.state == 'new' ||
+          card.state == 'learning' ||
+          card.state == 'relearning';
       setState(() {
-        _history.add(_Answered(logId, card, requeued));
-        if (requeued) {
-          _queue = [
-            ..._queue!,
-            card.copyWith(
-              state: state,
-              learningStep: (updated['learning_step'] as num?)?.toInt(),
-              intervalDays: (updated['interval_days'] as num?)?.toInt(),
-              repetitions: (updated['repetitions'] as num?)?.toInt(),
-              easeFactor: (updated['ease_factor'] as num?)?.toDouble(),
-            ),
-          ];
-        }
+        _offline = true;
+        _queuedAnswers += 1;
+        _history.add(_Answered(logId, card, stillLearning));
+        if (stillLearning) _queue = [..._queue!, card];
         _sending = false;
       });
-    } catch (e) {
-      // Put the card back rather than silently dropping the answer.
-      if (!mounted) return;
-      setState(() {
-        _error = '$e';
-        _reviewed = _reviewed > 0 ? _reviewed - 1 : 0;
-        _queue = [card, ..._queue!];
-        _revealed = true;
-        _sending = false;
-      });
+      return;
     }
+
+    // A card still inside the learning or relearning steps is due again in
+    // minutes, so it comes back before the session ends — that is the whole
+    // point of the steps. Anything that graduated is gone until its day.
+    final state = updated['state'] as String?;
+    final requeued = state == 'learning' || state == 'relearning';
+
+    setState(() {
+      _history.add(_Answered(logId, card, requeued));
+      if (requeued) {
+        _queue = [
+          ..._queue!,
+          card.copyWith(
+            state: state,
+            learningStep: (updated['learning_step'] as num?)?.toInt(),
+            intervalDays: (updated['interval_days'] as num?)?.toInt(),
+            repetitions: (updated['repetitions'] as num?)?.toInt(),
+            easeFactor: (updated['ease_factor'] as num?)?.toDouble(),
+          ),
+        ];
+      }
+      _sending = false;
+    });
   }
 
   Future<void> _undo() async {
@@ -152,18 +173,24 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     });
 
     try {
-      final restored = await ref.read(repositoryProvider).undoReview(last.logId);
+      // Null means the answer was still in the outbox and has just been
+      // dropped: the card never changed server-side, so the pre-answer copy we
+      // already hold is the correct state to restore.
+      final restored = await ref.read(offlineReviewProvider).undo(last.logId);
       if (!mounted) return;
       setState(() {
+        if (restored == null && _queuedAnswers > 0) _queuedAnswers -= 1;
         final rest = _queue!.where((c) => c.cardId != last.card.cardId).toList();
         _queue = [
-          last.card.copyWith(
-            state: restored['state'] as String?,
-            learningStep: (restored['learning_step'] as num?)?.toInt(),
-            intervalDays: (restored['interval_days'] as num?)?.toInt(),
-            repetitions: (restored['repetitions'] as num?)?.toInt(),
-            easeFactor: (restored['ease_factor'] as num?)?.toDouble(),
-          ),
+          restored == null
+              ? last.card
+              : last.card.copyWith(
+                  state: restored['state'] as String?,
+                  learningStep: (restored['learning_step'] as num?)?.toInt(),
+                  intervalDays: (restored['interval_days'] as num?)?.toInt(),
+                  repetitions: (restored['repetitions'] as num?)?.toInt(),
+                  easeFactor: (restored['ease_factor'] as num?)?.toDouble(),
+                ),
           ...rest,
         ];
         _shownAt = DateTime.now();
@@ -262,6 +289,28 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               child: Text(
                 'Хадгалж чадсангүй: $_error',
                 style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+              ),
+            ),
+          if (_offline)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade50,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.cloud_off_outlined,
+                      size: 16, color: Colors.amber.shade900),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _queuedAnswers > 0
+                          ? 'Офлайн — $_queuedAnswers хариулт хадгалагдсан, дараа илгээнэ'
+                          : 'Офлайн — хадгалсан жагсаалтаар давтаж байна',
+                      style: TextStyle(
+                          color: Colors.amber.shade900, fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
           Expanded(
