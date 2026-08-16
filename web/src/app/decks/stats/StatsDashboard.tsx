@@ -16,8 +16,14 @@ import GradeChart from "../_components/GradeChart";
 import WeekdayReviewsChart from "../_components/WeekdayReviewsChart";
 import DeckBreakdownTable from "../_components/DeckBreakdownTable";
 
-interface ReviewLogRow {
-  reviewed_at: string;
+// One SRS day's review count, from the review_activity() RPC (migration 0013).
+// The server buckets by the user's day cutoff — the same boundary the scheduler
+// uses — rather than by local midnight. That matters: grouping at midnight put
+// a 01:00 review on a new streak day while the review queue still considered it
+// yesterday, and it made mobile's streak a second, subtly different answer.
+interface ActivityRow {
+  day: string; // YYYY-MM-DD, already in the user's timezone
+  reviews: number;
 }
 
 // What a session started right now would actually serve, per due_summary()
@@ -35,7 +41,7 @@ export default function StatsDashboard() {
   const router = useRouter();
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
   const [words, setWords] = useState<Word[]>([]);
-  const [reviews, setReviews] = useState<ReviewLogRow[] | null>(null);
+  const [reviews, setReviews] = useState<ActivityRow[] | null>(null);
   const [due, setDue] = useState<DueSummary | null>(null);
   // True when review_log isn't there yet (migration 0005 not applied), so the
   // heatmap is running on the approximate last_reviewed_at fallback.
@@ -44,19 +50,13 @@ export default function StatsDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const since = addDays(startOfDay(new Date()), -400).toISOString();
     const [decksRes, wordsRes, logRes, dueRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
       supabase.from("words").select("*").eq("deleted", false),
-      // Only real reviews count toward streaks and the heatmap: answers the
-      // user took back (undone) and future battle/drill answers are logged but
-      // must not inflate activity. See 0008_review_log_v2.sql.
-      supabase
-        .from("review_log")
-        .select("reviewed_at")
-        .eq("undone", false)
-        .eq("source", "review")
-        .gte("reviewed_at", since),
+      // Bucketed server-side by SRS day. The RPC also excludes undone answers
+      // and battle/drill sources, so activity can't be inflated by answers the
+      // user took back or by gamified modes.
+      supabase.rpc("review_activity", { p_days: 400 }),
       supabase.rpc("due_summary"),
     ]);
 
@@ -77,7 +77,7 @@ export default function StatsDashboard() {
       setReviews(null);
     } else {
       setLogMissing(false);
-      setReviews((logRes.data as ReviewLogRow[]) ?? []);
+      setReviews((logRes.data as ActivityRow[]) ?? []);
     }
     setLoading(false);
   }, []);
@@ -93,10 +93,10 @@ export default function StatsDashboard() {
   const activity = useMemo(() => {
     const map = new Map<string, number>();
     if (reviews) {
-      for (const r of reviews) {
-        const k = localDateKey(new Date(r.reviewed_at));
-        map.set(k, (map.get(k) ?? 0) + 1);
-      }
+      // Already one row per SRS day, keyed YYYY-MM-DD in the user's timezone —
+      // no client-side date bucketing, which is what used to disagree with the
+      // scheduler's 4am cutoff.
+      for (const r of reviews) map.set(r.day, r.reviews);
     } else {
       for (const w of words) {
         if (!w.last_reviewed_at) continue;

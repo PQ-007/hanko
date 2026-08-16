@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { clientForRequest } from "@/lib/supabase/bearer";
 import { synthesizeMp3 } from "@/lib/tts";
 import type { Word } from "@/lib/types";
 
@@ -9,12 +9,15 @@ export const runtime = "nodejs";
 // Generates pronunciation audio for a word (TTS), stores it in the private
 // word-audio bucket under "<user_id>/<word_id>.mp3", records the path on the
 // word, and returns { audio_path }. Idempotent: re-running overwrites.
+//
+// Accepts either the web app's cookie session or an `Authorization: Bearer`
+// token, so the mobile app can precache a day's pronunciation before a commute.
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: RouteContext<"/api/words/[id]/audio">
 ) {
   const { id } = await ctx.params;
-  const supabase = await createClient();
+  const supabase = await clientForRequest(req);
 
   const {
     data: { user },
