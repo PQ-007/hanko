@@ -1,0 +1,101 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../models/queue_card.dart';
+
+final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
+
+/// Emits on every sign-in / sign-out so the UI can follow the session.
+final authStateProvider = StreamProvider<AuthState>(
+  (ref) => ref.watch(supabaseProvider).auth.onAuthStateChange,
+);
+
+final repositoryProvider = Provider<Repository>(
+  (ref) => Repository(ref.watch(supabaseProvider)),
+);
+
+/// Everything this app knows how to ask the backend.
+///
+/// Scheduling is deliberately absent: `review_card()` on the server is the only
+/// implementation of SM-2, so there is nothing here to drift out of step with
+/// the web app. This class just calls it.
+class Repository {
+  const Repository(this._db);
+
+  final SupabaseClient _db;
+
+  Future<List<Map<String, dynamic>>> decks() async {
+    final rows = await _db
+        .from('decks')
+        .select()
+        .eq('deleted', false)
+        .order('name');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  /// What's due right now, under the server's day cutoff and daily caps.
+  Future<DueSummary> dueSummary({String? deckId}) async {
+    final rows = await _db.rpc<List<dynamic>>(
+      'due_summary',
+      params: {'p_deck_id': deckId},
+    );
+    if (rows.isEmpty) {
+      return const DueSummary(
+        dueNow: 0,
+        reviewDue: 0,
+        newDue: 0,
+        reviewRemaining: 0,
+        newRemaining: 0,
+      );
+    }
+    return DueSummary.fromJson(Map<String, dynamic>.from(rows.first as Map));
+  }
+
+  Future<List<QueueCard>> reviewQueue({String? deckId, int limit = 60}) async {
+    final rows = await _db.rpc<List<dynamic>>(
+      'review_queue',
+      params: {'p_deck_id': deckId, 'p_limit': limit},
+    );
+    return rows
+        .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  /// Answer a card. [logId] is generated on the device and reused when
+  /// retrying, which is what makes the write idempotent — an answer replayed
+  /// after an offline gap is applied exactly once instead of double-counting
+  /// the review and inflating the streak.
+  Future<Map<String, dynamic>> reviewCard({
+    required String cardId,
+    required String rating,
+    required String logId,
+    int? durationMs,
+  }) async {
+    final row = await _db.rpc<Map<String, dynamic>>(
+      'review_card',
+      params: {
+        'p_card_id': cardId,
+        'p_rating': rating,
+        'p_duration_ms': durationMs,
+        'p_log_id': logId,
+      },
+    );
+    return row;
+  }
+
+  Future<Map<String, dynamic>> undoReview(String logId) async {
+    return await _db.rpc<Map<String, dynamic>>(
+      'undo_review',
+      params: {'p_log_id': logId},
+    );
+  }
+
+  /// The SRS day boundary is evaluated server-side in the user's timezone, and
+  /// nothing else writes it — left null it silently falls back to UTC, which
+  /// for UTC+8 rolls the day over at noon. The web app does the same thing.
+  Future<void> syncTimezone(String ianaName) async {
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+    await _db.from('profiles').update({'timezone': ianaName}).eq('id', user.id);
+  }
+}
