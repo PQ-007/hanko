@@ -103,10 +103,10 @@ export default function AddWordForm({
     onAdded();
   }
 
-  const inputCls = "rounded border border-gray-300 px-2 py-1.5 text-sm";
+  const inputCls = "rounded-control border border-line px-2 py-1.5 text-sm";
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-control border border-line-soft bg-white p-4">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
         <input value={term} onChange={(e) => setTerm(e.target.value)} onBlur={lookup} placeholder={T.term} className={inputCls} />
         <input value={reading} onChange={(e) => setReading(e.target.value)} placeholder={looking ? T.lookingUp : T.reading} className={inputCls} />
@@ -115,7 +115,7 @@ export default function AddWordForm({
         <button
           onClick={add}
           disabled={busy || !term.trim()}
-          className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60 sm:col-span-2 lg:col-span-1"
+          className="hk-btn hk-btn-primary px-4 py-2 text-sm disabled:opacity-60 sm:col-span-2 lg:col-span-1"
         >
           {T.addWord}
         </button>
@@ -128,14 +128,14 @@ export default function AddWordForm({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-white p-5 shadow-2xl"
           >
-            <h3 className="text-base font-semibold text-gray-900">{T.duplicateWord}</h3>
-            <p className="mt-2 text-sm text-gray-600">{T.duplicateWordConfirm(dupTerm)}</p>
+            <h3 className="text-base font-semibold text-ink">{T.duplicateWord}</h3>
+            <p className="mt-2 text-sm text-ink-soft">{T.duplicateWordConfirm(dupTerm)}</p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setDupTerm(null)}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="rounded-control border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper-dim"
               >
                 {T.cancel}
               </button>
@@ -144,7 +144,7 @@ export default function AddWordForm({
                   setDupTerm(null);
                   doAdd();
                 }}
-                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="hk-btn hk-btn-primary px-4 py-2 text-sm"
               >
                 {T.addAnyway}
               </button>

@@ -26,8 +26,8 @@ export default function GradeChart({ words, title }: { words: Word[]; title?: st
   const total = words.length;
 
   return (
-    <div ref={ref} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-gray-500">{title ?? T.gradeTitle}</h3>
+    <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
+      <h3 className="mb-4 text-sm font-semibold text-ink-soft">{title ?? T.gradeTitle}</h3>
       <div className="flex items-end gap-3">
         {GRADE_ORDER.map((g, i) => {
           const count = counts.get(g) ?? 0;
@@ -46,7 +46,7 @@ export default function GradeChart({ words, title }: { words: Word[]; title?: st
                   bottom: `calc(${inView || reduced ? heightPct : 0}% + 4px)`,
                   transition: reduced ? undefined : `bottom 700ms cubic-bezier(.22,1,.36,1) ${i * 70}ms`,
                 }}
-                className="absolute left-1/2 -translate-x-1/2 text-xs font-medium text-gray-500"
+                className="absolute left-1/2 -translate-x-1/2 text-xs font-medium text-ink-soft"
               >
                 {count}
               </span>
@@ -62,7 +62,7 @@ export default function GradeChart({ words, title }: { words: Word[]; title?: st
                 className="absolute bottom-0 left-1/2 w-6 -translate-x-1/2 rounded-t-[4px]"
               />
               {hover === g && count > 0 && (
-                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-control bg-ink px-2 py-1 text-[11px] font-medium text-paper shadow-lift">
                   {count} ({pct}%)
                 </div>
               )}
@@ -70,10 +70,10 @@ export default function GradeChart({ words, title }: { words: Word[]; title?: st
           );
         })}
       </div>
-      <div className="h-px bg-gray-200" />
+      <div className="h-px bg-paper-deep" />
       <div className="mt-1.5 flex gap-3">
         {GRADE_ORDER.map((g) => (
-          <span key={g} className="flex-1 text-center text-xs text-gray-400">
+          <span key={g} className="flex-1 text-center text-xs text-ink-mute">
             {g === "new" ? T.gradeNew : g}
           </span>
         ))}

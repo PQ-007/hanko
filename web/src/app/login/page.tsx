@@ -28,15 +28,15 @@ function LoginInner() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hanko.svg" alt="" className="mb-3 h-14 w-14" />
         <h1 className="text-3xl font-semibold">Hanko</h1>
-        <p className="text-sm italic text-gray-400">Verba non Acta</p>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="text-sm italic text-ink-mute">Verba non Acta</p>
+        <p className="mt-2 text-sm text-ink-soft">
           Үгсийн багцаа удирдах, төхөөрөмж хооронд синк хийх, Anki руу
           экспортлохын тулд нэвтэрнэ үү.
         </p>
       </div>
 
       {error && (
-        <p className="rounded border border-gray-300 bg-gray-100 px-4 py-2 text-sm text-gray-800">
+        <p className="rounded-control border border-line bg-paper-dim px-4 py-2 text-sm text-ink">
           Нэвтрэлт амжилтгүй боллоо. Дахин оролдоно уу.
         </p>
       )}
@@ -44,7 +44,7 @@ function LoginInner() {
       <button
         onClick={signIn}
         disabled={loading}
-        className="flex items-center gap-3 rounded-lg border border-gray-300 bg-white px-6 py-3 font-medium text-gray-800 shadow-sm transition hover:bg-gray-50 disabled:opacity-60"
+        className="flex items-center gap-3 rounded-control border border-line bg-white px-6 py-3 font-medium text-ink shadow-sm transition hover:bg-paper-dim disabled:opacity-60"
       >
         <GoogleIcon />
         {loading ? "Шилжүүлж байна…" : "Google-ээр нэвтрэх"}

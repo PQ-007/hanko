@@ -105,9 +105,9 @@ export default function WordEditModal({
     onSaved();
   }
 
-  const labelCls = "mb-1 block text-xs font-medium text-gray-500";
+  const labelCls = "mb-1 block text-xs font-medium text-ink-soft";
   const inputCls =
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200";
+    "w-full rounded-control border border-line px-3 py-2 text-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint";
   const areaCls = `${inputCls} min-h-[72px] resize-y leading-snug`;
 
   return (
@@ -117,13 +117,13 @@ export default function WordEditModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl"
+        className="w-full max-w-md rounded-card bg-white p-5 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-900">{T.editWord}</h3>
+          <h3 className="text-base font-semibold text-ink">{T.editWord}</h3>
           <button
             onClick={onClose}
-            className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-control p-1 text-ink-mute transition hover:bg-paper-dim hover:text-ink"
           >
             <X size={18} />
           </button>
@@ -146,7 +146,7 @@ export default function WordEditModal({
             <button
               onClick={relookup}
               disabled={looking || !term.trim()}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-paper-dim disabled:opacity-50"
             >
               <Search size={13} /> {looking ? T.lookingUp : T.research}
             </button>
@@ -171,9 +171,9 @@ export default function WordEditModal({
           </div>
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-500">{T.mongolian}</label>
+              <label className="text-xs font-medium text-ink-soft">{T.mongolian}</label>
               {translating && (
-                <span className="flex items-center gap-1 text-xs text-gray-400">
+                <span className="flex items-center gap-1 text-xs text-ink-mute">
                   <Languages size={12} className="animate-pulse" /> {T.lookingUp}
                 </span>
               )}
@@ -185,14 +185,14 @@ export default function WordEditModal({
         <div className="mt-5 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="rounded-control border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper-dim"
           >
             {T.cancel}
           </button>
           <button
             onClick={save}
             disabled={saving || !term.trim()}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
+            className="hk-btn hk-btn-primary px-4 py-2 text-sm disabled:opacity-60"
           >
             {T.save}
           </button>

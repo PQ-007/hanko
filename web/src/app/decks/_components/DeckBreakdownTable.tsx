@@ -38,42 +38,42 @@ export default function DeckBreakdownTable({
   });
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <h3 className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-500">
+    <div className="overflow-hidden hk-card">
+      <h3 className="border-b border-line-soft px-4 py-3 text-sm font-semibold text-ink-soft">
         {T.deckBreakdownTitle}
       </h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="text-xs text-gray-400">
+            <tr className="text-xs text-ink-mute">
               <th className="px-4 py-2 font-medium">{T.colDeck}</th>
               <th className="px-4 py-2 font-medium tabular-nums">{T.colWords}</th>
               <th className="px-4 py-2 font-medium tabular-nums">{T.colDue}</th>
               <th className="px-4 py-2 font-medium">{T.colMastered}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-line-soft">
             {rows.map(({ deck, due, masteredPct }) => (
-              <tr key={deck.id} className="hover:bg-gray-50">
+              <tr key={deck.id} className="hover:bg-paper-dim">
                 <td className="px-4 py-2.5">
                   <button
                     onClick={() => onSelectDeck(deck.id)}
-                    className="font-medium text-gray-800 hover:underline"
+                    className="font-medium text-ink hover:underline"
                   >
                     {deck.name}
                   </button>
                 </td>
-                <td className="px-4 py-2.5 tabular-nums text-gray-600">{deck.word_count}</td>
-                <td className="px-4 py-2.5 tabular-nums text-gray-600">{due}</td>
+                <td className="px-4 py-2.5 tabular-nums text-ink-soft">{deck.word_count}</td>
+                <td className="px-4 py-2.5 tabular-nums text-ink-soft">{due}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-paper-dim">
                       <div
                         style={{ width: `${masteredPct}%`, backgroundColor: MASTERED_FILL }}
                         className="h-full rounded-full"
                       />
                     </div>
-                    <span className="w-9 shrink-0 tabular-nums text-xs text-gray-500">
+                    <span className="w-9 shrink-0 tabular-nums text-xs text-ink-soft">
                       {masteredPct}%
                     </span>
                   </div>
@@ -84,7 +84,7 @@ export default function DeckBreakdownTable({
         </table>
       </div>
       {decks.length === 0 && (
-        <p className="px-4 py-6 text-center text-sm text-gray-400">{T.noStatsData}</p>
+        <p className="px-4 py-6 text-center text-sm text-ink-mute">{T.noStatsData}</p>
       )}
     </div>
   );

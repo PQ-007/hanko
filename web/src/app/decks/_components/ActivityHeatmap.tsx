@@ -86,11 +86,11 @@ export default function ActivityHeatmap({
   return (
     <div
       ref={ref}
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+      className="rounded-control border border-line-soft bg-white p-4 shadow-sm"
     >
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-500">{title}</h3>
-        <p className="text-xs text-gray-400">
+        <h3 className="text-sm font-semibold text-ink-soft">{title}</h3>
+        <p className="text-xs text-ink-mute">
           {T.heatmapSummary(formatCount(total), activeDays)}
         </p>
       </div>
@@ -109,7 +109,7 @@ export default function ActivityHeatmap({
               <div
                 key={w}
                 style={{ height: CELL, lineHeight: `${CELL}px` }}
-                className="text-[9px] text-gray-400"
+                className="text-[9px] text-ink-mute"
               >
                 {i % 2 === 1 ? w : ""}
               </div>
@@ -120,7 +120,7 @@ export default function ActivityHeatmap({
             <div key={ci} className="flex shrink-0 flex-col gap-[3px]">
               <div
                 style={{ height: 15 }}
-                className="whitespace-nowrap text-[9px] leading-[15px] text-gray-400"
+                className="whitespace-nowrap text-[9px] leading-[15px] text-ink-mute"
               >
                 {monthLabels[ci] ?? ""}
               </div>
@@ -158,7 +158,7 @@ export default function ActivityHeatmap({
                         ? undefined
                         : `opacity 260ms ease-out ${delay}ms, transform 260ms ease-out ${delay}ms`,
                     }}
-                    className="rounded-[3px] ring-inset hover:ring-2 hover:ring-gray-900/40"
+                    className="rounded-[3px] ring-inset hover:ring-2 hover:ring-ink/40"
                   />
                 );
               })}
@@ -169,7 +169,7 @@ export default function ActivityHeatmap({
         {hover && (
           <div
             style={{ left: hover.x, top: hover.y - 8 }}
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg"
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-control bg-ink px-2 py-1 text-[11px] font-medium text-paper shadow-lift"
           >
             {formatDateMn(hover.day)} — {formatCount(hover.count)}
           </div>
@@ -177,7 +177,7 @@ export default function ActivityHeatmap({
       </div>
 
       {/* Sequential scale legend */}
-      <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-gray-400">
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-ink-mute">
         <span>{T.less}</span>
         <div style={{ width: 10, height: 10, backgroundColor: HEATMAP_EMPTY }} className="rounded-[2px]" />
         {HEATMAP_STEPS.map((c) => (

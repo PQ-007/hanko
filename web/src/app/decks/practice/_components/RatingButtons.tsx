@@ -30,7 +30,7 @@ const OPTIONS: {
     rating: "good",
     key: "3",
     label: T.good,
-    className: "border-gray-900 bg-gray-900 text-white hover:bg-gray-800",
+    className: "border-seal bg-seal text-paper hover:bg-seal-dark",
   },
   {
     rating: "easy",
@@ -58,11 +58,11 @@ export default function RatingButtons({
           <button
             key={rating}
             onClick={() => onRate(rating)}
-            className={`flex flex-col items-center gap-0.5 rounded-lg border px-3 py-2.5 transition ${className}`}
+            className={`flex flex-col items-center gap-0.5 rounded-control border px-3 py-2.5 transition ${className}`}
           >
             <span className="flex items-center gap-1.5 text-sm font-semibold">
               {label}
-              <kbd className="rounded border border-current/25 px-1 text-[10px] font-medium opacity-60">
+              <kbd className="rounded-control border border-current/25 px-1 text-[10px] font-medium opacity-60">
                 {key}
               </kbd>
             </span>

@@ -50,12 +50,12 @@ export default function ProgressRing({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold text-gray-900">
+          <span className="text-2xl font-semibold text-ink">
             {Math.round(animated)}%
           </span>
         </div>
       </div>
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-ink-soft">{label}</p>
     </div>
   );
 }

@@ -62,13 +62,39 @@ export function longestStreak(dayKeys: Set<string>): number {
 
 // Current run ending today (or yesterday — a streak stays alive until the
 // day is actually over).
-export function currentStreak(dayKeys: Set<string>): number {
+//
+// freezesAvailable mirrors profiles.streak_freezes (0014_gamification.sql)
+// and mobile's currentStreak() in streaks.dart — both must stay in step, same
+// as the SM-2 preview logic already duplicated across the two clients. A
+// freeze is a pure read here: bridging a missed day counts it toward the
+// streak but never writes the count back down, so this is deliberately not a
+// spend/earn economy yet. A freeze only ever covers a *past, completed* day —
+// today not having activity yet isn't a miss, so the initial skip-to-yesterday
+// stays unconditional.
+export function currentStreak(dayKeys: Set<string>, freezesAvailable = 0): number {
   const cursor = startOfDay(new Date());
   if (!dayKeys.has(localDateKey(cursor))) cursor.setDate(cursor.getDate() - 1);
   let streak = 0;
-  while (dayKeys.has(localDateKey(cursor))) {
-    streak += 1;
+  let freezesLeft = freezesAvailable;
+  // Days counted via a freeze since the last confirmed active day. Must mirror
+  // streaks.dart's `unconfirmed` exactly: a freeze only counts once it
+  // reconnects to a real active day (or "today", still in progress) — a
+  // dangling bridge that runs out of budget before reconnecting gets stripped
+  // back out, so an account with zero reviews ever can't show a fabricated
+  // streak purely from its default freeze allotment.
+  let unconfirmed = 0;
+  for (;;) {
+    if (dayKeys.has(localDateKey(cursor))) {
+      streak += 1;
+      unconfirmed = 0;
+    } else if (freezesLeft > 0) {
+      freezesLeft -= 1;
+      streak += 1;
+      unconfirmed += 1;
+    } else {
+      break;
+    }
     cursor.setDate(cursor.getDate() - 1);
   }
-  return streak;
+  return streak - unconfirmed;
 }

@@ -1,28 +1,225 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------------------------------------------------------------------
+   Design tokens — washi paper + hanko seal.
+
+   These are not invented: they're the palette the browser extension has used
+   since the beginning (chrome/popup.css), and the same one the app icon is
+   drawn from ("washi-paper + hanko-red", see public/hanko.svg). The web app
+   had drifted to Tailwind's default neutral grays — 47 separate uses of
+   text-gray-500, bg-gray-900 standing in for a brand colour, five radius
+   scales mixed at random — which is what made it read as generic and stiff
+   next to the extension. Adopting the existing tokens unifies the product
+   rather than restyling it to taste.
+
+   A hanko is a vermilion seal stamped on off-white paper; that's the whole
+   visual idea. Seal red is the accent, paper is the ground, ink is the type.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-paper: #faf7f0;
+  --color-paper-dim: #f0ebdd;
+  --color-paper-deep: #e6e0cf;
+  --color-line: #d8d0be;
+  --color-line-soft: #e8e2d4;
+  --color-ink: #1f2933;
+  /* Darkened from the extension's --ink-soft (#8A8270) and its lighter
+     sibling. Those hit only 3.56:1 and 2.37:1 against the paper background —
+     both under WCAG AA's 4.5:1 for normal text — and the web app leans on
+     these two far more heavily than the extension's popup ever did (they
+     absorbed ~90 uses of text-gray-400/500/600). Same warm hue, scaled down
+     until each passes, and spaced far enough apart to still read as two
+     distinct tiers: 5.84:1 and 4.53:1. */
+  --color-ink-soft: #666053;
+  --color-ink-mute: #787161;
+  --color-seal: #b03a2e;
+  --color-seal-dark: #9a3026;
+  --color-seal-tint: #f6e7e4;
+
+  /* One radius scale instead of the previous free-for-all. */
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+
+  /* Warm, low-contrast shadows — a neutral black shadow over paper reads as
+     grubby, so these are tinted toward the ink colour instead. */
+  --shadow-card: 0 1px 2px rgba(31, 41, 51, 0.04), 0 4px 16px rgba(31, 41, 51, 0.06);
+  --shadow-lift: 0 2px 4px rgba(31, 41, 51, 0.05), 0 12px 28px rgba(31, 41, 51, 0.09);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Deliberately no prefers-color-scheme override. The previous one flipped the
+   body to near-black while every card, border and text colour stayed light,
+   so dark-mode users got an unreadable half-inverted page. A real dark theme
+   needs the whole token set re-mapped; until that exists, one coherent light
+   theme is the honest choice. */
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------------------------------------------------------------------------
+   Component primitives. These exist because the same handful of patterns were
+   being re-spelled with slightly different utilities on every screen, which is
+   how the five-radius/three-shadow inconsistency crept in.
+   --------------------------------------------------------------------------- */
+.hk-card {
+  background: #fff;
+  border: 1px solid var(--color-line-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.hk-card-interactive {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.hk-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-line);
+  box-shadow: var(--shadow-lift);
+}
+
+.hk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-control);
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.hk-btn-primary {
+  background: var(--color-seal);
+  color: var(--color-paper);
+  box-shadow: 0 1px 2px rgba(154, 48, 38, 0.25);
+}
+
+.hk-btn-primary:hover {
+  background: var(--color-seal-dark);
+}
+
+.hk-btn-primary:disabled {
+  background: var(--color-ink-mute);
+  box-shadow: none;
+  cursor: default;
+}
+
+.hk-btn-quiet {
+  background: #fff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+}
+
+.hk-btn-quiet:hover {
+  background: var(--color-paper-dim);
+}
+
+.hk-btn-ghost {
+  color: var(--color-ink-soft);
+}
+
+.hk-btn-ghost:hover {
+  background: var(--color-paper-dim);
+  color: var(--color-ink);
+}
+
+/* Focus ring: one definition, seal-tinted, applied to anything interactive. */
+.hk-btn:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-seal);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Hover-flip flashcard — WordRow's grid view.
+
+   A component rather than utilities because the fix for the flicker it had is
+   about compositing, and two of the three parts can't be written as Tailwind
+   classes at all.
+
+   What was flickering: the rotating element had no transform at rest, so its
+   computed `transform` was `none`. Chromium promotes an element to its own
+   composited layer when a 3D transform starts and demotes it again once the
+   transition finishes, and text is rasterised differently on a promoted layer
+   (grayscale vs. subpixel antialiasing). Every flip therefore began and ended
+   with the whole card being re-rastered. Holding an explicit `rotateY(0deg)`
+   plus `will-change: transform` keeps one stable layer for the card's entire
+   life, so nothing is promoted or demoted mid-interaction.
+
+   Each face also carried its own rounded clip *and* box-shadow, which have to
+   be re-composited on every frame of the rotation. The shadow now belongs to
+   the container, which never moves — identical at rest, and free while
+   spinning.
+
+   Ruled out by calculation, so nobody re-investigates it: neighbouring cards
+   overlapping mid-flip. Under `perspective: 1000px` a rotating plane's
+   projected half-width peaks only ~2% above its resting half-width (max
+   overhang 3.8px for a 390px card, 9.3px at 520px) — inside the grid's 12px
+   gap at every column count this layout produces.
+   --------------------------------------------------------------------------- */
+.hk-flip {
+  position: relative;
+  perspective: 1000px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 200ms ease;
+}
+
+/* :focus-within, not only :hover — the back face's play/edit/delete buttons
+   are focusable whether or not the card is turned, so without this Tab lands
+   on controls that are facing away from the viewer. */
+.hk-flip:hover,
+.hk-flip:focus-within {
+  box-shadow: var(--shadow-lift);
+  /* Deterministic paint order while a card is mid-rotation, and keeps the
+     lifted shadow from being clipped by the next card in DOM order. */
+  z-index: 10;
+}
+
+.hk-flip-inner {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  transform-style: preserve-3d;
+  /* Explicit identity rotation, NOT `none` — see the note above. */
+  transform: rotateY(0deg);
+  will-change: transform;
+  transition: transform 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hk-flip:hover .hk-flip-inner,
+.hk-flip:focus-within .hk-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.hk-flip-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.hk-flip-back {
+  transform: rotateY(180deg);
 }
 
 /* Answer reveal in the practice card. */
@@ -35,6 +232,434 @@ body {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Monster Hunt fighter sprites (FighterSprite.tsx). Frame count varies per
+   character and per animation clip, so it's driven entirely by CSS custom
+   properties set inline rather than baked into fixed keyframe percentages —
+   one keyframe definition serves every character/state combination.
+
+   Uses `steps(F, jump-none)` with `to: -(F-1)*100px`, NOT the more commonly
+   seen `steps(F)` with `to: -F*100px`. Both show the same frames while
+   running, which is why the difference is easy to miss — but they end
+   differently, and the ending is what mattered here:
+
+     jump-end  reaches output 1.0 at t=1, i.e. background-position -F*100px.
+               That is one frame PAST the sheet, so it renders blank. A
+               looping clip wraps away from it instantly, but a one-shot with
+               `fill-mode: forwards` HOLDS it — every attack/hurt animation
+               ended on an empty frame, which is exactly the flicker that was
+               visible at the end of each hit.
+     jump-none distributes F values across [0, 1] inclusive, so t=1 lands on
+               -(F-1)*100px — the last real frame — and holds that.
+
+   Single-frame clips get no animation at all: `steps(1, jump-none)` is
+   invalid CSS (it would divide by F-1 = 0), so --hanko-anim-name is set to
+   `none` for them. */
+@keyframes hanko-sprite-play {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: var(--hanko-to-x);
+  }
+}
+
+.hanko-sprite {
+  background-repeat: no-repeat;
+  /* Purely decorative, and it deliberately overhangs its slot during attack
+     and death clips (see .hanko-fighter-slot). Without this the transparent
+     part of that overhang would sit over the answer buttons and eat clicks. */
+  pointer-events: none;
+  background-size: var(--hanko-frame-w) 100px;
+  image-rendering: pixelated;
+  animation-name: var(--hanko-anim-name, hanko-sprite-play);
+  animation-duration: var(--hanko-duration);
+  animation-timing-function: steps(var(--hanko-frames), jump-none);
+  animation-iteration-count: var(--hanko-iteration);
+  animation-fill-mode: var(--hanko-fill);
+}
+
+/* Fighter slot. Two jobs: reserve the sprite's footprint in the flex row, and
+   publish the scale factor the sprite itself reads. It lives here rather than
+   as an inline style because `transform: scale()` grows only what is painted,
+   not the element's layout box, and because the scale has to be responsive —
+   inline styles can't carry media queries.
+
+   The slot is 68 x 72 units of scale, NOT 100 x 100. It used to reserve the
+   whole 100px source frame, which is why the characters looked so small: these
+   packs size the frame for a character's *widest* animation (a full weapon
+   swing or a fired projectile), so a standing figure fills only part of it.
+   Measured across all 272 sprite sheets in the roster, for the five poses this
+   game actually uses:
+
+     idle      content x 28..78,  y 19..61   <- what you look at ~95% of a fight
+     hurt      content x 26..78,  y 23..61
+     death     content x 26..94,  y  0..68
+     attack01  content x 22..99,  y 12..78
+     attack02  content x 20..100, y 10..75
+
+   68 x 72 covers idle and hurt with margin. Attacks and deaths overhang, on
+   purpose: that overhang is what makes a sword swing read as a swing, it is
+   transparent everywhere it isn't the character, and the question card is
+   painted above the slots (z-10 in BattleArena) so anything reaching that far
+   passes behind the card rather than over the text. `.hanko-sprite` is
+   pointer-events: none so the transparent overhang can't swallow clicks meant
+   for the answer buttons.
+
+   Dropping the wasted 32% of frame width is what paid for the bigger figures:
+   the xl slot is the same 340px it always was, with a ~47% larger character
+   standing in it.
+
+   Each breakpoint's numbers are worked backward from the space that actually
+   exists, measured at the NARROWEST viewport in the band (a wider one only has
+   more room), counting the page's px-4 and the arena's own p-4/p-6:
+
+     lg   viewport 1024 -> 944 usable: 238 + 430 + 238 + 32 = 938
+     xl   viewport 1280 -> 1200 usable: 333 + 490 + 333 + 32 = 1188
+     2xl  container 1400 -> 1320 usable: 367 + 540 + 367 + 40 = 1314
+
+   The row used to overflow at every one of those (1000/944, 1280/1200,
+   1360/1320) — the fighters were being squeezed against the arena's edges by
+   a layout that didn't fit. */
+.hanko-fighter-slot {
+  --hanko-fighter-scale: 2;
+  width: 136px;
+  height: 144px;
+}
+
+@media (min-width: 1024px) {
+  .hanko-fighter-slot {
+    --hanko-fighter-scale: 3.5;
+    width: 238px;
+    height: 252px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hanko-fighter-slot {
+    --hanko-fighter-scale: 4.9;
+    width: 333px;
+    height: 353px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .hanko-fighter-slot {
+    --hanko-fighter-scale: 5.4;
+    width: 367px;
+    height: 389px;
+  }
+}
+
+/* Result screen's stage. Wider envelope than the arena's 68 x 72, because the
+   pose held here is `death` — measured across the roster, a death clip spans
+   x 26..94 and y 0..68 of the frame (characters fall sideways, and a couple
+   reach the very top). 80 x 84 covers all but the extremes, and a frame or two
+   of overhang is harmless: nothing clips it and there is no card beside it to
+   overlap. */
+.hanko-fighter-slot-sm {
+  --hanko-fighter-scale: 2.2;
+  width: 176px;
+  height: 185px;
+}
+
+@media (min-width: 640px) {
+  .hanko-fighter-slot-sm {
+    --hanko-fighter-scale: 2.8;
+    width: 224px;
+    height: 235px;
+  }
+}
+
+/* One lone body gets the whole stage. The result card has 688px of inner width
+   (max-w-3xl less sm:px-10) and no player sprite beside it any more, so this
+   can be much larger than the old side-by-side duel allowed. */
+.hanko-fighter-slot-lg {
+  --hanko-fighter-scale: 3;
+  width: 240px;
+  height: 252px;
+}
+
+@media (min-width: 640px) {
+  .hanko-fighter-slot-lg {
+    --hanko-fighter-scale: 4.2;
+    width: 336px;
+    height: 353px;
+  }
+}
+
+/* Trophy size, for laying out four or more corpses at once. Four of these plus
+   their gaps come to 600px, inside the same 688px. */
+.hanko-fighter-slot-trophy {
+  --hanko-fighter-scale: 1.4;
+  width: 112px;
+  height: 118px;
+}
+
+@media (min-width: 640px) {
+  .hanko-fighter-slot-trophy {
+    --hanko-fighter-scale: 1.8;
+    width: 144px;
+    height: 151px;
+  }
+}
+
+/* Third size, for the two fighters posed inside the practice landing page's
+   Monster Hunt card. Same 68-units-of-scale trick as .hanko-fighter-slot —
+   only idle ever plays here, and idle content is 46 x 42 of the 100px source
+   frame, so reserving the whole frame would waste a third of the card's width
+   on empty air. Height is 60 units rather than 72: no death or attack clip
+   runs on this card, so nothing needs the taller envelope, and the band it
+   sits in has a fixed height.
+
+   Sized to the card it lives in, at the narrowest viewport of each band:
+
+     base  card = viewport - 32 (page px-4) - 0, band gap-4:  2x156 + 16 = 328
+     lg    card = (1024 - 32 - 16) / 2 = 488, band gap-6:     2x228 + 24 = 480
+     xl    card = (1152 - 16) / 2      = 568, band gap-6:     2x265 + 24 = 554
+   --------------------------------------------------------------------------- */
+.hanko-fighter-slot-card {
+  --hanko-fighter-scale: 2.3;
+  width: 156px;
+  height: 138px;
+}
+
+@media (min-width: 1024px) {
+  .hanko-fighter-slot-card {
+    --hanko-fighter-scale: 3.35;
+    width: 228px;
+    height: 201px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hanko-fighter-slot-card {
+    --hanko-fighter-scale: 3.9;
+    width: 265px;
+    height: 234px;
+  }
+}
+
+/* Hero picker swatch on the practice landing page. Small, and only ever shows
+   `idle` — content 46 x 42 of the 100px frame — so it uses the tightest
+   envelope of any slot here: 54 x 50 units, just enough to keep a standing
+   figure off the chip's border. */
+.hanko-hero-chip {
+  --hanko-fighter-scale: 1.15;
+  width: 68px;
+  height: 62px;
+}
+
+@media (min-width: 640px) {
+  .hanko-hero-chip {
+    --hanko-fighter-scale: 1.5;
+    width: 88px;
+    height: 80px;
+  }
+}
+
+/* A projectile crossing the arena — the archer's arrow, the wizard's bolt.
+   It flies OVER the question card (z-20, above the card's own z-10) because
+   that's the whole effect: the shot travels the length of the stage, across
+   what you're reading, and lands on the far fighter.
+
+   `left` is animated rather than `transform: translateX`, so the endpoints can
+   be percentages of the row and stay correct at every breakpoint without
+   measuring the DOM. It's a compositor-unfriendly property in principle, but
+   this is one 100px element on screen for ~260ms, a handful of times a minute.
+
+   lg and up only. Below that the row wraps and the two fighters sit side by
+   side above the card, so there is no gap to fly across — a projectile would
+   travel a few pixels between touching sprites and read as a glitch.
+
+   Two animations at once: the flight, and the sheet-stepping for the
+   multi-frame magic bolts. Single-frame ammunition (every arrow, the
+   cannonball) sets --hanko-shot-anim to `none`; --hanko-frames still has to be
+   >= 2 for those, because steps(1, jump-none) is invalid CSS and one bad value
+   in the list drops the whole animation-timing-function declaration. */
+@keyframes hanko-projectile-fly {
+  from {
+    left: var(--hanko-shot-from);
+  }
+  to {
+    left: var(--hanko-shot-to);
+  }
+}
+
+.hanko-projectile {
+  position: absolute;
+  top: 50%;
+  z-index: 20;
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
+  margin-left: -50px;
+  background-repeat: no-repeat;
+  background-size: var(--hanko-frame-w) 100px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  animation-name: hanko-projectile-fly, var(--hanko-shot-anim, hanko-sprite-play);
+  animation-duration: var(--hanko-shot-duration), var(--hanko-shot-frame-duration);
+  animation-timing-function: linear, steps(var(--hanko-frames), jump-none);
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: forwards, none;
+}
+
+/* Scaled a little under the fighters so the ammunition doesn't outweigh the
+   character that threw it: an arrow is 19px of a 100px frame, so this puts it
+   at roughly 57px / 76px / 84px on screen. */
+.hanko-projectile {
+  transform: scale(3) var(--hanko-shot-flip, );
+}
+
+@media (min-width: 1280px) {
+  .hanko-projectile {
+    transform: scale(4) var(--hanko-shot-flip, );
+  }
+}
+
+@media (min-width: 1536px) {
+  .hanko-projectile {
+    transform: scale(4.4) var(--hanko-shot-flip, );
+  }
+}
+
+/* Loading scene: two fighters walk on and trade blows while data is in
+   flight (LoadingScene.tsx). Sized between the hero chips and the arena — big
+   enough to read as a scene, small enough to sit where a line of text was. */
+.hanko-loading-slot {
+  --hanko-fighter-scale: 1.8;
+  width: 122px;
+  height: 130px;
+}
+
+@media (min-width: 640px) {
+  .hanko-loading-slot {
+    --hanko-fighter-scale: 2.4;
+    width: 163px;
+    height: 173px;
+  }
+}
+
+/* The walk-on. Both keep their final position (fill-mode: forwards) so the
+   fight happens where they met, rather than snapping apart when the walk
+   animation is over. Replayed by re-keying the row on each new cast. */
+@keyframes hanko-walk-on-left {
+  from {
+    transform: translateX(-70px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes hanko-walk-on-right {
+  from {
+    transform: translateX(70px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.hanko-walk-on-left {
+  animation: hanko-walk-on-left var(--hanko-walk-ms) ease-out forwards;
+}
+
+.hanko-walk-on-right {
+  animation: hanko-walk-on-right var(--hanko-walk-ms) ease-out forwards;
+}
+
+/* Screen shake, played when the player takes a hit. Small and short — a
+   review session is not an action game, and a big shake every few questions
+   would get tiring fast. Retriggered by keying the element on the hit count.
+   Automatically neutered under prefers-reduced-motion by the blanket rule at
+   the bottom of this file. */
+@keyframes hanko-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-7px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  80% { transform: translateX(-2px); }
+}
+
+.hanko-shake {
+  animation: hanko-shake 320ms ease-out;
+}
+
+/* Floating damage number: rises and fades from wherever it's anchored. */
+@keyframes hanko-float-up {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -46px) scale(1.25);
+  }
+}
+
+.hanko-float-up {
+  animation: hanko-float-up 850ms ease-out forwards;
+}
+
+/* Replayed on every new monster by keying the element on the monster's slug,
+   so a fresh opponent pops into the arena instead of silently swapping in. */
+@keyframes hanko-spawn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hanko-spawn {
+  animation: hanko-spawn 320ms ease-out;
+}
+
+/* Parchment-styled quiz card (BattleArena's central question box). The
+   asymmetric elliptical border-radius below is a well-established CSS trick
+   for a hand-torn-paper silhouette — very different radius values per
+   corner break the rectangle's uniformity in a way a single rounded-corner
+   value can't. It's an approximation of "aged paper," not a pixel-precise
+   replica of any specific reference image: a literal jagged torn edge needs
+   a hand-tuned clip-path polygon or an image mask, neither of which is
+   something to guess at blind without being able to see it render. */
+/* The battle arena gets its own dark ground rather than the app's paper
+   background. Two reasons, and the first is measurable: the parchment card
+   (#F6EFE1) against the paper page (#FAF7F0) is a 1.07:1 contrast ratio —
+   the same surface, for practical purposes, so the card dissolved into the
+   page. The second is that a fight should feel like a different place from
+   the deck manager; a lit stage with the sprites and the card picked out
+   against dark is also what the reference art does. */
+.hk-arena {
+  background:
+    radial-gradient(120% 90% at 50% 0%, #2e3742 0%, #202832 55%, #171d25 100%);
+  border-radius: var(--radius-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--shadow-lift);
+}
+
+.hanko-parchment {
+  background: #f6efe1;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -51,66 +51,63 @@ export default function WordRow({
       onClick={play}
       disabled={genAudio}
       title={T.playAudio}
-      className="shrink-0 rounded-full border border-gray-200 p-1.5 text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
+      className="shrink-0 rounded-full border border-line-soft p-1.5 text-ink-soft transition hover:bg-paper-dim disabled:opacity-50"
     >
       <Play size={14} className={genAudio ? "animate-pulse" : ""} />
     </button>
   );
   const editBtn = (
-    <button onClick={onEdit} title={T.edit} className="text-gray-300 transition hover:text-gray-900">
+    <button onClick={onEdit} title={T.edit} className="text-ink-mute transition hover:text-ink">
       <Pencil size={15} />
     </button>
   );
   const removeBtn = (
-    <button onClick={remove} title={T.removeWord} className="text-gray-300 transition hover:text-gray-900">
+    <button onClick={remove} title={T.removeWord} className="text-ink-mute transition hover:text-ink">
       <Trash2 size={15} />
     </button>
   );
 
-  // Card view (grid): a flashcard that flips on hover — front shows the term +
+  // Card view (grid): a flashcard that turns on hover (or keyboard focus —
+  // the answer side's buttons are focusable) — front shows the term +
   // reading (the prompt), back reveals the Mongolian + English answer.
+  // The 3D mechanics live in .hk-flip* in globals.css; see the note there for
+  // why they are a component and not a stack of utilities.
   if (grid) {
     return (
-      <div className="group relative h-48 perspective-[1000px]">
-        <div className="relative h-full w-full transform-3d transition-transform duration-500 group-hover:rotate-y-180">
+      <div className="hk-flip h-48">
+        <div className="hk-flip-inner">
           {/* Front — the prompt */}
-          <div
-            style={{ WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
-            className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm backface-hidden"
-          >
+          <div className="hk-flip-face flex flex-col items-center justify-center border border-line-soft bg-white p-4 text-center">
             <GradeBadge word={word} />
-            <div className="relative text-3xl font-bold leading-tight text-gray-900">{word.term}</div>
-            {word.reading && <div className="relative mt-1.5 text-sm text-gray-400">{word.reading}</div>}
+            <div className="relative text-3xl font-bold leading-tight text-ink">{word.term}</div>
+            {word.reading && <div className="relative mt-1.5 text-sm text-ink-mute">{word.reading}</div>}
           </div>
 
           {/* Back — the answer (opaque so the front never shows through) */}
-          <div
-            style={{ WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
-            className="absolute inset-0 flex flex-col items-center overflow-hidden rounded-xl border border-gray-300 bg-gray-50 p-4 text-center shadow-sm backface-hidden rotate-y-180"
-          >
+          <div className="hk-flip-face hk-flip-back flex flex-col items-center border border-line bg-paper p-4 text-center">
             <GradeBadge word={word} />
             <div className="absolute right-2 top-2">{playBtn}</div>
             <div className="relative max-w-full min-w-0">
-              <div className="truncate text-xl font-bold leading-tight text-gray-900">
+              <div className="truncate text-xl font-bold leading-tight text-ink">
                 {word.term}
               </div>
               {word.reading && (
-                <div className="truncate text-xs text-gray-400">{word.reading}</div>
+                <div className="truncate text-xs text-ink-mute">{word.reading}</div>
               )}
             </div>
             <div className="relative mt-2 flex w-full flex-1 flex-col items-center overflow-hidden">
               {word.meaning_mn && (
-                <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-gray-900">
+                <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">
                   {word.meaning_mn}
                 </div>
               )}
               {word.meaning && (
-                <div className="mt-1 line-clamp-2 break-words text-xs leading-snug text-gray-400">
+                <div className="mt-1 line-clamp-2 break-words text-xs leading-snug text-ink-mute">
                   {word.meaning}
                 </div>
               )}
             </div>
-            <div className="relative flex w-full justify-center gap-3 border-t border-gray-200 pt-2">
+            <div className="relative flex w-full justify-center gap-3 border-t border-line-soft pt-2">
               {editBtn}
               {removeBtn}
             </div>
@@ -127,11 +124,11 @@ export default function WordRow({
       <button onClick={onEdit} className="min-w-0 flex-1 text-left" title={T.edit}>
         <div className="flex items-baseline gap-2">
           <span className="font-medium">{word.term}</span>
-          {word.reading && <span className="text-sm text-gray-500">{word.reading}</span>}
+          {word.reading && <span className="text-sm text-ink-soft">{word.reading}</span>}
         </div>
-        {word.meaning && <div className="break-words text-sm text-gray-600">{word.meaning}</div>}
+        {word.meaning && <div className="break-words text-sm text-ink-soft">{word.meaning}</div>}
         {word.meaning_mn && (
-          <div className="break-words text-sm text-gray-900">{word.meaning_mn}</div>
+          <div className="break-words text-sm text-ink">{word.meaning_mn}</div>
         )}
       </button>
       <div className="flex shrink-0 items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100">

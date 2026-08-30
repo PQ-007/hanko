@@ -57,6 +57,31 @@ class Repository {
     await _db.from('decks').insert({'user_id': user.id, 'name': name});
   }
 
+  /// Renames a deck. `updated_at` is bumped by a trigger, so the extension's
+  /// next sync pulls the new name without anything here having to stamp it —
+  /// and last-write-wins on that column means a rename can't be clobbered by a
+  /// stale cached copy on another device.
+  Future<void> renameDeck(String deckId, String name) async {
+    await _db.from('decks').update({'name': name}).eq('id', deckId);
+  }
+
+  /// Deletes a deck, matching the web app's behaviour exactly
+  /// (web/src/app/decks/_components/DeckHeader.tsx): tombstone the words, then
+  /// the deck.
+  ///
+  /// Order matters. Words first means a failure part-way leaves a live deck
+  /// holding deleted words — visibly odd but harmless. The reverse order would
+  /// leave live words stranded in a deleted deck, reachable by nothing.
+  ///
+  /// Cards are deliberately left alone. `review_queue()` joins through `words`
+  /// and filters `deleted = false`, so the cards drop out of the queue on their
+  /// own, while review_log keeps the history — which means restoring a deck
+  /// would restore its schedules intact rather than resetting every card.
+  Future<void> deleteDeck(String deckId) async {
+    await _db.from('words').update({'deleted': true}).eq('deck_id', deckId);
+    await _db.from('decks').update({'deleted': true}).eq('id', deckId);
+  }
+
   /// The recognition card is created server-side by a trigger on `words`
   /// (0006_cards.sql), so nothing here has to know about the cards table —
   /// same as the extension, which predates it entirely.
@@ -145,6 +170,11 @@ class Repository {
     required String rating,
     required String logId,
     int? durationMs,
+    // 'review' (the default) is a real scheduling answer. 'drill' logs the
+    // answer but the server returns the card completely untouched — see the
+    // `p_source <> 'review'` branch in 0009_review_card.sql — which is what
+    // makes the speed round safe to answer without disturbing SM-2 state.
+    String source = 'review',
   }) async {
     final row = await _db.rpc<Map<String, dynamic>>(
       'review_card',
@@ -153,9 +183,38 @@ class Repository {
         'p_rating': rating,
         'p_duration_ms': durationMs,
         'p_log_id': logId,
+        'p_source': source,
       },
     );
     return row;
+  }
+
+  /// Mature review cards, for the speed round drill. Unlike `review_queue()`
+  /// this ignores `due_at` and the daily caps on purpose — a drill is extra,
+  /// opt-in practice, not part of today's scheduled workload, so it must not
+  /// compete with it for the cap.
+  Future<List<QueueCard>> matureCards({String? deckId, int limit = 30}) async {
+    final rows = await _db.rpc<List<dynamic>>(
+      'mature_cards',
+      params: {'p_deck_id': deckId, 'p_limit': limit},
+    );
+    return rows
+        .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  /// Cards with a high lapse count, for a focused rescue session. Also ignores
+  /// `due_at` — the point is to reach a leech *before* the scheduler would, and
+  /// unlike the drill queue these answers use the default `source: 'review'`,
+  /// so a successful rescue is a real review that reschedules the card.
+  Future<List<QueueCard>> leechCards({String? deckId, int limit = 30}) async {
+    final rows = await _db.rpc<List<dynamic>>(
+      'leech_cards',
+      params: {'p_deck_id': deckId, 'p_limit': limit},
+    );
+    return rows
+        .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
+        .toList();
   }
 
   /// Reviews per SRS day, newest last. The server buckets by the same day
@@ -178,6 +237,24 @@ class Repository {
       'undo_review',
       params: {'p_log_id': logId},
     );
+  }
+
+  /// Available streak-freeze grace days (`profiles.streak_freezes`,
+  /// 0014_gamification.sql). Falls back to 0 rather than throwing — a stats
+  /// screen should never break because one extra column couldn't be read.
+  Future<int> streakFreezes() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return 0;
+    try {
+      final row = await _db
+          .from('profiles')
+          .select('streak_freezes')
+          .eq('id', user.id)
+          .maybeSingle();
+      return (row?['streak_freezes'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
   /// The SRS day boundary is evaluated server-side in the user's timezone, and

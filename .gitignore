@@ -62,3 +62,9 @@ web/.vercel/
 *.log
 
 *.zip
+
+# Raw purchased asset packs (source .aseprite files + duplicate variants,
+# no license file shipped with either pack). The actual game-ready sprites
+# are extracted into web/public/battle/ and tracked there; this folder is
+# kept locally as a backup of the editable originals, never committed.
+/assets/

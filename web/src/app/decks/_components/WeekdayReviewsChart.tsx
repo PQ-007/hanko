@@ -45,10 +45,10 @@ export default function WeekdayReviewsChart({
   const todayIdx = new Date().getDay();
 
   return (
-    <div ref={ref} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-500">{T.weekdayTitle}</h3>
-        <p className="text-xs text-gray-400">{T.weekdaySummary(grand)}</p>
+        <h3 className="text-sm font-semibold text-ink-soft">{T.weekdayTitle}</h3>
+        <p className="text-xs text-ink-mute">{T.weekdaySummary(grand)}</p>
       </div>
 
       <div className="flex items-end gap-3">
@@ -70,7 +70,7 @@ export default function WeekdayReviewsChart({
                     ? undefined
                     : `bottom 700ms cubic-bezier(.22,1,.36,1) ${i * 70}ms`,
                 }}
-                className="absolute left-1/2 -translate-x-1/2 text-xs font-medium text-gray-500"
+                className="absolute left-1/2 -translate-x-1/2 text-xs font-medium text-ink-soft"
               >
                 {count}
               </span>
@@ -86,7 +86,7 @@ export default function WeekdayReviewsChart({
                 className="absolute bottom-0 left-1/2 w-6 -translate-x-1/2 rounded-t-[4px]"
               />
               {hover === i && (
-                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-control bg-ink px-2 py-1 text-[11px] font-medium text-paper shadow-lift">
                   {T.reviewsN(count)} · {T.perWeekAvg(Math.round(avg * 10) / 10)}
                 </div>
               )}
@@ -94,14 +94,14 @@ export default function WeekdayReviewsChart({
           );
         })}
       </div>
-      <div className="h-px bg-gray-200" />
+      <div className="h-px bg-paper-deep" />
       <div className="mt-1.5 flex gap-3">
         {WEEKDAY_MN.map((w, i) => (
           <span
             key={w}
             // Today is marked with weight, not color — the bars own the hue.
             className={`flex-1 text-center text-xs ${
-              i === todayIdx ? "font-semibold text-gray-700" : "text-gray-400"
+              i === todayIdx ? "font-semibold text-ink" : "text-ink-mute"
             }`}
           >
             {w}

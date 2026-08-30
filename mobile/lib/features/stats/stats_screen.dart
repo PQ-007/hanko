@@ -8,6 +8,10 @@ final _activityProvider = FutureProvider<Map<DateTime, int>>(
   (ref) => ref.watch(repositoryProvider).reviewActivity(),
 );
 
+final _freezesProvider = FutureProvider<int>(
+  (ref) => ref.watch(repositoryProvider).streakFreezes(),
+);
+
 /// Streaks and recent activity, matching the web dashboard.
 ///
 /// Everything here is derived from `review_activity()`, so the numbers agree
@@ -19,6 +23,11 @@ class StatsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activity = ref.watch(_activityProvider);
+    // Read as its already-resolved value, defaulting to 0 while it loads: a
+    // freeze count that briefly reads 0 is a harmless one-frame flicker,
+    // whereas gating the whole streak card on a second network round trip
+    // is not worth it for a number this small.
+    final freezes = ref.watch(_freezesProvider).value ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Статистик')),
@@ -28,22 +37,23 @@ class StatsScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           child: Text('Уншиж чадсангүй:\n$e'),
         ),
-        data: (days) => _StatsBody(days: days),
+        data: (days) => _StatsBody(days: days, freezesAvailable: freezes),
       ),
     );
   }
 }
 
 class _StatsBody extends StatelessWidget {
-  const _StatsBody({required this.days});
+  const _StatsBody({required this.days, required this.freezesAvailable});
 
   final Map<DateTime, int> days;
+  final int freezesAvailable;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final now = DateTime.now();
-    final streak = currentStreak(days.keys, now);
+    final streak = currentStreak(days.keys, now, freezesAvailable: freezesAvailable);
     final best = longestStreak(days.keys);
     final total = days.values.fold<int>(0, (a, b) => a + b);
 
@@ -76,6 +86,14 @@ class _StatsBody extends StatelessWidget {
                   'Хамгийн урт: $best өдөр',
                   style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                 ),
+                if (freezesAvailable > 0) ...[
+                  const SizedBox(height: 6),
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: const Icon(Icons.ac_unit, size: 14),
+                    label: Text('$freezesAvailable хамгаалалт'),
+                  ),
+                ],
               ],
             ),
           ),

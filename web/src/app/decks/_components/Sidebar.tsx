@@ -98,15 +98,15 @@ export default function Sidebar({
         }}
         onClick={() => onSelect(d.id)}
         style={{ paddingLeft: 12 + depth * 16 }}
-        className={`flex w-full cursor-grab items-center gap-1.5 py-1 pr-2 text-left transition hover:bg-gray-100 active:cursor-grabbing ${
+        className={`flex w-full cursor-grab items-center gap-1.5 py-1 pr-2 text-left transition hover:bg-paper-dim active:cursor-grabbing ${
           d.id === selectedId
-            ? "bg-gray-900 font-medium text-white"
-            : "text-gray-700"
+            ? "bg-seal font-medium text-white"
+            : "text-ink"
         }`}
       >
-        <Layers size={14} className="shrink-0 text-gray-400" />
+        <Layers size={14} className="shrink-0 text-ink-mute" />
         <span className="truncate">{d.name}</span>
-        <span className="ml-auto shrink-0 pl-2 text-xs text-gray-400">{d.word_count}</span>
+        <span className="ml-auto shrink-0 pl-2 text-xs text-ink-mute">{d.word_count}</span>
       </button>
     );
   }
@@ -115,31 +115,31 @@ export default function Sidebar({
 
   return (
     <aside className="w-full shrink-0 lg:w-64">
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <span className="text-sm font-semibold text-gray-700">{T.decks}</span>
+      <div className="hk-card">
+        <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
+          <span className="text-sm font-semibold text-ink">{T.decks}</span>
           <button
             onClick={() => setAddingFolder((v) => !v)}
             title={T.newFolderTitle}
-            className="rounded p-1 text-gray-600 transition hover:bg-gray-50"
+            className="rounded-control p-1 text-ink-soft transition hover:bg-paper-dim"
           >
             <FolderPlus size={16} />
           </button>
         </div>
 
         {addingFolder && (
-          <div className="flex gap-2 border-b border-gray-100 p-3">
+          <div className="flex gap-2 border-b border-line-soft p-3">
             <input
               autoFocus
               value={folderName}
               onChange={(e) => setFolderName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && createFolder()}
               placeholder={T.newFolder}
-              className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+              className="min-w-0 flex-1 rounded-control border border-line px-2 py-1 text-sm"
             />
             <button
               onClick={createFolder}
-              className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white transition hover:bg-gray-800"
+              className="hk-btn hk-btn-primary px-3 py-1 text-sm"
             >
               {T.add}
             </button>
@@ -147,9 +147,9 @@ export default function Sidebar({
         )}
 
         <div className="max-h-[55vh] overflow-auto py-1 text-[13px]">
-          {loading && <div className="px-3 py-2 text-gray-400">{T.loading}</div>}
+          {loading && <div className="px-3 py-2 text-ink-mute">{T.loading}</div>}
           {!loading && decks.length === 0 && folders.length === 0 && (
-            <div className="px-3 py-2 text-gray-400">{T.noDecks}</div>
+            <div className="px-3 py-2 text-ink-mute">{T.noDecks}</div>
           )}
 
           {/* Folders with their decks (drop a deck here to file it) */}
@@ -165,39 +165,39 @@ export default function Sidebar({
                 }}
                 onDragLeave={() => setDragOver((p) => (p === f.id ? null : p))}
                 onDrop={(e) => onDrop(e, f.id)}
-                className={dragOver === f.id ? "rounded bg-gray-50 ring-1 ring-gray-300" : ""}
+                className={dragOver === f.id ? "rounded-control bg-paper ring-1 ring-line" : ""}
               >
-                <div className="group flex items-center hover:bg-gray-100">
+                <div className="group flex items-center hover:bg-paper-dim">
                   <button
                     onClick={() => setCollapsed((c) => ({ ...c, [f.id]: !isCollapsed }))}
-                    className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1 text-left text-gray-700"
+                    className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1 text-left text-ink"
                   >
                     {isCollapsed ? (
-                      <ChevronRight size={14} className="shrink-0 text-gray-400" />
+                      <ChevronRight size={14} className="shrink-0 text-ink-mute" />
                     ) : (
-                      <ChevronDown size={14} className="shrink-0 text-gray-400" />
+                      <ChevronDown size={14} className="shrink-0 text-ink-mute" />
                     )}
                     {isCollapsed ? (
-                      <FolderClosed size={15} className="shrink-0 text-gray-500" />
+                      <FolderClosed size={15} className="shrink-0 text-ink-soft" />
                     ) : (
-                      <FolderOpen size={15} className="shrink-0 text-gray-500" />
+                      <FolderOpen size={15} className="shrink-0 text-ink-soft" />
                     )}
                     <span className="truncate font-medium">{f.name}</span>
-                    <span className="ml-auto shrink-0 pr-1 text-xs text-gray-400">
+                    <span className="ml-auto shrink-0 pr-1 text-xs text-ink-mute">
                       {children.length}
                     </span>
                   </button>
                   <button
                     onClick={() => deleteFolder(f)}
                     title={T.delete}
-                    className="px-2 text-gray-300 opacity-0 transition hover:text-gray-900 group-hover:opacity-100"
+                    className="px-2 text-ink-mute opacity-0 transition hover:text-ink group-hover:opacity-100"
                   >
                     <X size={14} />
                   </button>
                 </div>
                 {!isCollapsed &&
                   (children.length === 0 ? (
-                    <div className="py-1 pl-9 text-xs text-gray-300">{T.emptyFolder}</div>
+                    <div className="py-1 pl-9 text-xs text-ink-mute">{T.emptyFolder}</div>
                   ) : (
                     children.map((d) => <DeckItem key={d.id} d={d} depth={1} />)
                   ))}
@@ -214,11 +214,11 @@ export default function Sidebar({
             onDragLeave={() => setDragOver((p) => (p === "ungrouped" ? null : p))}
             onDrop={(e) => onDrop(e, null)}
             className={`mt-1 min-h-[2rem] ${
-              dragOver === "ungrouped" ? "rounded bg-gray-50 ring-1 ring-gray-300" : ""
+              dragOver === "ungrouped" ? "rounded-control bg-paper ring-1 ring-line" : ""
             }`}
           >
             {folders.length > 0 && (
-              <div className="px-3 pb-0.5 pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+              <div className="px-3 pb-0.5 pt-1 text-[11px] font-medium uppercase tracking-wide text-ink-mute">
                 {T.noFolder}
               </div>
             )}
@@ -228,17 +228,17 @@ export default function Sidebar({
           </div>
         </div>
 
-        <div className="flex gap-2 border-t border-gray-100 p-3">
+        <div className="flex gap-2 border-t border-line-soft p-3">
           <input
             value={deckName}
             onChange={(e) => setDeckName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && createDeck()}
             placeholder={T.newDeck}
-            className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-control border border-line px-2 py-1 text-sm"
           />
           <button
             onClick={createDeck}
-            className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white transition hover:bg-gray-800"
+            className="hk-btn hk-btn-primary px-3 py-1 text-sm"
           >
             {T.add}
           </button>

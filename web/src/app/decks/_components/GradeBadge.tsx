@@ -12,7 +12,7 @@ export default function GradeBadge({ word }: { word: Word }) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute -right-2 top-1/2 -translate-y-1/2 select-none text-[110px] font-semibold leading-none tracking-tighter text-gray-200/70"
+      className="pointer-events-none absolute -right-2 top-1/2 -translate-y-1/2 select-none text-[110px] font-semibold leading-none tracking-tighter text-paper-deep/70"
     >
       {label}
     </span>
