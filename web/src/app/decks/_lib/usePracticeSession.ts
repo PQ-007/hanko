@@ -28,14 +28,26 @@ export interface AnsweredStep {
 }
 
 // "due"  — the real scheduled queue (review_queue), answers reschedule cards.
-// "free" — any card regardless of due date (practice_cards), answers are
-//          logged with source='drill' and change no scheduling state at all.
+// "free" — any card regardless of due date (practice_cards), answers change no
+//          scheduling state at all.
+export type SessionMode = "due" | "free";
+
+// What review_card() is told the answer was. Deliberately separate from
+// SessionMode: the mode picks which queue to read, the source decides what the
+// answer means, and conflating them is how the wrong one gets sent.
+//
+//   'review' — classic self-rated practice.
+//   'quiz'   — Monster Hunt. Real scheduling, but labelled, so a mode with a
+//              25% guess floor can be compared against one without
+//              (0018_quiz_source.sql). Identical to 'review' everywhere else:
+//              streaks, heatmap and the daily caps all count it.
+//   'drill'  — off-schedule practice. Logged and then discarded server-side.
 //
 // The distinction is enforced server-side too: review_card() returns the card
-// untouched for any source other than 'review' (0009_review_card.sql), so a
-// bug here can't silently corrupt real scheduling — the worst case is a drill
-// answer that fails to count, never a practice answer that wrongly does.
-export type SessionMode = "due" | "free";
+// untouched for any source it doesn't recognise as real practice, so a bug
+// here can't silently corrupt scheduling — the worst case is a drill answer
+// that fails to count, never a drill answer that wrongly does.
+export type ReviewSource = "review" | "quiz" | "drill";
 
 export interface UsePracticeSessionResult {
   queue: QueueCard[] | null;
@@ -57,9 +69,27 @@ export interface UsePracticeSessionResult {
   pct: number;
 }
 
+export interface PracticeSessionOptions {
+  mode?: SessionMode;
+  source?: ReviewSource;
+  /**
+   * Whether this hook installs the classic keyboard shortcuts (space to
+   * reveal, 1-4 to rate, u to undo).
+   *
+   * Monster Hunt must set this to false. Its interaction is a four-option
+   * pick with no reveal step, so the classic bindings do not adapt to it —
+   * they bypass it. Two presses of the space bar used to call rate("good")
+   * straight through this hook: the card was scheduled and the queue advanced
+   * while the fight never saw the answer at all, so no damage was rolled, no
+   * HP moved, and `events` — which the HP bars are folded from — stayed
+   * empty. The arena installs its own bindings instead.
+   */
+  shortcuts?: boolean;
+}
+
 export function usePracticeSession(
   deckId: string | null,
-  mode: SessionMode = "due"
+  { mode = "due", source = "review", shortcuts = true }: PracticeSessionOptions = {}
 ): UsePracticeSessionResult {
   const [queue, setQueue] = useState<QueueCard[] | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -121,10 +151,7 @@ export function usePracticeSession(
         p_rating: rating,
         p_duration_ms: durationMs,
         p_log_id: logId,
-        // 'drill' in free mode: the server then logs the answer and returns
-        // the card untouched, so off-schedule practice can't reschedule a
-        // real card or inflate streaks/stats.
-        p_source: mode === "free" ? "drill" : "review",
+        p_source: source,
       });
 
       if (rpcError) {
@@ -160,7 +187,9 @@ export function usePracticeSession(
         ]);
       }
     },
-    [card, mode]
+    // `mode` is no longer read here — it picks the queue RPC, not the answer's
+    // meaning. That split is the point of ReviewSource.
+    [card, source]
   );
 
   const undo = useCallback(async () => {
@@ -201,10 +230,12 @@ export function usePracticeSession(
     });
   }, [history]);
 
-  // Keyboard: space/enter reveals, 1-4 rate, u undoes. Lives in the hook, not
-  // the component, so Monster Hunt gets identical shortcuts by construction
-  // rather than a second hand-copied listener that can drift.
+  // Keyboard: space/enter reveals, 1-4 rate, u undoes. Lives in the hook so the
+  // classic screen and anything else that self-rates share one listener —
+  // but opt-out, because a mode whose interaction is shaped differently needs
+  // its own (see PracticeSessionOptions.shortcuts).
   useEffect(() => {
+    if (!shortcuts) return;
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement | null;
@@ -231,7 +262,7 @@ export function usePracticeSession(
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [card, revealed, rate, undo]);
+  }, [card, revealed, rate, undo, shortcuts]);
 
   const remaining = queue?.length ?? 0;
   const total = reviewedCount + remaining;

@@ -12,6 +12,12 @@ final _freezesProvider = FutureProvider<int>(
   (ref) => ref.watch(repositoryProvider).streakFreezes(),
 );
 
+/// The scheduler's today. Null while loading, or if 0019 isn't applied — the
+/// screen then falls back to the device's date, which is what it did before.
+final _srsTodayProvider = FutureProvider<DateTime?>(
+  (ref) => ref.watch(repositoryProvider).currentSrsDay(),
+);
+
 /// Streaks and recent activity, matching the web dashboard.
 ///
 /// Everything here is derived from `review_activity()`, so the numbers agree
@@ -28,6 +34,7 @@ class StatsScreen extends ConsumerWidget {
     // whereas gating the whole streak card on a second network round trip
     // is not worth it for a number this small.
     final freezes = ref.watch(_freezesProvider).value ?? 0;
+    final srsToday = ref.watch(_srsTodayProvider).value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Статистик')),
@@ -37,22 +44,37 @@ class StatsScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           child: Text('Уншиж чадсангүй:\n$e'),
         ),
-        data: (days) => _StatsBody(days: days, freezesAvailable: freezes),
+        data: (days) => _StatsBody(
+          days: days,
+          freezesAvailable: freezes,
+          srsToday: srsToday,
+        ),
       ),
     );
   }
 }
 
 class _StatsBody extends StatelessWidget {
-  const _StatsBody({required this.days, required this.freezesAvailable});
+  const _StatsBody({
+    required this.days,
+    required this.freezesAvailable,
+    this.srsToday,
+  });
 
   final Map<DateTime, int> days;
   final int freezesAvailable;
 
+  /// The scheduler's current day, or null to fall back to the device's.
+  final DateTime? srsToday;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
+    // `now` still drives the week strip below, which is a display window and
+    // is fine anchored to the device. The streak is not: it has to start on
+    // the same day boundary review_activity() bucketed by, or it counts from a
+    // day the server has not opened yet.
+    final now = srsToday ?? DateTime.now();
     final streak = currentStreak(days.keys, now, freezesAvailable: freezesAvailable);
     final best = longestStreak(days.keys);
     final total = days.values.fold<int>(0, (a, b) => a + b);

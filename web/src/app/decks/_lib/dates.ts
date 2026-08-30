@@ -71,8 +71,26 @@ export function longestStreak(dayKeys: Set<string>): number {
 // spend/earn economy yet. A freeze only ever covers a *past, completed* day —
 // today not having activity yet isn't a miss, so the initial skip-to-yesterday
 // stays unconditional.
-export function currentStreak(dayKeys: Set<string>, freezesAvailable = 0): number {
-  const cursor = startOfDay(new Date());
+export function currentStreak(
+  dayKeys: Set<string>,
+  freezesAvailable = 0,
+  // The scheduler's idea of today (current_srs_day(), 0019), as a YYYY-MM-DD
+  // key. Optional, and it falls back to the device's own date so a failed RPC
+  // degrades to the old behaviour rather than to no streak at all.
+  //
+  // Why it needs to come from the server: review_activity() buckets by the
+  // user's SRS day, which rolls over at day_cutoff_hour (4am by default).
+  // Between local midnight and that cutoff the device is a day ahead of the
+  // scheduler, so the walk starts on a key the server has not opened yet. It
+  // usually self-corrects via the skip-to-yesterday below — but by accident,
+  // not by construction, and not at all on a device whose clock or timezone
+  // disagrees with the profile.
+  today?: string
+): number {
+  // `T00:00:00` with no zone parses as local midnight, which is what makes the
+  // key round-trip through localDateKey unchanged. Same trick longestStreak
+  // already uses.
+  const cursor = today ? new Date(`${today}T00:00:00`) : startOfDay(new Date());
   if (!dayKeys.has(localDateKey(cursor))) cursor.setDate(cursor.getDate() - 1);
   let streak = 0;
   let freezesLeft = freezesAvailable;

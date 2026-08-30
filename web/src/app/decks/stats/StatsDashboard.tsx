@@ -44,6 +44,10 @@ export default function StatsDashboard() {
   const [words, setWords] = useState<Word[]>([]);
   const [reviews, setReviews] = useState<ActivityRow[] | null>(null);
   const [freezes, setFreezes] = useState(0);
+  // The scheduler's today, from current_srs_day() (0019). Null until it lands
+  // or if the RPC is missing, in which case currentStreak falls back to the
+  // device's date — the behaviour this replaced.
+  const [srsToday, setSrsToday] = useState<string | null>(null);
   const [due, setDue] = useState<DueSummary | null>(null);
   // True when review_log isn't there yet (migration 0005 not applied), so the
   // heatmap is running on the approximate last_reviewed_at fallback.
@@ -52,7 +56,7 @@ export default function StatsDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [decksRes, wordsRes, logRes, dueRes, freezeRes] = await Promise.all([
+    const [decksRes, wordsRes, logRes, dueRes, todayRes, freezeRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
       supabase.from("words").select("*").eq("deleted", false),
       // Bucketed server-side by SRS day. The RPC also excludes undone answers
@@ -60,6 +64,9 @@ export default function StatsDashboard() {
       // user took back or by gamified modes.
       supabase.rpc("review_activity", { p_days: 400 }),
       supabase.rpc("due_summary"),
+      // Cheap, and it decides which day the streak walk starts on. Bundled
+      // into the same Promise.all so it costs no extra round trip.
+      supabase.rpc("current_srs_day"),
       // profiles.streak_freezes (0014_gamification.sql). A missing column
       // (migration not applied) or missing row degrades to 0 rather than
       // failing the whole dashboard load.
@@ -69,6 +76,8 @@ export default function StatsDashboard() {
     // Falls back to the client-side count below if 0011 isn't applied yet.
     const dueRows = dueRes.data as DueSummary[] | null;
     setDue(dueRes.error ? null : (dueRows?.[0] ?? null));
+
+    setSrsToday(todayRes.error ? null : ((todayRes.data as string | null) ?? null));
 
     const freezeRow = freezeRes.data as { streak_freezes: number } | null;
     setFreezes(freezeRes.error ? 0 : (freezeRow?.streak_freezes ?? 0));
@@ -145,7 +154,7 @@ export default function StatsDashboard() {
   const masteredPct = words.length === 0 ? 0 : Math.round((mastered / words.length) * 100);
 
   const activeDays = new Set(activity.keys());
-  const streak = currentStreak(activeDays, freezes);
+  const streak = currentStreak(activeDays, freezes, srsToday ?? undefined);
   const best = Math.max(streak, longestStreak(activeDays));
 
   const todayKey = localDateKey(now);

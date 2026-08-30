@@ -49,6 +49,12 @@ export default function QuizOptions({
               {slot.letter}
             </span>
             <span className="line-clamp-3 leading-snug">{opt.answerText}</span>
+            {/* The number the key binding uses, shown so the shortcut is
+                discoverable rather than folklore. Hidden on touch, where there
+                is no keyboard to press it with. */}
+            <kbd className="ml-auto hidden shrink-0 self-start rounded border border-black/10 px-1 text-[10px] font-medium text-ink-mute lg:block">
+              {i + 1}
+            </kbd>
           </button>
         );
       })}

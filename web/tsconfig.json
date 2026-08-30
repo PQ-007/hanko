@@ -11,6 +11,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // `node --test` resolves imports the way Node does, so the test files have
+    // to name the .ts extension explicitly. Safe here because noEmit is on:
+    // nothing is ever written out with an unresolvable path.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
