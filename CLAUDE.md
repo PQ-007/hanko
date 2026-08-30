@@ -263,27 +263,83 @@ capture — but only the extension is positioned to collect it.
 
 ---
 
-## Phase 2 — Parity polish
+## Phase 2 — Parity polish (done)
 
-- Streaks/stats screens matching `web/src/app/decks/stats/`
-- Deck management: create, edit, delete, import
+- Streaks/stats screens matching `web/src/app/decks/stats/`. Both clients read
+  one server-side `review_activity()` RPC (0013) rather than each computing
+  streaks client-side — that fixed a real bug, where the web bucketed activity
+  by local midnight while the scheduler rolls the day over at the 4am cutoff,
+  so a 1am review could extend a streak the scheduler didn't believe in yet.
+- Deck management: create, rename, delete on mobile. Delete matches the web
+  app's semantics exactly (`DeckHeader.tsx`) — tombstone the words, then the
+  deck; cards are left alone so `review_queue()` drops them by filtering
+  through `words.deleted`, meaning a restored deck would come back with its
+  schedules intact rather than every card resetting to new.
+- **Import: deliberately skipped.** There was no import anywhere in the
+  project to match — only export (`/api/decks/[id]/apkg`, `/txt`) — and the
+  export format doesn't round-trip cleanly (`frontText`/`backText` flatten
+  reading and meaning_mn in ways that are lossy to parse back). The extension
+  already covers bulk capture, so this isn't worth inventing a new format for.
 - Audio: precache the day's queue from the `word-audio` bucket so review works
-  offline on a commute. Requires the audio route to accept a bearer token.
-- Offline: **online-first with a local cache**, not a third sync engine. Cache
-  the day's queue in Drift and queue up `review_card` calls for replay. Do not
-  port `src/sync.js`'s last-write-wins model into Dart — two hand-written sync
-  engines diverge silently, and 0.1 already keeps review state off that path.
+  offline on a commute. Required the audio route to accept a bearer token
+  (`web/src/lib/supabase/bearer.ts`) — it now accepts either the web's cookie
+  session or `Authorization: Bearer`, scoped by RLS to the caller's own token,
+  not a service-role bypass.
+- Offline: **online-first with a local cache**, not a third sync engine
+  (`mobile/lib/core/offline_review.dart`). Drift caches the last queue fetched
+  (replaced wholesale, never merged) and a durable outbox replays queued
+  answers in order. This is safe only because `review_card()` is idempotent on
+  the device-generated log id — an offline answer retried after reconnecting
+  can't double-count a review or inflate a streak.
 
 ---
 
 ## Phase 3 — Gamified modes (optional; must not delay Phases 0–2)
 
-### 3.1 Ship the cheap gamification first
-Higher retention per hour of work than PvP, and none of the networking risk:
-- Daily goal + streak, with a freeze/shield
-- "Speed round" drill over already-mature cards — `source='drill'`, no
-  scheduling impact
-- Leech-rescue sessions targeting high-`lapses` cards
+### 3.1 Ship the cheap gamification first (done)
+Higher retention per hour of work than PvP, and none of the networking risk.
+Migration `0014_gamification.sql`, verified against real Postgres — the 21-day
+mature-card cutoff, the 4-lapse leech threshold, drill answers leaving
+`interval_days`/`due_at` completely untouched while still logging, leech
+rescue genuinely rescheduling via the default `source='review'`, and RLS
+blocking cross-user reads on both new RPCs.
+
+- **Streak freeze**: `profiles.streak_freezes` (default 2), read-only capacity
+  rather than a spend/earn economy — deliberately deferred, see the migration's
+  comment. `currentStreak()` in both `mobile/lib/features/stats/streaks.dart`
+  and `web/src/app/decks/_lib/dates.ts` bridges up to that many single-day
+  gaps, and **only if the bridge reconnects to a real active day** — a
+  dangling bridge that runs out of budget before finding one is stripped back
+  out. Without that check a brand-new account with zero reviews ever would
+  show a fabricated streak from its default freeze allotment alone; caught by
+  a test (`streaks_test.dart`), not by inspection.
+- **Speed round** (`mature_cards()` RPC + `SpeedRoundScreen`): mature is
+  `interval_days > 21`, matching `gradeFor()`'s existing B/A cutoff in
+  `web/src/lib/srs.ts` rather than inventing a second definition. Random
+  order, ignores `due_at` and the daily caps — it's bonus practice, not part
+  of the scheduled workload, so it must not compete with it for the cap. No
+  offline queue and no undo: `source='drill'` answers change nothing
+  server-side, so there is no scheduling state to protect.
+- **Leech rescue** (`leech_cards()` RPC + `LeechRescueScreen`): lapses ≥ 4 —
+  a deliberately low, unresearched starting threshold (Anki's own default is
+  8, calibrated for years of imported history this app doesn't have yet),
+  worth revisiting once there's real lapse data. Also ignores `due_at`
+  (reaching a leech before the scheduler would is the point), but unlike the
+  speed round this uses the *default* `source='review'`: a successful rescue
+  is real practice and genuinely reschedules the card. Online-only by design —
+  a proactive opt-in session failing outright when offline is an acceptable,
+  honest limit, unlike the main due queue which must never fail offline.
+
+**Known pre-existing gap, adjacent to this work but not caused by it:** both
+clients compute "today" for the streak walk from the device's local clock
+(`DateTime.now()` / `new Date()`), not from the server's SRS-day cutoff. In the
+narrow window between local midnight and `day_cutoff_hour` (up to 4 hours by
+default), this can misalign by exactly one day — usually self-corrected by the
+existing "skip to yesterday if today's empty" rule, but not guaranteed in every
+case. The activity data itself is correctly SRS-day-bucketed (0013); only the
+"what day is today" input to the walk is not. Fixing it properly means both
+clients asking the server what the current SRS day is, rather than computing
+it locally — a small, well-scoped follow-up, not done here.
 
 ### 3.2 Online 1v1 battle mode
 Fast-paced vocabulary duel, in its own feature folder

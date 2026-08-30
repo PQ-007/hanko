@@ -5,7 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/repository.dart';
 import '../../models/queue_card.dart';
+import '../review/leech_rescue_screen.dart';
 import '../review/review_screen.dart';
+import '../review/speed_round_screen.dart';
 import '../settings/reminder_tile.dart';
 import '../stats/stats_screen.dart';
 import 'deck_detail_screen.dart';
@@ -89,32 +91,53 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
     ref.invalidate(_decksProvider);
   }
 
-  Future<void> _createDeck(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Шинэ багц'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Нэр',
-            border: OutlineInputBorder(),
+  /// Shared by create and rename: one dialog, so the two can't drift apart in
+  /// validation or wording.
+  Future<String?> _promptDeckName(
+    BuildContext context, {
+    required String title,
+    required String action,
+    String initial = '',
+  }) async {
+    final controller = TextEditingController(text: initial);
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            // Puts the caret at the end rather than selecting the whole name,
+            // since a rename is usually an edit, not a replacement.
+            decoration: const InputDecoration(
+              labelText: 'Нэр',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
           ),
-          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Болих'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+              child: Text(action),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Болих'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Үүсгэх'),
-          ),
-        ],
-      ),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<void> _createDeck(BuildContext context, WidgetRef ref) async {
+    final name = await _promptDeckName(
+      context,
+      title: 'Шинэ багц',
+      action: 'Үүсгэх',
     );
     if (name == null || name.isEmpty) return;
     try {
@@ -124,6 +147,72 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Үүсгэж чадсангүй: $e')));
+      }
+    }
+  }
+
+  Future<void> _renameDeck(
+    BuildContext context,
+    WidgetRef ref, {
+    required String deckId,
+    required String currentName,
+  }) async {
+    final name = await _promptDeckName(
+      context,
+      title: 'Багц нэрлэх',
+      action: 'Хадгалах',
+      initial: currentName,
+    );
+    // An unchanged name is not an edit — skip the round trip rather than
+    // bumping updated_at and making every other client re-pull the row.
+    if (name == null || name.isEmpty || name == currentName) return;
+    try {
+      await ref.read(repositoryProvider).renameDeck(deckId, name);
+      ref.invalidate(_decksProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Нэрлэж чадсангүй: $e')));
+      }
+    }
+  }
+
+  Future<void> _deleteDeck(
+    BuildContext context,
+    WidgetRef ref, {
+    required String deckId,
+    required String deckName,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('"$deckName" устгах уу?'),
+        content: const Text(
+          'Багц болон доторх бүх үг устана. Буцаах боломжгүй.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Болих'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Устгах'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(repositoryProvider).deleteDeck(deckId);
+      ref.invalidate(_decksProvider);
+      // The deck's cards leave the queue, so today's workload changes too.
+      ref.invalidate(_dueProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Устгаж чадсангүй: $e')));
       }
     }
   }
@@ -143,6 +232,27 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const StatsScreen()),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bolt_outlined),
+            tooltip: 'Хурдан давталт',
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SpeedRoundScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.healing_outlined),
+            tooltip: 'Leech аврах',
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const LeechRescueScreen()),
+              );
+              // A rescue session can reschedule cards for real, unlike the
+              // speed round, so today's workload may have changed.
+              ref.invalidate(_dueProvider);
+            },
           ),
           IconButton(
             icon: const Icon(Icons.create_new_folder_outlined),
@@ -215,7 +325,48 @@ class _DeckListScreenState extends ConsumerState<DeckListScreen> {
                     ListTile(
                       leading: const Icon(Icons.folder_outlined),
                       title: Text(deck['name'] as String? ?? '—'),
-                      trailing: const Icon(Icons.chevron_right, size: 18),
+                      trailing: PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, size: 18),
+                        onSelected: (value) {
+                          if (value == 'rename') {
+                            _renameDeck(
+                              context,
+                              ref,
+                              deckId: deck['id'] as String,
+                              currentName: deck['name'] as String? ?? '',
+                            );
+                          } else if (value == 'delete') {
+                            _deleteDeck(
+                              context,
+                              ref,
+                              deckId: deck['id'] as String,
+                              deckName: deck['name'] as String? ?? '',
+                            );
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: 'rename',
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(Icons.edit_outlined, size: 18),
+                              title: Text('Нэр солих'),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(Icons.delete_outline,
+                                  size: 18, color: Colors.red),
+                              title: Text('Устгах',
+                                  style: TextStyle(color: Colors.red)),
+                            ),
+                          ),
+                        ],
+                      ),
                       onTap: () => _openDeck(
                         context,
                         ref,

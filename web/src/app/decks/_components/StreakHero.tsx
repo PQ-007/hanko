@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Flame, GraduationCap } from "lucide-react";
+import { Flame, GraduationCap, Snowflake } from "lucide-react";
 import { T } from "../_lib/strings";
 import { useCountUp, useInView } from "../_lib/useAnim";
 import ProgressRing from "./ProgressRing";
@@ -14,11 +14,13 @@ export default function StreakHero({
   bestStreak,
   addedToday,
   masteredPct,
+  freezesAvailable = 0,
 }: {
   streak: number;
   bestStreak: number;
   addedToday: number;
   masteredPct: number;
+  freezesAvailable?: number;
 }) {
   const [ref, inView] = useInView<HTMLDivElement>();
   const shown = useCountUp(streak, 1000, inView);
@@ -38,6 +40,11 @@ export default function StreakHero({
           </p>
           <p className="mt-1 text-sm font-medium text-gray-700">{T.streakLabel}</p>
           <p className="text-xs text-gray-400">{T.bestStreak(bestStreak)}</p>
+          {freezesAvailable > 0 && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-sky-600">
+              <Snowflake size={12} /> {T.streakFreezes(freezesAvailable)}
+            </p>
+          )}
         </div>
       </div>
 

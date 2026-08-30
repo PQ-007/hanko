@@ -87,6 +87,7 @@ export const T = {
   statStreak: "Дараалсан өдөр",
   statNewWeek: (n: number) => `Сүүлийн 7 хоногт ${n} үг нэмэгдсэн`,
   streakDays: (n: number) => `${n} өдөр`,
+  streakFreezes: (n: number) => `${n} хамгаалалттай`,
   overallGradeTitle: "Нийт түвшин",
   weekdayTitle: "Гараг тус бүрийн давталт",
   weekdaySummary: (n: number) => `Сүүлийн хагас жилд нийт ${n} давталт`,

@@ -42,6 +42,7 @@ export default function StatsDashboard() {
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
   const [words, setWords] = useState<Word[]>([]);
   const [reviews, setReviews] = useState<ActivityRow[] | null>(null);
+  const [freezes, setFreezes] = useState(0);
   const [due, setDue] = useState<DueSummary | null>(null);
   // True when review_log isn't there yet (migration 0005 not applied), so the
   // heatmap is running on the approximate last_reviewed_at fallback.
@@ -50,7 +51,7 @@ export default function StatsDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [decksRes, wordsRes, logRes, dueRes] = await Promise.all([
+    const [decksRes, wordsRes, logRes, dueRes, freezeRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
       supabase.from("words").select("*").eq("deleted", false),
       // Bucketed server-side by SRS day. The RPC also excludes undone answers
@@ -58,11 +59,18 @@ export default function StatsDashboard() {
       // user took back or by gamified modes.
       supabase.rpc("review_activity", { p_days: 400 }),
       supabase.rpc("due_summary"),
+      // profiles.streak_freezes (0014_gamification.sql). A missing column
+      // (migration not applied) or missing row degrades to 0 rather than
+      // failing the whole dashboard load.
+      supabase.from("profiles").select("streak_freezes").maybeSingle(),
     ]);
 
     // Falls back to the client-side count below if 0011 isn't applied yet.
     const dueRows = dueRes.data as DueSummary[] | null;
     setDue(dueRes.error ? null : (dueRows?.[0] ?? null));
+
+    const freezeRow = freezeRes.data as { streak_freezes: number } | null;
+    setFreezes(freezeRes.error ? 0 : (freezeRow?.streak_freezes ?? 0));
 
     const wordRows = (wordsRes.data as Word[]) ?? [];
     const counts = new Map<string, number>();
@@ -136,7 +144,7 @@ export default function StatsDashboard() {
   const masteredPct = words.length === 0 ? 0 : Math.round((mastered / words.length) * 100);
 
   const activeDays = new Set(activity.keys());
-  const streak = currentStreak(activeDays);
+  const streak = currentStreak(activeDays, freezes);
   const best = Math.max(streak, longestStreak(activeDays));
 
   const todayKey = localDateKey(now);
@@ -155,6 +163,7 @@ export default function StatsDashboard() {
         bestStreak={best}
         addedToday={addedToday}
         masteredPct={masteredPct}
+        freezesAvailable={freezes}
       />
 
       {logMissing && (
