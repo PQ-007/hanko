@@ -12,6 +12,17 @@
 export type SpriteState =
   | "idle" | "walk" | "attack01" | "attack02" | "attack03" | "hurt" | "death" | "block";
 
+// Clip lengths, shared so nothing has to guess at them. One-shots (attacks,
+// hurt, death) run faster than the looping idle/walk — a 6-frame idle at
+// attack speed reads as jittery rather than calm.
+//
+// Exported because BattleArena schedules against them: a projectile is only
+// released once its thrower has finished the throw, so the launch delay IS
+// this number. Duplicating it as a literal there is exactly how the two would
+// drift apart.
+export const ONE_SHOT_MS = 500;
+export const LOOP_MS = 900;
+
 export interface SpriteMeta {
   frames: number;
 }
@@ -62,15 +73,109 @@ export const SPRITES: Record<string, Partial<Record<SpriteState, SpriteMeta>>> =
 };
 
 // Display names, for any future character-select UI.
+// A character's attacks from lightest to heaviest, filtered to the ones it
+// actually ships. Nine of the roster have all three, the Priest has one, most
+// have two.
+//
+// Resolving against the real metadata is the whole point: FighterSprite falls
+// back to `idle` for a pose a character doesn't have, so naming "attack02" and
+// hoping meant the Priest played no attack at all — the swing just vanished.
+export function attackChain(slug: string): SpriteState[] {
+  const meta = SPRITES[slug];
+  const chain: SpriteState[] = [];
+  for (const s of ["attack01", "attack02", "attack03"] as const) {
+    if (meta?.[s]) chain.push(s);
+  }
+  return chain.length > 0 ? chain : ["attack01"];
+}
+
+/** Heaviest clip a character has. Highest tier of {@link attackPose}. */
+export const MAX_ATTACK_TIER = 2;
+
+// Escalation, clamped: tier 2 on a character with two attacks plays its
+// second, not nothing. So a fighter with a short chain simply tops out
+// earlier rather than losing its swing at high tiers.
+export function attackPose(slug: string, tier: number): SpriteState {
+  const chain = attackChain(slug);
+  return chain[Math.min(Math.max(tier, 0), chain.length - 1)];
+}
+
+/** The pose for a critical hit: always the heaviest thing on the sheet. */
+export function critPose(slug: string): SpriteState {
+  return attackPose(slug, MAX_ATTACK_TIER);
+}
+
+// How far each character has to move to sit in the middle of its own box.
+//
+// The source frames are 100x100, but nobody is drawn in the centre of one: the
+// frame is sized for the character's widest animation, so a standing figure
+// ends up wherever that pose leaves it. Measured across the roster, an idle
+// character's content centre lands anywhere from 6px left of the frame centre
+// to 6px right, and up to 10px below it — which is why the hero chips looked
+// like the sprites had been dropped in at random.
+//
+// Each offset is the correction in FRAME pixels, computed from the union of
+// every frame of that character's `idle` clip:  (50 - centre).
+//
+// Deliberately measured from idle alone and then applied to every pose. Per
+// pose it would be "correct" and look wrong: an attack's content centre sits
+// forward of the body, so re-centring per pose would slide the character
+// backwards each time it swung. Planting it by its resting pose is what lets
+// the sword extend from a fighter who stays put.
+export const SPRITE_OFFSET: Record<string, { x: number; y: number }> = {
+  "archer": { x: -1, y: 0 },
+  "armored-axeman": { x: -3, y: 2 },
+  "armored-orc": { x: -4, y: 2 },
+  "armored-skeleton": { x: -4, y: 3 },
+  "bat": { x: 0, y: 2 },
+  "black-knight-a": { x: -2, y: 6 },
+  "black-knight-b": { x: 0, y: 2 },
+  "black-knight-c": { x: -6, y: 6 },
+  "blood-monster-a": { x: -2, y: -1 },
+  "blood-monster-b": { x: -3, y: 3 },
+  "demon-a": { x: -3, y: 1 },
+  "demon-b": { x: -2, y: 0 },
+  "demon-c": { x: -4, y: 4 },
+  "demon-d": { x: -6, y: 4 },
+  "demon-e": { x: -5, y: 2 },
+  "demoness-a": { x: -5, y: 4 },
+  "demoness-b": { x: 1, y: 3 },
+  "elite-orc": { x: -6, y: 4 },
+  "eyeball-monster": { x: 0, y: -2 },
+  "flame-golem": { x: -2, y: 6 },
+  "ghostfire": { x: -2, y: 7 },
+  "greatsword-skeleton": { x: 6, y: 2 },
+  "hellbat": { x: 1, y: 4 },
+  "hellhound": { x: 0, y: 0 },
+  "knight": { x: -4, y: 1 },
+  "knight-templar": { x: -6, y: 0 },
+  "lancer": { x: 0, y: 10 },
+  "lava-slime": { x: 2, y: -1 },
+  "minotaur": { x: -6, y: 1 },
+  "necromancer": { x: 4, y: 5 },
+  "orc": { x: -4, y: 0 },
+  "orc-rider": { x: -3, y: 6 },
+  "priest": { x: -2, y: 2 },
+  "skeleton": { x: -6, y: 0 },
+  "skeleton-archer": { x: -2, y: 2 },
+  "slime": { x: 2, y: 0 },
+  "soldier": { x: 0, y: 1 },
+  "swordsman": { x: -4, y: 1 },
+  "warlock": { x: 0, y: 4 },
+  "werebear": { x: -2, y: 0 },
+  "werewolf": { x: -6, y: 0 },
+  "wizard": { x: -2, y: 1 },
+};
+
 export const CHARACTER_NAMES: Record<string, string> = {
   "archer": "Archer",
   "armored-axeman": "Armored Axeman",
   "armored-orc": "Armored Orc",
   "armored-skeleton": "Armored Skeleton",
   "bat": "Bat",
-  "black-knight-a": "Black Knight_A",
-  "black-knight-b": "Black Knight_B",
-  "black-knight-c": "Black Knight_C",
+  "black-knight-a": "Black Knight A",
+  "black-knight-b": "Black Knight B",
+  "black-knight-c": "Black Knight C",
   "blood-monster-a": "Blood Monster_A",
   "blood-monster-b": "Blood Monster_B",
   "demon-a": "Demon_A",

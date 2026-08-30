@@ -50,14 +50,14 @@ export default function DeckDetail({
       {adding && <AddWordForm deck={deck} words={words} onAdded={onWordsChanged} />}
       {words.length > 0 && <GradeChart words={words} />}
       {words.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-          <p className="px-4 py-8 text-center text-sm text-gray-400">{T.noWords}</p>
+        <div className="hk-card">
+          <p className="px-4 py-8 text-center text-sm text-ink-mute">{T.noWords}</p>
         </div>
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{rows}</div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-          <ul className="divide-y divide-gray-100">{rows}</ul>
+        <div className="hk-card">
+          <ul className="divide-y divide-line-soft">{rows}</ul>
         </div>
       )}
 

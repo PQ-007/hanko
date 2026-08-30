@@ -79,6 +79,90 @@ export const T = {
   gradeNew: "Шинэ",
   dashboardNav: "Хяналтын самбар",
   decksNav: "Багцууд",
+  practiceNav: "Давтах",
+  // Mode chooser (/decks/review)
+  chooseModeTitle: "Ямар байдлаар давтах вэ?",
+  classicModeTitle: "Энгийн давталт",
+  classicModeDesc: "Дөрвөн товчоор өөрөө үнэлж давтана.",
+  battleModeTitle: "Мангас агнах",
+  battleModeDesc: "Зөв хариултаар дайсныг цохино, буруу хариулбал өөрөө цохиулна.",
+  startButton: "Эхлэх",
+  // Quiz + battle
+  loadingQuiz: "Асуулт бэлдэж байна…",
+  noWordsDueBattle: "Одоогоор тулаанд дайх үг алга байна.",
+  noWordsDueBattleHint:
+    "Бүх үгээ давтсан байна. Сурч буй үгс хэдэн минутын дараа эргэж ирнэ.",
+  queueLoadFailed: "Давтах үгсийг ачаалж чадсангүй.",
+  freePracticeCta: "Ямар ч үгээр чөлөөтэй тулаанд орох",
+  freePracticeBanner:
+    "Чөлөөт дасгал — хариултууд давтлагын хуваарь болон цувралд нөлөөлөхгүй.",
+  freeModeTitle: "Чөлөөт дасгал",
+  freeModeDesc:
+    "Хуваариас үл хамааран дурын үгээр тулаанд орно. Хуваарь өөрчлөгдөхгүй.",
+  notEnoughWordsBattle:
+    "Мангас агнахад хамгийн багадаа 4 үг хэрэгтэй. Эхлээд өргөтгөл эсвэл гараар цөөн үг нэмнэ үү.",
+  fightButton: "Тулаанд орох",
+  // Practice landing page (/decks/review). The chooser used to say nothing
+  // about whether there was anything to practise, so two of its three options
+  // were dead ends on a finished day and you only found that out by clicking.
+  practiceKicker: "Өнөөдрийн давталт",
+  practiceDueHeadline: (n: number) => `${n} үг хүлээж байна`,
+  practiceNothingDue: "Өнөөдөр давтах үг алга",
+  practiceNothingDueSub:
+    "Хуваарийн бүх үгээ давж дууслаа. Хүсвэл доорх чөлөөт дасгалаар үргэлжлүүлээрэй.",
+  practiceDueBreakdown: (review: number, fresh: number) =>
+    `${review} давталт · ${fresh} шинэ`,
+  practiceScopeLabel: "Багц сонгох",
+  practiceScopeAll: "Бүх багц",
+  practiceStart: "Эхлэх",
+  heroPickerTitle: "Баатраа сонго",
+  heroPickerHint: "Мангастай энэ дүрээр тулна.",
+  multiplayerTitle: "Найзтайгаа тулах",
+  multiplayerDesc:
+    "Хоёр тоглогч тус тусын багцаасаа асуулт хүлээн авч, шууд тулна.",
+  comingSoon: "Тун удахгүй",
+  battlePoints: [
+    "4 сонголттой асуулт",
+    "10 секундын хязгаар",
+    "Амь, цуврал, критикал цохилт",
+  ],
+  battleLocked: (n: number) => `Тулаанд хамгийн багадаа ${n} үг хэрэгтэй`,
+  continueBattle: "Дараагийн дайсан",
+  monstersDefeated: (n: number) => `${n} дайсан устгалаа`,
+  stopBattle: "Тулаан зогсоох",
+  retryBattle: "Дахин оролдох",
+  victoryTitle: "Ялалт!",
+  defeatTitle: "Ялагдал",
+  clearedTitle: "Өнөөдрийн ажил дууслаа",
+  clearedDesc: "Бүх үгээ давтлаа",
+  critLabel: "КРИТИКАЛ ЦОХИЛТ!",
+  evadedLabel: "ЗАЙЛСХИЙВ!",
+  armorBlockedLabel: "ХАМГААЛАЛТ ХААЛАА!",
+  timeUpLabel: "ЦАГ ДУУСЛАА!",
+  armorGainedLabel: "Хамгаалалт олдлоо",
+  // Arena chrome: leave, pause, and the running kill count.
+  exitBattle: "Буцах",
+  pauseBattle: "Түр зогсоох",
+  resumeBattle: "Үргэлжлүүлэх",
+  pausedTitle: "Түр зогсов",
+  pausedDesc:
+    "Цаг зогслоо. Түр зогсоосон асуултад хамгийн хурдан үнэлгээ өгөгдөхгүй.",
+  killCount: (n: number) => `${n} устгав`,
+  victoryFlag: "ДАЙСАН УНАЛАА!",
+  // Result screen. Short noun labels for the stat tiles — the existing
+  // sessionCompleteDesc/monstersDefeated strings are sentence-shaped and read
+  // badly under a big number.
+  resultKicker: "Тулааны дүн",
+  resultWords: "Давтсан үг",
+  resultCorrect: "Зөв хариулт",
+  resultBestStreak: "Дээд цуврал",
+  resultCrits: "Критикал цохилт",
+  noMonsterDefeated: "Энэ дайсныг дийлсэнгүй",
+  victoryDesc: "Унагасан дайснуудаа доор харна уу.",
+  // States the one thing a defeat screen must not leave ambiguous: retrying
+  // does not un-review the words already answered (see handleRetry).
+  defeatDesc:
+    "Амь дуусав. Хариулсан үгс аль хэдийн хадгалагдсан — дахин орвол үлдсэн үгнээс үргэлжилнэ.",
   statTotalWords: "Нийт үг",
   statTotalDecks: "Багц",
   statDueToday: "Өнөөдөр давтах",

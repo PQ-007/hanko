@@ -26,18 +26,18 @@ export default function StatTile({
   return (
     <div
       ref={ref}
-      className="group flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+      className="group flex items-start gap-3 hk-card hk-card-interactive p-4"
     >
-      <div className="rounded-md bg-gray-100 p-2 text-gray-500 transition group-hover:bg-gray-900 group-hover:text-white">
+      <div className="rounded-control bg-paper-dim p-2 text-ink-soft transition group-hover:bg-seal group-hover:text-white">
         <Icon size={18} />
       </div>
       <div className="min-w-0">
-        <p className="text-2xl font-semibold leading-tight text-gray-900">
+        <p className="text-2xl font-semibold leading-tight text-ink">
           {Math.round(animated).toLocaleString("en-US")}
           {suffix}
         </p>
-        <p className="truncate text-xs text-gray-500">{label}</p>
-        {sub && <p className="truncate text-[11px] text-gray-400">{sub}</p>}
+        <p className="truncate text-xs text-ink-soft">{label}</p>
+        {sub && <p className="truncate text-[11px] text-ink-mute">{sub}</p>}
       </div>
     </div>
   );

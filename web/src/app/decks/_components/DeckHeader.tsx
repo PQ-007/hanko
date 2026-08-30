@@ -91,7 +91,7 @@ export default function DeckHeader({
           onChange={(e) => setName(e.target.value)}
           onBlur={rename}
           onKeyDown={(e) => e.key === "Enter" && rename()}
-          className="rounded border border-gray-300 px-2 py-1 text-xl font-semibold"
+          className="rounded-control border border-line px-2 py-1 text-xl font-semibold"
         />
       ) : (
         <h2
@@ -103,24 +103,24 @@ export default function DeckHeader({
           title={T.clickToRename}
         >
           {deck.name}{" "}
-          <span className="text-sm font-normal text-gray-400">({deck.word_count})</span>
+          <span className="text-sm font-normal text-ink-mute">({deck.word_count})</span>
         </h2>
       )}
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <button
           onClick={refresh}
           title={T.refresh}
-          className="shrink-0 rounded border border-gray-300 p-1.5 text-gray-500 transition hover:bg-gray-50"
+          className="shrink-0 rounded-control border border-line p-1.5 text-ink-soft transition hover:bg-paper-dim"
         >
           <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
         </button>
         {/* View toggle: list / card grid */}
-        <div className="flex shrink-0 overflow-hidden rounded border border-gray-300">
+        <div className="flex shrink-0 overflow-hidden rounded-control border border-line">
           <button
             onClick={() => onView("grid")}
             title={T.gridView}
             className={`p-1.5 transition ${
-              view === "grid" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
+              view === "grid" ? "bg-seal text-paper" : "text-ink-soft hover:bg-paper-dim"
             }`}
           >
             <LayoutGrid size={16} />
@@ -129,18 +129,18 @@ export default function DeckHeader({
             onClick={() => onView("list")}
             title={T.listView}
             className={`p-1.5 transition ${
-              view === "list" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
+              view === "list" ? "bg-seal text-paper" : "text-ink-soft hover:bg-paper-dim"
             }`}
           >
             <LayoutList size={16} />
           </button>
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded border border-gray-300 px-2 py-1 sm:flex-none">
-          <FolderClosed size={15} className="shrink-0 text-gray-500" />
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-control border border-line px-2 py-1 sm:flex-none">
+          <FolderClosed size={15} className="shrink-0 text-ink-soft" />
           <select
             value={deck.folder_id ?? ""}
             onChange={(e) => moveToFolder(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-sm text-gray-700 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-sm text-ink focus:outline-none"
           >
             <option value="">{T.noFolderOption}</option>
             {folders.map((f) => (
@@ -152,16 +152,16 @@ export default function DeckHeader({
         </div>
         <Link
           href={`/decks/practice?deck=${deck.id}`}
-          className="flex shrink-0 items-center gap-1 rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800"
+          className="flex shrink-0 items-center gap-1 hk-btn hk-btn-primary px-3 py-1.5 text-sm"
         >
           <GraduationCap size={15} /> {T.practice}
         </Link>
         <button
           onClick={onToggleAdd}
-          className={`flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium transition ${
+          className={`flex items-center gap-1 rounded-control px-3 py-1.5 text-sm font-medium transition ${
             adding
-              ? "border border-gray-300 text-gray-700 hover:bg-gray-50"
-              : "bg-gray-900 text-white hover:bg-gray-800"
+              ? "border border-line text-ink hover:bg-paper-dim"
+              : "bg-seal text-paper hover:bg-seal-dark"
           }`}
         >
           {adding ? (
@@ -175,20 +175,20 @@ export default function DeckHeader({
         <button
           onClick={() => download("apkg")}
           disabled={exporting !== null}
-          className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
+          className="hk-btn hk-btn-primary px-3 py-1.5 text-sm disabled:opacity-60"
         >
           {exporting === "apkg" ? T.building : T.exportApkg}
         </button>
         <button
           onClick={() => download("txt")}
           disabled={exporting !== null}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+          className="rounded-control border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-dim disabled:opacity-60"
         >
           .txt
         </button>
         <button
           onClick={remove}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+          className="rounded-control border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-dim"
         >
           {T.delete}
         </button>

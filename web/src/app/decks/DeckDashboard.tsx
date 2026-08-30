@@ -145,24 +145,24 @@ export default function DeckDashboard() {
           <div className="relative flex-1">
             <Search
               size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute"
             />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={T.search}
-              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-control border border-line bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
             />
           </div>
           <Link
             href="/decks/practice"
-            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800"
+            className="flex shrink-0 items-center gap-1.5 hk-btn hk-btn-primary px-4 py-2.5 text-sm"
           >
             <GraduationCap size={16} /> {T.practiceAll}
           </Link>
         </div>
         {error && (
-          <p className="mb-4 rounded border border-gray-300 bg-gray-100 px-4 py-2 text-sm text-gray-800">{error}</p>
+          <p className="mb-4 rounded-control border border-line bg-paper-dim px-4 py-2 text-sm text-ink">{error}</p>
         )}
         {searching ? (
           <SearchResults
@@ -183,7 +183,7 @@ export default function DeckDashboard() {
             }}
           />
         ) : (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500">
+          <div className="rounded-control border border-dashed border-line bg-white p-10 text-center text-ink-soft">
             {T.createDeckToStart}
           </div>
         )}

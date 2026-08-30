@@ -15,6 +15,7 @@ import GrowthChart from "../_components/GrowthChart";
 import GradeChart from "../_components/GradeChart";
 import WeekdayReviewsChart from "../_components/WeekdayReviewsChart";
 import DeckBreakdownTable from "../_components/DeckBreakdownTable";
+import LoadingScene from "../review/battle/_components/LoadingScene";
 
 // One SRS day's review count, from the review_activity() RPC (migration 0013).
 // The server buckets by the user's day cutoff — the same boundary the scheduler
@@ -127,7 +128,7 @@ export default function StatsDashboard() {
   }, [words]);
 
   if (loading) {
-    return <p className="p-8 text-center text-sm text-gray-500">{T.loadingStats}</p>;
+    return <LoadingScene label={T.loadingStats} />;
   }
 
   const now = new Date();
@@ -167,7 +168,7 @@ export default function StatsDashboard() {
       />
 
       {logMissing && (
-        <p className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-4 py-2.5 text-xs text-gray-700">
+        <p className="flex items-center gap-2 rounded-control border border-line bg-paper-dim px-4 py-2.5 text-xs text-ink">
           <AlertCircle size={15} className="shrink-0" />
           {T.migrationHint}
         </p>
