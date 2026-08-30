@@ -13,9 +13,8 @@ import {
   battleOutcome,
   deriveBattleState,
   rollEvent,
-  ARMOR_STREAK_INTERVAL,
+  streakTier,
   PLAYER_MAX_HP,
-  STREAK_BONUS_THRESHOLD,
   type BattleEvent,
 } from "../_lib/damage";
 import { pickMonster } from "../_lib/monsters";
@@ -86,23 +85,27 @@ const RANGED_SPAWN_DELAY_MS = 700;
 
 type Flag = "crit" | "evaded" | "armor" | "timeout" | "victory" | null;
 
-// How hard the swing looks, from how many you've got right in a row. The
-// thresholds are the ones the fight already runs on rather than new numbers
-// invented for the animation: past STREAK_BONUS_THRESHOLD the crit and evade
-// bonuses are live, and at ARMOR_STREAK_INTERVAL you're earning armour. So the
-// heavier clip appears exactly when the player has actually become harder to
-// stop, and drops back to the plain swing the moment a wrong answer resets the
-// streak to zero.
-function streakTier(streak: number): number {
-  if (streak >= ARMOR_STREAK_INTERVAL) return 2;
-  if (streak > STREAK_BONUS_THRESHOLD) return 1;
-  return 0;
-}
-
+// How fast the answer was. Drives damage, and nothing else.
 function ratingForElapsed(elapsedMs: number): Rating {
   if (elapsedMs < EASY_CUTOFF_MS) return "easy";
   if (elapsedMs < GOOD_CUTOFF_MS) return "good";
   return "hard";
+}
+
+// What the scheduler is told. Never "easy".
+//
+// A four-option question has a 25% floor: one correct answer in four is luck,
+// and inside 3.3 seconds that luck used to become a real interval extension on
+// a card the player does not know. Classic review has no such channel — you
+// self-rate, and nobody rates a card they just failed as Амархан.
+//
+// Every other pressured surface in this project already guards this: the speed
+// round logs source='drill' so its answers cannot touch SM-2 at all, and a
+// paused question was already capped here for the same reason. This makes the
+// rule general rather than one special case: the fastest tier still crits
+// harder and hits harder, it just stops buying schedule it didn't earn.
+function scheduleRating(speed: Rating): Rating {
+  return speed === "easy" ? "good" : speed;
 }
 
 export default function BattleArena() {
@@ -114,8 +117,19 @@ export default function BattleArena() {
   // "nothing due" empty state, so wanting to practise is never a dead end.
   const freeMode = params.get("mode") === "free";
 
+  // 'quiz', not 'review': a scored Monster Hunt answer really does reschedule,
+  // but it comes from a four-option question where one correct answer in four
+  // is luck. Labelling it is what makes that measurable later instead of a
+  // permanent assumption — see 0018_quiz_source.sql. Free mode stays a drill
+  // and changes nothing server-side.
   const { queue, card, reviewedCount, error, loadError, rate, undo } =
-    usePracticeSession(deckId, freeMode ? "free" : "due");
+    usePracticeSession(deckId, {
+      mode: freeMode ? "free" : "due",
+      source: freeMode ? "drill" : "quiz",
+      // The arena binds its own keys below. The classic ones don't adapt to a
+      // four-option pick — they bypass it.
+      shortcuts: false,
+    });
 
   // Fetched once on mount, not per-question: this is what replaced the old
   // per-question Jisho round-trip. RLS scopes it to the signed-in user, same
@@ -184,11 +198,6 @@ export default function BattleArena() {
   const [shakeId, setShakeId] = useState(0);
 
   const [paused, setPaused] = useState(false);
-  // Set when a question is paused, cleared when the next one arrives. A paused
-  // question can't earn the fastest speed tier — the clock stops, so "answered
-  // in under 3.3 seconds" would otherwise be claimable after unlimited
-  // thinking time, and that tier feeds a real SM-2 rating.
-  const pausedThisQuestion = useRef(false);
 
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const impactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -274,8 +283,51 @@ export default function BattleArena() {
   // Refs only — no state, so this can't cascade a render.
   useEffect(() => {
     answered.current = false;
-    pausedThisQuestion.current = false;
   }, [questionKey]);
+
+  // The arena's own keys. Classic mode's live in usePracticeSession and are
+  // switched off here, because a four-option pick has no reveal step for space
+  // to advance and no self-rating for 1-4 to send.
+  //
+  // Both 1-4 and A-D map to grid position, matching the badges QuizOptions
+  // draws. Everything goes through handlePick, so a keyed answer is the same
+  // answer as a clicked one — the speed tier, the damage roll and the
+  // answered-guard all apply identically.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      if (key === "escape" || key === "p") {
+        e.preventDefault();
+        togglePause();
+        return;
+      }
+      if (key === "u") {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Nothing else does anything while the clock is stopped or the fight is
+      // over — the overlay covers the question precisely so it can't be
+      // answered, and the keyboard must not be a way around that.
+      if (paused || outcome !== "ongoing" || !quiz) return;
+
+      const index = "1234".indexOf(key) >= 0 ? Number(key) - 1 : "abcd".indexOf(key);
+      if (index < 0 || index >= quiz.length) return;
+      e.preventDefault();
+      handlePick(quiz[index]);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlePick/handleUndo/togglePause are redefined every render but read their state through refs and setState updaters; listing them would rebind the listener on every render for no behavioural gain.
+  }, [quiz, paused, outcome]);
 
   useEffect(() => {
     return () => {
@@ -358,12 +410,18 @@ export default function BattleArena() {
   // Shared by both a real pick and an auto-resolved timeout — the only
   // difference is `timedOut`, which flows through as a flag for the UI, not
   // a different rating or a different consequence to the scheduler.
-  function resolveAnswer(rating: Rating, timedOut: boolean) {
+  // `speed` grades the answer for the fight (damage, crit chance); `scheduled`
+  // is what reaches review_card(). They are the same value for everything
+  // except the fastest correct answer — see scheduleRating.
+  function resolveAnswer(speed: Rating, timedOut: boolean) {
+    const rating = scheduleRating(speed);
     // Read from the refs, not the `events`/`monsterStartIndex` state
     // variables — see the refs' own comment above for why this matters when
     // called from the countdown's timeout closure.
     const stateBefore = deriveBattleState(eventsRef.current, monsterStartIndexRef.current);
-    const event = rollEvent(rating, stateBefore, timedOut);
+    // `speed`, not `rating`: the fight keeps all three tiers, so a fast answer
+    // still hits harder even though the scheduler only hears "good".
+    const event = rollEvent(speed, stateBefore, timedOut);
 
     eventsRef.current = [...eventsRef.current, event];
     setEvents(eventsRef.current);
@@ -477,12 +535,9 @@ export default function BattleArena() {
     if (!card || !quiz || answered.current) return;
     answered.current = true;
 
-    let rating: Rating = option.correct ? ratingForElapsed(elapsedMs()) : "again";
-    // The clock stops while paused, so without this the fastest tier — which
-    // becomes a real "easy" for SM-2 — would be claimable after unlimited
-    // thinking. "Good" is the honest ceiling for a question you stopped.
-    if (rating === "easy" && pausedThisQuestion.current) rating = "good";
-    resolveAnswer(rating, false);
+    // The pause cap that used to live here is gone: scheduleRating() now caps
+    // every battle answer, so a paused one needed no rule of its own.
+    resolveAnswer(option.correct ? ratingForElapsed(elapsedMs()) : "again", false);
   }
 
   function handleUndo() {
@@ -506,10 +561,7 @@ export default function BattleArena() {
   // doesn't and shouldn't un-review the words you got through, so the queue
   // deliberately picks up where it left off rather than restarting.
   function togglePause() {
-    setPaused((p) => {
-      if (!p) pausedThisQuestion.current = true;
-      return !p;
-    });
+    setPaused((p) => !p);
   }
 
   function handleRetry() {

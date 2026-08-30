@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Hanko",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Save words you look up with 10ten Japanese Reader into decks, then export them as an Anki-ready file.",
-  "permissions": ["contextMenus", "storage", "activeTab", "identity", "alarms", "notifications"],
-  "host_permissions": ["https://jisho.org/*", "https://*.supabase.co/*", "https://*.vercel.app/*"],
+  "permissions": ["contextMenus", "storage", "activeTab", "alarms", "notifications"],
+  "host_permissions": ["https://jisho.org/*", "https://rnbngwcodocafpjzrnue.supabase.co/*", "https://hanko-amber.vercel.app/*"],
   "background": {
     "service_worker": "background.js"
   },

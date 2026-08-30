@@ -7,6 +7,30 @@ void main() {
   DateTime d(int day) => DateTime(2026, 8, day);
 
   group('currentStreak', () {
+    // Mirrors web/src/app/decks/_lib/dates.test.ts case-for-case. The two
+    // clients each own a copy of this walk (CLAUDE.md: never let two
+    // implementations drift unchecked), and the day they start from now comes
+    // from the same current_srs_day() RPC on both — so the seam worth pinning
+    // is that identical inputs give identical answers.
+    test('agrees with the web implementation on the SRS-day seam', () {
+      // A review at 01:00 lands on the previous SRS day (4am cutoff). Given
+      // the scheduler's day, the answer is right by construction; given the
+      // device's, it is right only because of the skip-to-yesterday rule.
+      final active = [d(28), d(29)];
+      expect(currentStreak(active, d(29)), 2, reason: "scheduler's today");
+      expect(currentStreak(active, d(30)), 2, reason: "device's today");
+
+      // Where they genuinely diverge: a gap on the scheduler's yesterday.
+      final gapped = [d(27), d(29)];
+      expect(currentStreak(gapped, d(29)), 1);
+      expect(currentStreak(gapped, d(30)), 1);
+
+      // And the freeze cases, same numbers as the web suite asserts.
+      expect(currentStreak([d(27), d(29), d(30)], d(30), freezesAvailable: 1), 4);
+      expect(currentStreak([d(27), d(29), d(30)], d(30), freezesAvailable: 0), 2);
+      expect(currentStreak([d(26), d(29), d(30)], d(30), freezesAvailable: 1), 2);
+    });
+
     test('counts back from today', () {
       expect(currentStreak([d(14), d(15), d(16)], d(16)), 3);
     });

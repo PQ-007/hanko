@@ -330,18 +330,56 @@ blocking cross-user reads on both new RPCs.
   a proactive opt-in session failing outright when offline is an acceptable,
   honest limit, unlike the main due queue which must never fail offline.
 
-**Known pre-existing gap, adjacent to this work but not caused by it:** both
-clients compute "today" for the streak walk from the device's local clock
-(`DateTime.now()` / `new Date()`), not from the server's SRS-day cutoff. In the
-narrow window between local midnight and `day_cutoff_hour` (up to 4 hours by
-default), this can misalign by exactly one day — usually self-corrected by the
-existing "skip to yesterday if today's empty" rule, but not guaranteed in every
-case. The activity data itself is correctly SRS-day-bucketed (0013); only the
-"what day is today" input to the walk is not. Fixing it properly means both
-clients asking the server what the current SRS day is, rather than computing
-it locally — a small, well-scoped follow-up, not done here.
+**That "what day is today" gap is now closed.** Both clients used to start the
+streak walk from the device clock (`DateTime.now()` / `new Date()`) while
+`review_activity()` bucketed by the SRS-day cutoff, so between local midnight
+and `day_cutoff_hour` they walked from a day the server had not opened yet —
+usually rescued by the "skip to yesterday if today's empty" rule, but by
+accident, and not at all on a device whose clock or timezone disagreed with the
+profile. `current_srs_day()` (0019) returns the same day key the activity rows
+are grouped by; the web dashboard and mobile's stats screen both start from it
+and fall back to the device date only if the RPC is missing. The two walks are
+pinned against each other case-for-case (`dates.test.ts` / `streaks_test.dart`).
 
-### 3.2 Online 1v1 battle mode
+### 3.1b Monster Hunt — the web quiz-battle mode (done)
+
+Built on the web (`web/src/app/decks/review/`), reached from the **Давтах** nav
+tab. Four-option multiple choice against an animated opponent, 10-second Kahoot
+timer, HP bars, crit/evade/armour driven by the correct-answer streak, and a
+roster of 42 sprite characters. It is a **skin over the real review session**:
+it consumes the same `usePracticeSession` hook as the classic screen, so
+`review_queue()` / `review_card()` / `undo_review()` are called once, from one
+place, and there is no second scheduler.
+
+Do not confuse it with 3.2 below — different mode, different `source` value:
+
+| Mode | Source | Reschedules? |
+|---|---|---|
+| Classic review | `review` | yes |
+| **Monster Hunt (scored)** | **`quiz`** | **yes** |
+| Free practice / speed round | `drill` | no |
+| PvP duel (3.2, unbuilt) | `battle` | no |
+
+**`quiz` is not a downgrade of `review`.** Monster Hunt is real recall practice
+that happens to be timed; it schedules, counts toward streaks, fills the
+heatmap and spends the daily caps, exactly like classic review
+(`0018_quiz_source.sql`). It is labelled solely so the two can be *compared* —
+a four-option question has a 25% guess floor, and `review_log` already carries
+`ease_before`/`interval_before` from 0.4, so "does the timed mode schedule as
+reliably?" is answerable with SQL instead of guessed at.
+
+For the same reason, a battle answer **cannot grade `easy`**. Speed still
+drives damage across three tiers, but `scheduleRating()` in `BattleArena.tsx`
+caps what reaches `review_card()` at `good`: inside 3.3 seconds, one correct
+answer in four is luck, and luck must not buy interval.
+
+**Distractors come from the player's own word library**, synchronously and with
+no network call per question (`_lib/quiz.ts`, `MIN_WORDS_FOR_BATTLE = 4`). The
+Jisho-backed `distractor_cache` an earlier draft of 3.2 called for was built,
+found too slow in real play, and dropped — `0015` created that table and `0016`
+drops it. Do not resurrect it; **item 2 under 3.2 below is solved.**
+
+### 3.2 Online 1v1 battle mode (not started)
 Fast-paced vocabulary duel, in its own feature folder
 (`mobile/lib/features/battle/`) so it never entangles with the review code.
 
@@ -364,19 +402,28 @@ Three things the original design got wrong:
    start the *match* and issue the round schedule; resolve each round with an
    idempotent Postgres function both clients call, first writer wins. Transport
    is one Supabase Realtime channel per match.
-2. **Distractor generation is the unsolved problem.** A 12-word deck cannot
-   produce three plausible wrong answers, and obviously-wrong options make the
-   mode boring no matter how good the netcode is. Needs a global distractor pool
-   (JMdict frequency list) with a same-part-of-speech, similar-length heuristic.
-   Solve this before building the match loop.
+2. **Distractor generation — solved, inherit it.** This was the open problem;
+   it no longer is. `_lib/quiz.ts` builds four options from the player's own
+   library with a Fisher-Yates shuffle and a four-word floor, synchronously and
+   with no per-question network call. The JMdict pool this bullet used to
+   demand was never needed. (The shuffle matters: the original
+   `.sort(() => Math.random() - 0.5)` measured 36/17/16/31 across the four
+   slots, enough bias that guessing a slot beat recall. Guarded by
+   `quiz.test.ts`.)
 3. **Right-size the anti-cheat.** Both clients render the question locally, so
    display time is client-side regardless. The honest model: the server
    timestamps round start, derives latency from its own receive time, and clamps
    damage to a sane range. Don't build more than that for a game with no ladder.
 
-**Battle answers never feed scheduling.** They are logged with `source='battle'`
+**PvP answers never feed scheduling.** They are logged with `source='battle'`
 and excluded from SRS state and the stats dashboard. Guesses under a 3-second
 timer are noise, and mixing them into SM-2 corrupts real scheduling.
+
+This is specifically about **PvP**, not about Monster Hunt. `'battle'` is
+reserved for this unbuilt mode and is the one value `review_card()` will not
+schedule on; Monster Hunt uses `'quiz'` and does. Anyone "tidying up" by
+collapsing the two would silently stop the app's main practice mode from
+scheduling anything, with nothing erroring — see 3.1b.
 
 ---
 
@@ -393,17 +440,32 @@ timer are noise, and mixing them into SM-2 corrupts real scheduling.
 
 ## Standing notes
 
+- **`IMPROVEMENTS.md` is the "what next" list** — the prioritised follow-up
+  plan written after Monster Hunt shipped (migrations to confirm, the
+  multiple-choice guess floor that currently writes real SM-2 intervals, the
+  missing web test suite, PvP). Anything in it that becomes permanent truth
+  moves here and gets deleted from there.
+
 - **SM-2 is not "what Anki uses"** — the comment at the top of `web/src/lib/srs.ts`
   is out of date. Anki has defaulted to FSRS since 23.10, and FSRS reaches the
   same retention with meaningfully fewer reviews. Don't claim Anki parity in
   user-facing copy. Phase 0.4 makes a later FSRS switch a data migration.
+- **`web/` has tests now**: `npm test` in `web/` runs `node --test` over
+  `src/**/*.test.ts`. No runner, no dependency, no build step — Node 22 strips
+  types natively, and the four battle logic modules import only types. They
+  cover the damage fold, the quiz builder's shuffle uniformity, the monster
+  shuffle bag and pose resolution. Verified to fail on injected regressions,
+  not just to pass.
 - Migrations are applied by hand in the Supabase SQL editor (there is no
   `supabase` CLI or `config.toml` in this repo), so **every migration must be
   safe to re-run**: guard policies and triggers with `drop ... if exists`, and
   precede any table-returning function with `drop function if exists` —
   `create or replace` cannot change a function's OUT-parameter row type.
-- `/api/lookup` is unauthenticated and proxies Jisho. Rate-limit it before mobile
-  traffic hits it.
+- `/api/lookup` is unauthenticated and proxies Jisho. Rate-limited per IP with
+  an in-process token bucket (`web/src/lib/rateLimit.ts`) — enough to stop it
+  being an open proxy, but per-instance, so it is not a defence against a
+  distributed caller. Revisit if the app is ever deployed to more than one
+  instance.
 - The extension has **no build step** — edits to `src/sync.js` must be copied
   verbatim into both `chrome/` and `firefox/`.
 - Never commit `config.js` or `.env.local`. The publishable key is safe to ship;

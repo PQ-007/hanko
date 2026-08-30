@@ -145,8 +145,10 @@ export const T = {
   pauseBattle: "Түр зогсоох",
   resumeBattle: "Үргэлжлүүлэх",
   pausedTitle: "Түр зогсов",
-  pausedDesc:
-    "Цаг зогслоо. Түр зогсоосон асуултад хамгийн хурдан үнэлгээ өгөгдөхгүй.",
+  // No longer mentions the speed cap: that used to be a pause-only rule, and
+  // now applies to every battle answer, so saying it here read as a penalty
+  // for pausing.
+  pausedDesc: "Цаг зогслоо. Үргэлжлүүлэхэд яг эндээсээ цааш явна.",
   killCount: (n: number) => `${n} устгав`,
   victoryFlag: "ДАЙСАН УНАЛАА!",
   // Result screen. Short noun labels for the stat tiles — the existing

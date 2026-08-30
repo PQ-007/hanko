@@ -176,6 +176,23 @@ export function deriveBattleState(
   };
 }
 
+// How hard the swing looks, from how many answers are right in a row. Lives
+// here rather than in BattleArena because it is game logic reading this
+// module's own thresholds — and because a function inside a component cannot
+// be tested.
+//
+// The thresholds are the ones the fight already runs on rather than new
+// numbers invented for the animation: past STREAK_BONUS_THRESHOLD the crit and
+// evade bonuses are live, and at ARMOR_STREAK_INTERVAL armour is being earned.
+// So the heavier clip appears exactly when the player has become harder to
+// stop, and drops back to the plain swing the moment a wrong answer resets the
+// streak to zero.
+export function streakTier(streak: number): number {
+  if (streak >= ARMOR_STREAK_INTERVAL) return 2;
+  if (streak > STREAK_BONUS_THRESHOLD) return 1;
+  return 0;
+}
+
 export type BattleOutcome = "ongoing" | "defeat" | "cleared";
 
 // Resolves which end-state (if any) applies right now.

@@ -232,6 +232,26 @@ class Repository {
     };
   }
 
+  /// The scheduler's current day (`current_srs_day()`, 0019).
+  ///
+  /// The streak walk has to start on the same day boundary `review_activity()`
+  /// buckets by — which rolls over at `profiles.day_cutoff_hour`, not at local
+  /// midnight. Between the two, `DateTime.now()` is a day ahead of the server,
+  /// and on a device whose clock or timezone disagrees with the profile it can
+  /// be wrong at any hour.
+  ///
+  /// Returns null rather than throwing if the migration isn't applied yet; the
+  /// caller then falls back to the device's date, which is what it used to do
+  /// unconditionally.
+  Future<DateTime?> currentSrsDay() async {
+    try {
+      final day = await _db.rpc<String?>('current_srs_day');
+      return day == null ? null : DateTime.parse(day);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>> undoReview(String logId) async {
     return await _db.rpc<Map<String, dynamic>>(
       'undo_review',
