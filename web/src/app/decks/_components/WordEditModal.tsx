@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Languages, Search, X } from "lucide-react";
 import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
+import { useModalChrome } from "../_lib/useModal";
 
 // Modal dialog for editing a word.
 export default function WordEditModal({
@@ -28,16 +29,7 @@ export default function WordEditModal({
   // doesn't re-translate (and clobber a manual Mongolian edit).
   const lastEn = useRef((word.meaning ?? "").trim());
 
-  // Close on Escape, and lock background scroll while open.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
+  useModalChrome(onClose);
 
   // English -> Mongolian, overwriting the Mongolian field. Editing Mongolian
   // never triggers anything (no reverse translation).

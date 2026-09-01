@@ -207,4 +207,26 @@ export const T = {
   migrationHint:
     "Идэвхийн хуанли бүрэн ажиллахын тулд 0005_review_log.sql-г Supabase дээрээ ажиллуулна уу.",
   saveFailed: "Хариултыг хадгалж чадсангүй. Дахин оролдоно уу.",
+
+  // Review-mode modal. The dashboard's "Бүгдийг нь давтах" used to link
+  // straight to /decks/practice, so the classic screen was the only mode
+  // reachable from the two places people actually start a session from —
+  // Monster Hunt existed but you had to know to go looking for it.
+  closeLabel: "Хаах",
+  moreModeOptions: "Багц сонгох, баатраа солих",
+  // Quick add (dashboard). The full add form lives inside a deck; this is the
+  // same fields with a deck picker on top, so adding a word you just met
+  // doesn't mean navigating away from the dashboard first.
+  quickAdd: "Үг нэмэх",
+  quickAddTitle: "Шинэ үг нэмэх",
+  quickAddDeckLabel: "Аль багц руу",
+  quickAddNoDecks: "Үг нэмэхийн тулд эхлээд багц үүсгэнэ үү.",
+  quickAddSaveFailed: "Үгийг хадгалж чадсангүй.",
+  quickAddedCount: (n: number) => `${n} үг нэмлээ`,
+  quickAddDone: "Дуусгах",
+  // Word spotlight
+  spotlightTitle: "Таны үгсээс",
+  spotlightAnother: "Өөр үг",
+  spotlightOpenDeck: "Багц руу очих",
+  spotlightNoMeaning: "Утга оруулаагүй байна",
 };

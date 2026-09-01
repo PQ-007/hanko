@@ -5,6 +5,7 @@ import { Pencil, Play, Trash2 } from "lucide-react";
 import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
+import { playWordAudio } from "../_lib/audio";
 import GradeBadge from "./GradeBadge";
 
 export default function WordRow({
@@ -25,25 +26,18 @@ export default function WordRow({
     onChanged();
   }
 
+  // Busy for the whole call now, not just the generation half: the signed-URL
+  // round trip was previously unguarded, so a double click there fired two
+  // plays.
   async function play() {
-    let path = word.audio_path;
-    if (!path) {
-      setGenAudio(true);
-      try {
-        const res = await fetch(`/api/words/${word.id}/audio`, { method: "POST" });
-        if (!res.ok) {
-          alert((await res.json().catch(() => null))?.error ?? T.audioFailed);
-          return;
-        }
-        path = (await res.json()).audio_path as string;
-        onChanged();
-      } finally {
-        setGenAudio(false);
-      }
+    setGenAudio(true);
+    try {
+      const path = await playWordAudio(word);
+      // Newly generated — the row this was rendered from is now stale.
+      if (path && path !== word.audio_path) onChanged();
+    } finally {
+      setGenAudio(false);
     }
-    if (!path) return;
-    const { data } = await supabase.storage.from("word-audio").createSignedUrl(path, 60);
-    if (data?.signedUrl) new Audio(data.signedUrl).play();
   }
 
   const playBtn = (
