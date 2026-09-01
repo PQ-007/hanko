@@ -57,9 +57,14 @@ export default function ReviewModeModal({
                   ? T.practiceNothingDue
                   : T.practiceDueHeadline(dueNow)}
             </h2>
-            <p className="mt-0.5 text-xs text-ink-mute">
-              {nothingDue ? T.practiceNothingDueSub : T.chooseModeTitle}
-            </p>
+            {/* Only when it adds something. With the count unknown the
+                heading is already the question, and repeating it underneath
+                read as a rendering bug. */}
+            {(dueNow !== null || nothingDue) && (
+              <p className="mt-0.5 text-xs text-ink-mute">
+                {nothingDue ? T.practiceNothingDueSub : T.chooseModeTitle}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -83,8 +88,8 @@ export default function ReviewModeModal({
                 : "bg-seal text-paper"
             }
             title={T.battleModeTitle}
-            desc={T.battleModeDesc}
-            badge={battleLocked ? T.battleLocked(MIN_WORDS_FOR_BATTLE) : undefined}
+            desc={battleLocked ? T.battleLocked(MIN_WORDS_FOR_BATTLE) : T.battleModeDesc}
+            badge={battleLocked ? T.lockedBadge : undefined}
             highlight={!battleLocked && !nothingDue}
           />
 

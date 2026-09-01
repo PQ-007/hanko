@@ -214,6 +214,7 @@ export const T = {
   // Monster Hunt existed but you had to know to go looking for it.
   closeLabel: "Хаах",
   moreModeOptions: "Багц сонгох, баатраа солих",
+  lockedBadge: "Түгжээтэй",
   // Quick add (dashboard). The full add form lives inside a deck; this is the
   // same fields with a deck picker on top, so adding a word you just met
   // doesn't mean navigating away from the dashboard first.
