@@ -379,9 +379,39 @@ Jisho-backed `distractor_cache` an earlier draft of 3.2 called for was built,
 found too slow in real play, and dropped — `0015` created that table and `0016`
 drops it. Do not resurrect it; **item 2 under 3.2 below is solved.**
 
-### 3.2 Online 1v1 battle mode (not started)
-Fast-paced vocabulary duel, in its own feature folder
-(`mobile/lib/features/battle/`) so it never entangles with the review code.
+### 3.2 Online 1v1 battle mode (built, unplayed — see `PVP.md`)
+Fast-paced vocabulary duel, in its own feature folder so it never entangles
+with the review code.
+
+**It ships on the web, in `web/src/app/decks/review/duel/`.** The
+`mobile/lib/features/battle/` this section used to name was chosen before
+Monster Hunt existed; the arena is now 2,950 lines of TypeScript plus 1.2 MB of
+sprite art under `web/`, and `mobile/` has no battle folder at all. Building it
+on Flutter first would mean a second damage model and a second quiz builder in
+Dart before a single round was playable. A Flutter client comes later, against
+the same tables and RPCs.
+
+`PVP.md` holds the plan and what changed on contact with a real Postgres.
+Phases 1–4 are in the tree: `/decks/review/duel` plays a bot with no network at
+all, and an invite-code match against a real player via `0020_pvp.sql` and one
+Realtime channel. **Nobody has played it** — that is phase 5.
+
+Two things a future session must not "tidy up":
+
+- **`duel_damage()` in 0020 is a deliberate mirror of `roundDamage()` in
+  `duel/_lib/duel.ts`.** Bot duels resolve client-side with no network; PvP
+  duels resolve in Postgres because the client cannot be trusted. The guard is
+  `duel/_lib/duel.fixture.json` — 484 cases, pinned from the TypeScript by
+  `duel.test.ts` and from the SQL by `supabase/tests/duel_damage_fixture.sql`.
+  Regenerating the fixture to make a failure go away launders a real behaviour
+  change into a green test.
+- **The duel does not reuse `damage.ts` or `usePracticeSession`, on purpose.**
+  Both encode PvE rules that are quietly wrong for a duel — a respawning
+  monster's HP refill, a queue-empty end condition, and a fold that assumes one
+  answer stream where a duel has two. `usePracticeSession` additionally reads
+  `review_queue()`, which is capped by the day's remaining allowance, so a duel
+  wired through it is unplayable on exactly the day you have finished your
+  reviews.
 
 - Two players (or player vs. bot), each with an HP bar; center timer and a
   multiple-choice question box
@@ -439,6 +469,9 @@ scheduling anything, with nothing erroring — see 3.1b.
 - Reuse the existing Supabase project throughout. No backend rewrite.
 
 ## Standing notes
+
+- **`PVP.md` is the worked plan for Phase 3.2**, the only phase big enough
+  to need its own file. Read it before touching anything duel-shaped.
 
 - **`IMPROVEMENTS.md` is the "what next" list** — the prioritised follow-up
   plan written after Monster Hunt shipped (migrations to confirm, the

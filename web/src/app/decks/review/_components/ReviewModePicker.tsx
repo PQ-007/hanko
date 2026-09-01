@@ -293,16 +293,17 @@ export default function ReviewModePicker() {
             highlight={nothingDue}
           />
 
-          {/* 3 — PvP. Not a link and not a button: nothing is built behind
-              this yet (CLAUDE.md's Phase 3.2). It is listed so the mode is
-              visible, and labelled as unbuilt rather than dressed up as
-              something that might respond to a click. */}
+          {/* 3 — PvP. Real now (PVP.md). Deliberately NOT deck-scoped like the
+              rows above: a duel draws from the whole library through
+              practice_cards(), because each player is quizzed from their own
+              collection and a shared deck filter would mean nothing to the
+              other side. */}
           <ModeRow
+            href="/decks/review/duel"
             icon={<Users size={19} />}
-            iconClass="bg-paper-dim text-ink-mute"
+            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
-            badge={T.comingSoon}
           />
 
           {/* 4 — Classic. */}

@@ -115,14 +115,15 @@ export default function ReviewModeModal({
             desc={T.classicModeDesc}
           />
 
-          {/* 4 — PvP. Listed so the mode is visible, inert because nothing is
-              built behind it (CLAUDE.md Phase 3.2). */}
+          {/* 4 — PvP. Built now (PVP.md): a bot opponent needs no second
+              player, so this is never a dead end even alone. */}
           <ModeRow
+            href="/decks/review/duel"
+            onNavigate={onClose}
             icon={<Users size={19} />}
-            iconClass="bg-paper-dim text-ink-mute"
+            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
-            badge={T.comingSoon}
           />
         </div>
 
