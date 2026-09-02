@@ -15,6 +15,9 @@ import GrowthChart from "../_components/GrowthChart";
 import GradeChart from "../_components/GradeChart";
 import WeekdayReviewsChart from "../_components/WeekdayReviewsChart";
 import DeckBreakdownTable from "../_components/DeckBreakdownTable";
+import WordSpotlight from "../_components/WordSpotlight";
+import ReviewModeModal from "../_components/ReviewModeModal";
+import QuickAddWordModal from "../_components/QuickAddWordModal";
 import LoadingScene from "../review/battle/_components/LoadingScene";
 
 // One SRS day's review count, from the review_activity() RPC (migration 0013).
@@ -53,6 +56,9 @@ export default function StatsDashboard() {
   // heatmap is running on the approximate last_reviewed_at fallback.
   const [logMissing, setLogMissing] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Which dialog, if any, is open. Both are mounted below the page rather
+  // than inside the hero so a reload triggered by one can't unmount it.
+  const [modal, setModal] = useState<"review" | "add" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,6 +180,8 @@ export default function StatsDashboard() {
         addedToday={addedToday}
         masteredPct={masteredPct}
         freezesAvailable={freezes}
+        onPractice={() => setModal("review")}
+        onAddWord={() => setModal("add")}
       />
 
       {logMissing && (
@@ -203,6 +211,10 @@ export default function StatsDashboard() {
         <StatTile icon={Repeat} label={T.reviewsThisWeek} value={reviewsThisWeek} />
       </div>
 
+      {/* srsToday, not the device date, so the word of the day turns over at
+          the same moment the scheduler's day does. */}
+      <WordSpotlight words={words} decks={decks} dayKey={srsToday} />
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <ActivityHeatmap counts={activity} title={T.heatmapTitle} formatCount={T.reviewsN} />
         <ActivityHeatmap
@@ -227,6 +239,26 @@ export default function StatsDashboard() {
         words={words}
         onSelectDeck={(id) => router.push(`/decks?deck=${id}`)}
       />
+
+      {modal === "review" && (
+        <ReviewModeModal
+          onClose={() => setModal(null)}
+          wordCount={words.length}
+          dueNow={dueToday}
+        />
+      )}
+      {modal === "add" && (
+        <QuickAddWordModal
+          decks={decks}
+          onClose={(added) => {
+            setModal(null);
+            // Only on dismissal, and only if something changed: load() swaps
+            // the page for its loading scene, which would take the dialog with
+            // it if it ran after every word.
+            if (added > 0) load();
+          }}
+        />
+      )}
     </div>
   );
 }

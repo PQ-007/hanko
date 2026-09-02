@@ -48,7 +48,7 @@ Checked against the working tree at `a15533e`. Trust this over memory.
 | D.1 asset licensing | **yours** — nothing a code change can settle |
 | D.2 `/api/lookup` throttle | **done** |
 | D.3 repackage extension | **yours** |
-| E PvP | not started — its own project |
+| E PvP | **phases 1–4 done** — see `PVP.md`; unplayed, phase 5 is yours |
 | F.1 battle shortcuts | **done**, and it turned up a live bug (below) |
 | F.2 SRS-day streak | **done** — `0019`, both clients, parity tested |
 
@@ -240,6 +240,10 @@ Not development work, but each is a blocker rather than a nice-to-have.
 ---
 
 ## Phase E — PvP for real
+
+**Planned in full in `PVP.md`** — surface decision (web, not Flutter), the
+reuse boundary, five phases with a playable bot duel at phase 2, and the
+migration sketch. The summary below is kept only as the entry point.
 
 The placeholder on `/decks/review` is honest but inert. `CLAUDE.md` 3.2 already
 holds the design worth keeping; the parts that matter:

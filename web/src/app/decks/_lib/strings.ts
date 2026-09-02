@@ -207,4 +207,73 @@ export const T = {
   migrationHint:
     "Идэвхийн хуанли бүрэн ажиллахын тулд 0005_review_log.sql-г Supabase дээрээ ажиллуулна уу.",
   saveFailed: "Хариултыг хадгалж чадсангүй. Дахин оролдоно уу.",
+
+  // Review-mode modal. The dashboard's "Бүгдийг нь давтах" used to link
+  // straight to /decks/practice, so the classic screen was the only mode
+  // reachable from the two places people actually start a session from —
+  // Monster Hunt existed but you had to know to go looking for it.
+  closeLabel: "Хаах",
+  moreModeOptions: "Багц сонгох, баатраа солих",
+  lockedBadge: "Түгжээтэй",
+  // Quick add (dashboard). The full add form lives inside a deck; this is the
+  // same fields with a deck picker on top, so adding a word you just met
+  // doesn't mean navigating away from the dashboard first.
+  quickAdd: "Үг нэмэх",
+  quickAddTitle: "Шинэ үг нэмэх",
+  quickAddDeckLabel: "Аль багц руу",
+  quickAddNoDecks: "Үг нэмэхийн тулд эхлээд багц үүсгэнэ үү.",
+  quickAddSaveFailed: "Үгийг хадгалж чадсангүй.",
+  quickAddedCount: (n: number) => `${n} үг нэмлээ`,
+  quickAddDone: "Дуусгах",
+  // Word spotlight
+  spotlightTitle: "Таны үгсээс",
+  spotlightAnother: "Өөр үг",
+  spotlightOpenDeck: "Багц руу очих",
+  spotlightNoMeaning: "Утга оруулаагүй байна",
+
+  // PvP duel (PVP.md). multiplayerTitle/-Desc above are reused for the mode
+  // rows; these are the mode's own screens.
+  duelKicker: "Тулаан",
+  duelLobbyTitle: "Хэнтэй тулах вэ?",
+  duelBotSection: "Боттой тулах",
+  duelBotDesc: "Хүлээх шаардлагагүй. Гурван түвшин.",
+  duelBotRookie: "Дасгалжигч",
+  duelBotRookieDesc: "Удаан бөгөөд олон алддаг.",
+  duelBotRival: "Өрсөлдөгч",
+  duelBotRivalDesc: "Тэнцүү хиртэй тулаан.",
+  duelBotMaster: "Мастер",
+  duelBotMasterDesc: "Хурдан, бараг алддаггүй.",
+  duelFriendSection: "Найзтайгаа тулах",
+  duelCreate: "Тулаан үүсгэх",
+  duelJoin: "Кодоор нэгдэх",
+  duelCodeLabel: "Тулааны код",
+  duelCodePlaceholder: "ЖИШЭЭ: 7K2Q",
+  duelCodeShare: "Энэ кодыг найздаа явуулаарай.",
+  duelWaitingGuest: "Найзаа хүлээж байна…",
+  duelJoinFailed: "Ийм кодтой тулаан олдсонгүй, эсвэл аль хэдийн эхэлсэн байна.",
+  duelCreateFailed: "Тулаан үүсгэж чадсангүй.",
+  duelCancel: "Тулааныг цуцлах",
+  duelYou: "Та",
+  duelRoundOf: (n: number, total: number) => `${n} / ${total} тойрог`,
+  duelWaitingAnswer: "Өрсөлдөгчийг хүлээж байна…",
+  duelOpponentAnswered: "Өрсөлдөгч хариуллаа",
+  duelOpponentThinking: "Өрсөлдөгч бодож байна…",
+  duelStreakLabel: (n: number) => `${n} дараалан`,
+  duelWon: "Ялалт!",
+  duelLost: "Ялагдал",
+  duelDraw: "Тэнцлээ",
+  duelWonDesc: "Өрсөлдөгчөө дийллээ.",
+  duelLostDesc: "Энэ удаад бүтсэнгүй. Дахин оролдоорой.",
+  duelDrawDesc: "Хоёулаа тэнцүү үлдлээ.",
+  duelRematch: "Дахин тулах",
+  duelResultRounds: "Тойрог",
+  duelResultCorrect: "Зөв хариулт",
+  duelResultBestStreak: "Дээд цуврал",
+  duelResultDamage: "Хийсэн хохирол",
+  duelTimedOut: "Хоцорлоо",
+  duelNotScheduled:
+    "Тулааны хариултууд давтлагын хуваарьт нөлөөлөхгүй — зөвхөн тэмдэглэгдэнэ.",
+  duelLoading: "Тулаан бэлдэж байна…",
+  duelLoadFailed: "Тулааны үгсийг ачаалж чадсангүй.",
+  duelOpponentLeft: "Өрсөлдөгч гарлаа.",
 };

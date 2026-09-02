@@ -13,6 +13,7 @@ import FightScene from "../battle/_components/FightScene";
 // Still used by the hero chips: those are portraits for picking a character,
 // and a portrait is exactly where an idle pose belongs.
 import FighterSprite from "../battle/_components/FighterSprite";
+import ModeRow from "../../_components/ModeRow";
 
 interface DeckOption {
   id: string;
@@ -30,81 +31,6 @@ interface DueSummary {
   new_due: number;
   review_remaining: number;
   new_remaining: number;
-}
-
-// One shape for every play option below the Monster Hunt panel: same height,
-// same anatomy, so the list reads as a list. Without an `href` it renders as
-// inert markup rather than a disabled link — an anchor with nothing behind it
-// still looks clickable, and PvP genuinely has nothing behind it.
-function ModeRow({
-  href,
-  icon,
-  iconClass,
-  title,
-  desc,
-  badge,
-  highlight = false,
-}: {
-  href?: string;
-  icon: React.ReactNode;
-  iconClass: string;
-  title: string;
-  desc: string;
-  badge?: string;
-  highlight?: boolean;
-}) {
-  const body = (
-    <>
-      <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${iconClass}`}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2
-          className={`flex flex-wrap items-center gap-2 text-sm font-semibold ${
-            badge ? "text-ink-soft" : "text-ink"
-          }`}
-        >
-          {title}
-          {badge && (
-            <span className="rounded-full bg-paper-deep px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-mute">
-              {badge}
-            </span>
-          )}
-        </h2>
-        <p className="text-xs leading-relaxed text-ink-mute">{desc}</p>
-      </div>
-      {href && (
-        <ArrowRight
-          size={16}
-          className="shrink-0 text-ink-mute transition-transform group-hover:translate-x-1"
-        />
-      )}
-    </>
-  );
-
-  if (!href) {
-    return (
-      <div
-        aria-disabled
-        className="flex items-center gap-4 rounded-card border border-dashed border-line bg-white/40 px-5 py-4"
-      >
-        {body}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      className={`hk-card hk-card-interactive group flex items-center gap-4 px-5 py-4 ${
-        highlight ? "ring-2 ring-seal/20" : ""
-      }`}
-    >
-      {body}
-    </Link>
-  );
 }
 
 function Points({ items, tone }: { items: readonly string[]; tone: string }) {
@@ -367,16 +293,17 @@ export default function ReviewModePicker() {
             highlight={nothingDue}
           />
 
-          {/* 3 — PvP. Not a link and not a button: nothing is built behind
-              this yet (CLAUDE.md's Phase 3.2). It is listed so the mode is
-              visible, and labelled as unbuilt rather than dressed up as
-              something that might respond to a click. */}
+          {/* 3 — PvP. Real now (PVP.md). Deliberately NOT deck-scoped like the
+              rows above: a duel draws from the whole library through
+              practice_cards(), because each player is quizzed from their own
+              collection and a shared deck filter would mean nothing to the
+              other side. */}
           <ModeRow
+            href="/decks/review/duel"
             icon={<Users size={19} />}
-            iconClass="bg-paper-dim text-ink-mute"
+            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
-            badge={T.comingSoon}
           />
 
           {/* 4 — Classic. */}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { GraduationCap, Search } from "lucide-react";
 import type { Deck, DeckWithCount, Folder, Word } from "@/lib/types";
@@ -11,6 +10,7 @@ import type { WordHit } from "./_lib/types";
 import Sidebar from "./_components/Sidebar";
 import SearchResults from "./_components/SearchResults";
 import DeckDetail from "./_components/DeckDetail";
+import ReviewModeModal from "./_components/ReviewModeModal";
 
 export default function DeckDashboard() {
   // Deep link support (e.g. from the stats dashboard's deck breakdown table).
@@ -24,6 +24,9 @@ export default function DeckDashboard() {
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WordHit[] | null>(null);
+  // The chooser, not a link straight to the classic screen — same reason
+  // as the stats dashboard's hero button.
+  const [choosingMode, setChoosingMode] = useState(false);
 
   const loadFolders = useCallback(async () => {
     const { data } = await supabase
@@ -154,12 +157,12 @@ export default function DeckDashboard() {
               className="w-full rounded-control border border-line bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
             />
           </div>
-          <Link
-            href="/decks/practice"
+          <button
+            onClick={() => setChoosingMode(true)}
             className="flex shrink-0 items-center gap-1.5 hk-btn hk-btn-primary px-4 py-2.5 text-sm"
           >
             <GraduationCap size={16} /> {T.practiceAll}
-          </Link>
+          </button>
         </div>
         {error && (
           <p className="mb-4 rounded-control border border-line bg-paper-dim px-4 py-2 text-sm text-ink">{error}</p>
@@ -188,6 +191,18 @@ export default function DeckDashboard() {
           </div>
         )}
       </section>
+
+      {choosingMode && (
+        <ReviewModeModal
+          onClose={() => setChoosingMode(false)}
+          // The whole library, not the selected deck: Monster Hunt draws its
+          // distractors from every word the user owns, so that's what decides
+          // whether it can build a question. Null until the decks land.
+          wordCount={
+            loadingDecks ? null : decks.reduce((n, d) => n + d.word_count, 0)
+          }
+        />
+      )}
     </div>
   );
 }
