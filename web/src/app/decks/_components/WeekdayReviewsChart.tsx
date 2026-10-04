@@ -46,19 +46,22 @@ export default function WeekdayReviewsChart({
 
   return (
     <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink-soft">{T.weekdayTitle}</h3>
         <p className="text-xs text-ink-mute">{T.weekdaySummary(grand)}</p>
       </div>
 
       <div className="flex items-end gap-3">
         {totals.map((count, i) => {
-          const heightPct = count === 0 ? 0 : Math.max(6, (count / max) * 100);
+          // Capped below 100: the count label sits just above the bar top, so
+          // an uncapped bar at the max value pushed its label past the box's
+          // own top edge and into the title row above it.
+          const heightPct = count === 0 ? 0 : Math.min(80, Math.max(6, (count / max) * 100));
           const avg = activeWeeks[i] === 0 ? 0 : count / activeWeeks[i];
           return (
             <div
               key={i}
-              className="relative h-24 flex-1"
+              className="relative h-28 flex-1"
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}
               title={`${WEEKDAY_MN[i]} — ${T.reviewsN(count)}`}

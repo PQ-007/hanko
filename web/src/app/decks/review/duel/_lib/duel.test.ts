@@ -20,21 +20,21 @@ import {
 // Round timing
 // ---------------------------------------------------------------------------
 
-test("the round timer tightens from 5s to a 3s floor", () => {
-  assert.equal(roundDurationMs(1), 5000);
+test("the round timer tightens from 10s to a 6s floor", () => {
+  assert.equal(roundDurationMs(1), 10000);
   assert.ok(roundDurationMs(5) < roundDurationMs(1));
-  assert.equal(roundDurationMs(9), 3000);
+  assert.equal(roundDurationMs(9), 6000);
 });
 
 test("the timer never drops below the floor, however long the match", () => {
   for (const n of [9, 12, 40, 500]) {
-    assert.equal(roundDurationMs(n), 3000, `round ${n}`);
+    assert.equal(roundDurationMs(n), 6000, `round ${n}`);
   }
 });
 
 test("round numbering is 1-based and round 0 does not shorten the timer", () => {
-  // Guards an off-by-one that would silently hand round 1 a 4.75s timer.
-  assert.equal(roundDurationMs(0), 5000);
+  // Guards an off-by-one that would silently hand round 1 a 9.5s timer.
+  assert.equal(roundDurationMs(0), 10000);
 });
 
 // ---------------------------------------------------------------------------

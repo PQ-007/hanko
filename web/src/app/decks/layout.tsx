@@ -19,7 +19,10 @@ export default async function DecksLayout({
           legible over whatever scrolls under it without drawing a hard line
           across the page, which is what made the old chrome feel boxy. */}
       <header className="sticky top-0 z-20 border-b border-line/70 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+        {/* max-width and px match the content containers below (DeckDashboard,
+            StatsDashboard) so the logo/nav line up with the page content's
+            left/right edges instead of drifting at wider viewports. */}
+        <div className="mx-auto flex w-full max-w-[1700px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-8">
           <h1 className="flex items-center gap-2.5 text-base font-semibold tracking-tight">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/hanko.svg" alt="" className="h-7 w-7" />

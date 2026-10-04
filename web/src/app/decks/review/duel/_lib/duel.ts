@@ -30,11 +30,14 @@ export const DUEL_MAX_HP = 100;
 // rounds rather than by a knockout at round four.
 export const DUEL_ROUND_COUNT = 12;
 
-// PVP.md / CLAUDE.md 3.2: "round timer 3-5s, tightening as the match
-// progresses". Linear from 5s, floored at 3s by round 9, flat thereafter.
-const FIRST_ROUND_MS = 5000;
-const FINAL_ROUND_MS = 3000;
-const TIGHTEN_PER_ROUND_MS = 250;
+// PVP.md / CLAUDE.md 3.2 originally specified "round timer 3-5s, tightening
+// as the match progresses" — raised to 6-10s on request (5s read as too short
+// in play). TIGHTEN_PER_ROUND_MS is doubled to match, so the curve still
+// reaches its floor at the same round (9) as before, just over a longer span.
+// Linear from 10s, floored at 6s by round 9, flat thereafter.
+const FIRST_ROUND_MS = 10000;
+const FINAL_ROUND_MS = 6000;
+const TIGHTEN_PER_ROUND_MS = 500;
 
 export function roundDurationMs(roundNo: number): number {
   const shortened = FIRST_ROUND_MS - (Math.max(1, roundNo) - 1) * TIGHTEN_PER_ROUND_MS;

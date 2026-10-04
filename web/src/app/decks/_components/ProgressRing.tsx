@@ -6,17 +6,23 @@ import { useCountUp, useInView } from "../_lib/useAnim";
 // Radial progress meter. The unfilled track is a light step of the same ramp
 // as the fill, so the remaining share reads as "not yet" rather than as a
 // second category. The percentage is always printed in the middle, so the
-// arc is reinforcement rather than the only channel.
+// arc is reinforcement rather than the only channel — unless `centerText` is
+// given, for rings whose value isn't itself a percentage (e.g. "7/20"); `pct`
+// still drives how full the arc is in that case.
 export default function ProgressRing({
   pct,
   label,
   size = 132,
   stroke = 11,
+  color = ACCENT_DARK,
+  centerText,
 }: {
   pct: number;
   label: string;
   size?: number;
   stroke?: number;
+  color?: string;
+  centerText?: string;
 }) {
   const [ref, inView] = useInView<HTMLDivElement>();
   const animated = useCountUp(pct, 1100, inView);
@@ -42,7 +48,7 @@ export default function ProgressRing({
             cy={size / 2}
             r={r}
             fill="none"
-            stroke={ACCENT_DARK}
+            stroke={color}
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -50,8 +56,8 @@ export default function ProgressRing({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold text-ink">
-            {Math.round(animated)}%
+          <span className={`font-semibold text-ink ${centerText ? "text-xl" : "text-2xl"}`}>
+            {centerText ?? `${Math.round(animated)}%`}
           </span>
         </div>
       </div>

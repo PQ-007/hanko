@@ -17,6 +17,9 @@ export interface QueueCard {
   interval_days: number;
   repetitions: number;
   ease_factor: number;
+  stability: number | null;
+  difficulty: number | null;
+  last_reviewed_at: string | null;
   term: string;
   reading: string | null;
   meaning: string | null;

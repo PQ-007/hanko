@@ -23,10 +23,16 @@ export interface BotProfile {
 
 // Untuned first-pass numbers — PVP.md phase 5. The names are user-facing; the
 // numbers are guesses until someone has played all three.
+//
+// Reaction times scale with the round timer (duel.ts's FIRST/FINAL_ROUND_MS),
+// not in isolation — these were calibrated against the old 3-5s timer so that
+// even `master` occasionally timed out in the match's final third. When the
+// timer doubled to 6-10s on request, these were doubled too, to preserve that
+// same timeout tension rather than let it quietly disappear.
 export const BOT_PROFILES: Record<BotDifficulty, BotProfile> = {
-  rookie: { accuracy: 0.55, meanReactionMs: 3600, reactionJitterMs: 1400 },
-  rival: { accuracy: 0.75, meanReactionMs: 2600, reactionJitterMs: 1100 },
-  master: { accuracy: 0.9, meanReactionMs: 1700, reactionJitterMs: 700 },
+  rookie: { accuracy: 0.55, meanReactionMs: 7200, reactionJitterMs: 2800 },
+  rival: { accuracy: 0.75, meanReactionMs: 5200, reactionJitterMs: 2200 },
+  master: { accuracy: 0.9, meanReactionMs: 3400, reactionJitterMs: 1400 },
 };
 
 export const BOT_DIFFICULTIES = ["rookie", "rival", "master"] as const;

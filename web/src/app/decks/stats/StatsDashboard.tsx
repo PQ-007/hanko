@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BookMarked, CalendarCheck, Layers, Repeat, Sparkles } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { Deck, DeckWithCount, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
-import { addDays, currentStreak, localDateKey, longestStreak, startOfDay } from "../_lib/dates";
-import StatTile from "../_components/StatTile";
+import { currentStreak, localDateKey, longestStreak } from "../_lib/dates";
 import StreakHero from "../_components/StreakHero";
 import ActivityHeatmap from "../_components/ActivityHeatmap";
 import GrowthChart from "../_components/GrowthChart";
@@ -18,6 +17,7 @@ import DeckBreakdownTable from "../_components/DeckBreakdownTable";
 import WordSpotlight from "../_components/WordSpotlight";
 import ReviewModeModal from "../_components/ReviewModeModal";
 import QuickAddWordModal from "../_components/QuickAddWordModal";
+import GoalModal from "../_components/GoalModal";
 import LoadingScene from "../review/battle/_components/LoadingScene";
 
 // One SRS day's review count, from the review_activity() RPC (migration 0013).
@@ -39,6 +39,8 @@ interface DueSummary {
   new_due: number;
   review_remaining: number;
   new_remaining: number;
+  new_goal: number;           // added in 0022 — profiles.new_per_day, surfaced for the goal ring
+  new_reviewed_today: number; // added in 0022 — new cards answered today
 }
 
 export default function StatsDashboard() {
@@ -58,7 +60,7 @@ export default function StatsDashboard() {
   const [loading, setLoading] = useState(true);
   // Which dialog, if any, is open. Both are mounted below the page rather
   // than inside the hero so a reload triggered by one can't unmount it.
-  const [modal, setModal] = useState<"review" | "add" | null>(null);
+  const [modal, setModal] = useState<"review" | "add" | "goal" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -152,12 +154,13 @@ export default function StatsDashboard() {
   // client-side count is the pre-0011 fallback.
   const backlog = words.filter((w) => new Date(w.due_at) <= now).length;
   const dueToday = due ? due.due_now : backlog;
-  const heldBack = due ? due.review_due + due.new_due - due.due_now : 0;
   const mastered = words.filter((w) => {
     const g = gradeFor(w);
     return g === "A" || g === "B";
   }).length;
   const masteredPct = words.length === 0 ? 0 : Math.round((mastered / words.length) * 100);
+  const newGoal = due?.new_goal ?? 0;
+  const newReviewedToday = due?.new_reviewed_today ?? 0;
 
   const activeDays = new Set(activity.keys());
   const streak = currentStreak(activeDays, freezes, srsToday ?? undefined);
@@ -166,12 +169,6 @@ export default function StatsDashboard() {
   const todayKey = localDateKey(now);
   const addedToday = words.filter((w) => localDateKey(new Date(w.date_added)) === todayKey).length;
 
-  const weekStart = addDays(startOfDay(now), -6);
-  let reviewsThisWeek = 0;
-  for (let i = 0; i < 7; i++) {
-    reviewsThisWeek += activity.get(localDateKey(addDays(weekStart, i))) ?? 0;
-  }
-
   return (
     <div className="mx-auto flex max-w-[1700px] flex-col gap-4 p-4 sm:px-8 sm:py-6">
       <StreakHero
@@ -179,9 +176,12 @@ export default function StatsDashboard() {
         bestStreak={best}
         addedToday={addedToday}
         masteredPct={masteredPct}
+        newGoal={newGoal}
+        newReviewedToday={newReviewedToday}
         freezesAvailable={freezes}
         onPractice={() => setModal("review")}
         onAddWord={() => setModal("add")}
+        onEditGoal={() => setModal("goal")}
       />
 
       {logMissing && (
@@ -190,26 +190,6 @@ export default function StatsDashboard() {
           {T.migrationHint}
         </p>
       )}
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatTile icon={BookMarked} label={T.statTotalWords} value={words.length} />
-        <StatTile icon={Layers} label={T.statTotalDecks} value={decks.length} />
-        <StatTile
-          icon={CalendarCheck}
-          label={T.statDueToday}
-          value={dueToday}
-          // When the daily cap holds cards back, say so — otherwise the tile
-          // and the deck breakdown below look like they contradict each other.
-          sub={heldBack > 0 ? T.dueHeldBack(heldBack) : undefined}
-        />
-        <StatTile
-          icon={Sparkles}
-          label={T.statMastered}
-          value={mastered}
-          sub={words.length > 0 ? `${masteredPct}%` : undefined}
-        />
-        <StatTile icon={Repeat} label={T.reviewsThisWeek} value={reviewsThisWeek} />
-      </div>
 
       {/* srsToday, not the device date, so the word of the day turns over at
           the same moment the scheduler's day does. */}
@@ -256,6 +236,17 @@ export default function StatsDashboard() {
             // the page for its loading scene, which would take the dialog with
             // it if it ran after every word.
             if (added > 0) load();
+          }}
+        />
+      )}
+      {modal === "goal" && (
+        <GoalModal
+          currentGoal={newGoal}
+          onClose={(saved) => {
+            setModal(null);
+            // Re-fetch due_summary so the ring reflects the new cap right away
+            // instead of waiting for the next natural reload.
+            if (saved !== null) load();
           }}
         />
       )}

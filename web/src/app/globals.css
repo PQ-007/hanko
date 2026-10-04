@@ -1,19 +1,16 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Design tokens — washi paper + hanko seal.
+   Design tokens — washi paper + a blue accent.
 
-   These are not invented: they're the palette the browser extension has used
-   since the beginning (chrome/popup.css), and the same one the app icon is
-   drawn from ("washi-paper + hanko-red", see public/hanko.svg). The web app
-   had drifted to Tailwind's default neutral grays — 47 separate uses of
-   text-gray-500, bg-gray-900 standing in for a brand colour, five radius
-   scales mixed at random — which is what made it read as generic and stiff
-   next to the extension. Adopting the existing tokens unifies the product
-   rather than restyling it to taste.
-
-   A hanko is a vermilion seal stamped on off-white paper; that's the whole
-   visual idea. Seal red is the accent, paper is the ground, ink is the type.
+   The vermilion-seal accent this started from (see the extension's
+   chrome/popup.css and public/hanko.svg, both still red) was swapped to blue
+   on request. Everything downstream — ~40 `bg-seal`/`text-seal`/`border-seal`/
+   `ring-seal-tint` utilities across the app — is generated from the three
+   tokens below by Tailwind's @theme, so this is the only place hue lives;
+   nothing else needed to change. The `--color-seal*` variable names were kept
+   rather than renamed (a cosmetic, app-wide rename with no behavioural
+   payoff) — they now just name "the brand accent," not a color.
    --------------------------------------------------------------------------- */
 @theme {
   --color-paper: #faf7f0;
@@ -31,9 +28,9 @@
      distinct tiers: 5.84:1 and 4.53:1. */
   --color-ink-soft: #666053;
   --color-ink-mute: #787161;
-  --color-seal: #b03a2e;
-  --color-seal-dark: #9a3026;
-  --color-seal-tint: #f6e7e4;
+  --color-seal: #256abf;
+  --color-seal-dark: #184f95;
+  --color-seal-tint: #dbe7f7;
 
   /* One radius scale instead of the previous free-for-all. */
   --radius-card: 0.875rem;
@@ -104,7 +101,7 @@ body {
 .hk-btn-primary {
   background: var(--color-seal);
   color: var(--color-paper);
-  box-shadow: 0 1px 2px rgba(154, 48, 38, 0.25);
+  box-shadow: 0 1px 2px rgba(24, 79, 149, 0.25);
 }
 
 .hk-btn-primary:hover {
