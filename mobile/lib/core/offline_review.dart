@@ -59,11 +59,16 @@ class OfflineReview {
   /// Returns the server's updated card when it went through, and null when it
   /// was queued — the caller uses that to decide whether it can trust the
   /// returned scheduling state.
+  ///
+  /// [source] is sent as-is and kept through the outbox: 'review' for classic
+  /// review, 'quiz' for Monster Hunt (schedules, but labelled), 'drill' for
+  /// free practice (logged, never schedules).
   Future<Map<String, dynamic>?> answer({
     required String cardId,
     required String rating,
     required String logId,
     int? durationMs,
+    String source = 'review',
   }) async {
     try {
       return await _repo.reviewCard(
@@ -71,6 +76,7 @@ class OfflineReview {
         rating: rating,
         logId: logId,
         durationMs: durationMs,
+        source: source,
       );
     } catch (e) {
       debugPrint('Answer queued for replay: $e');
@@ -81,9 +87,36 @@ class OfflineReview {
           rating: rating,
           durationMs: Value(durationMs),
           answeredAt: DateTime.now(),
+          source: Value(source),
         ),
       );
       return null;
+    }
+  }
+
+  /// Every word's quiz fields for Monster Hunt's options, refreshing the local
+  /// copy; falls back to that copy offline. Rethrows only when there's neither.
+  Future<List<QuizWordRow>> quizWords() async {
+    try {
+      final words = await _repo.quizWords();
+      await _db.cacheQuizWords([
+        for (final w in words)
+          CachedQuizWordsCompanion.insert(
+            id: w.id,
+            term: w.term,
+            reading: Value(w.reading),
+            meaning: Value(w.meaning),
+            meaningMn: Value(w.meaningMn),
+          ),
+      ]);
+      return words;
+    } catch (e) {
+      final cached = await _db.cachedQuizWordList();
+      if (cached.isEmpty) rethrow;
+      return [
+        for (final c in cached)
+          (id: c.id, term: c.term, reading: c.reading, meaning: c.meaning, meaningMn: c.meaningMn),
+      ];
     }
   }
 
@@ -117,6 +150,7 @@ class OfflineReview {
           rating: answer.rating,
           logId: answer.logId,
           durationMs: answer.durationMs,
+          source: answer.source,
         );
         await _db.clearAnswer(answer.logId);
         sent++;

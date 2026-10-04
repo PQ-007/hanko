@@ -62,13 +62,13 @@ void main() {
   });
 
   test('monster bag deals every monster once before any repeats', () {
-    final bag = MonsterBag(random: Random(1));
+    final bag = MonsterBag(random: Random(1).nextDouble);
     final first = [for (var i = 0; i < monsterRoster.length; i++) bag.pick()];
     expect(first.toSet().length, monsterRoster.length);
   });
 
   test('monster bag never deals the excluded character or a back-to-back repeat', () {
-    final bag = MonsterBag(random: Random(7));
+    final bag = MonsterBag(random: Random(7).nextDouble);
     String? last;
     for (var i = 0; i < monsterRoster.length * 5; i++) {
       final m = bag.pick(exclude: 'black-knight-a');

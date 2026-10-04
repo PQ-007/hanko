@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../models/library.dart';
 import '../../models/queue_card.dart';
 import '../battle/hero.dart';
+import '../battle/rules.dart' show minWordsForBattle;
 import '../battle/sprite_view.dart';
 
 final _scopedDueProvider = FutureProvider.family<DueSummary, String?>(
@@ -45,6 +46,9 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
     final decks = ref.watch(decksProvider).value ?? const <Deck>[];
     final due = ref.watch(_scopedDueProvider(_deckId));
     final hero = ref.watch(heroProvider);
+    // Monster Hunt needs four of your own words to build four options.
+    final wordCount = ref.watch(allWordsProvider).value?.length;
+    final huntLocked = wordCount != null && wordCount < minWordsForBattle;
     final deckName = decks.where((d) => d.id == _deckId).firstOrNull?.name;
     final theme = Theme.of(context);
 
@@ -102,7 +106,19 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
             ),
             title: T.battleModeTitle,
             subtitle: T.battleModeDesc,
-            note: T.nextStage,
+            note: huntLocked ? T.battleLocked(minWordsForBattle) : null,
+            onTap: huntLocked
+                ? null
+                : () => Navigator.of(context).pop(Routes.hunt(deckId: _deckId)),
+          ),
+          _Mode(
+            leading: const Icon(Icons.sports_martial_arts, color: HankoColors.seal, size: 30),
+            title: T.freeModeTitle,
+            subtitle: T.freeModeDesc,
+            note: huntLocked ? T.battleLocked(minWordsForBattle) : null,
+            onTap: huntLocked
+                ? null
+                : () => Navigator.of(context).pop(Routes.hunt(deckId: _deckId, free: true)),
           ),
           _Mode(
             leading: const Icon(Icons.style_outlined, color: HankoColors.seal, size: 30),

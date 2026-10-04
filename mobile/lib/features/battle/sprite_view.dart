@@ -18,8 +18,9 @@ class SpriteSheets {
   static String path(String slug, String state) =>
       'assets/battle/characters/$slug/$state.png';
 
-  static Future<ui.Image> load(String slug, String state) {
-    final key = path(slug, state);
+  static Future<ui.Image> load(String slug, String state) => loadAsset(path(slug, state));
+
+  static Future<ui.Image> loadAsset(String key) {
     return _cache.putIfAbsent(key, () async {
       final data = await rootBundle.load(key);
       final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
@@ -213,4 +214,73 @@ class _FramePainter extends CustomPainter {
       old.sheet != sheet ||
       old.flip != flip ||
       old.offset != offset;
+}
+
+
+/// A projectile in flight (projectiles.ts / ProjectileShot.tsx): an arrow,
+/// bolt or orb crossing from thrower to target. Drawn at the same frame scale
+/// as a fighter of [fighterSize], so ammunition matches the hand that threw
+/// it. Multi-frame shots churn while they fly; the parent moves it.
+class ProjectileView extends StatefulWidget {
+  const ProjectileView({
+    super.key,
+    required this.slug,
+    required this.pose,
+    required this.frames,
+    required this.fighterSize,
+    this.flip = false,
+  });
+
+  final String slug;
+  final String pose;
+  final int frames;
+  final double fighterSize;
+
+  /// The art points right; a monster's shot is the same sheet mirrored.
+  final bool flip;
+
+  @override
+  State<ProjectileView> createState() => _ProjectileViewState();
+}
+
+class _ProjectileViewState extends State<ProjectileView> with SingleTickerProviderStateMixin {
+  late final AnimationController _clock;
+  ui.Image? _sheet;
+
+  @override
+  void initState() {
+    super.initState();
+    // Loops several times over a short flight (frames x 45ms, as on the web).
+    _clock = AnimationController(vsync: this, duration: Duration(milliseconds: widget.frames * 45));
+    if (widget.frames > 1) _clock.repeat();
+    SpriteSheets.loadAsset('assets/battle/projectiles/${widget.slug}/${widget.pose}.png').then((img) {
+      if (mounted) setState(() => _sheet = img);
+    });
+  }
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sheet = _sheet;
+    if (sheet == null) return SizedBox.square(dimension: widget.fighterSize);
+    return SizedBox.square(
+      dimension: widget.fighterSize,
+      child: AnimatedBuilder(
+        animation: _clock,
+        builder: (_, _) => CustomPaint(
+          painter: _FramePainter(
+            sheet: sheet,
+            frame: (_clock.value * widget.frames).floor().clamp(0, widget.frames - 1),
+            offset: (x: 0, y: 0),
+            flip: widget.flip,
+          ),
+        ),
+      ),
+    );
+  }
 }

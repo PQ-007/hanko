@@ -21,6 +21,12 @@ class PendingAnswers extends Table {
   IntColumn get durationMs => integer().named('duration_ms').nullable()();
   DateTimeColumn get answeredAt => dateTime().named('answered_at')();
 
+  /// `review_card()`'s `p_source` (schema v2). Replayed exactly as answered:
+  /// a Monster Hunt answer queued offline must still land as 'quiz', or the
+  /// label 0018 added to compare it against classic review is silently lost.
+  /// Rows queued before v2 were all classic review, hence the default.
+  TextColumn get source => text().withDefault(const Constant('review'))();
+
   @override
   Set<Column> get primaryKey => {logId};
 }
@@ -53,14 +59,40 @@ class CachedCards extends Table {
   Set<Column> get primaryKey => {cardId};
 }
 
-@DriftDatabase(tables: [PendingAnswers, CachedCards])
+/// Every word's quiz fields, so Monster Hunt can build its four options with
+/// no connection (schema v2). Same contract as [CachedCards]: replaced
+/// wholesale on each successful fetch, never merged, never authoritative.
+class CachedQuizWords extends Table {
+  TextColumn get id => text()();
+  TextColumn get term => text()();
+  TextColumn get reading => text().nullable()();
+  TextColumn get meaning => text().nullable()();
+  TextColumn get meaningMn => text().named('meaning_mn').nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [PendingAnswers, CachedCards, CachedQuizWords])
 class LocalDb extends _$LocalDb {
   LocalDb() : super(driftDatabase(name: 'hanko'));
 
   LocalDb.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          // v1 → v2: answers keep their source through the outbox, and the
+          // word list is cached for offline Monster Hunt.
+          if (from < 2) {
+            await m.addColumn(pendingAnswers, pendingAnswers.source);
+            await m.createTable(cachedQuizWords);
+          }
+        },
+      );
 
   Future<void> enqueueAnswer(PendingAnswersCompanion answer) =>
       into(pendingAnswers).insert(answer, mode: InsertMode.insertOrReplace);
@@ -84,4 +116,13 @@ class LocalDb extends _$LocalDb {
   Future<List<CachedCard>> cachedQueue() =>
       (select(cachedCards)..orderBy([(t) => OrderingTerm(expression: t.position)]))
           .get();
+
+  Future<void> cacheQuizWords(List<CachedQuizWordsCompanion> words) async {
+    await transaction(() async {
+      await delete(cachedQuizWords).go();
+      await batch((b) => b.insertAll(cachedQuizWords, words));
+    });
+  }
+
+  Future<List<CachedQuizWord>> cachedQuizWordList() => select(cachedQuizWords).get();
 }

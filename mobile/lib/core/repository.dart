@@ -8,6 +8,15 @@ import 'reminders.dart';
 
 const _uuid = Uuid();
 
+/// A word's quiz fields — what Monster Hunt builds its options from.
+typedef QuizWordRow = ({
+  String id,
+  String term,
+  String? reading,
+  String? meaning,
+  String? meaningMn,
+});
+
 final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
 
 /// Emits on every sign-in / sign-out so the UI can follow the session.
@@ -308,6 +317,36 @@ class Repository {
       },
     );
     return row;
+  }
+
+  /// Any card regardless of due date (`practice_cards`, 0017), random order —
+  /// Monster Hunt's free mode. Answers to these go in as 'drill'.
+  Future<List<QueueCard>> practiceCards({String? deckId, int limit = 60}) async {
+    final rows = await _db.rpc<List<dynamic>>(
+      'practice_cards',
+      params: {'p_deck_id': deckId, 'p_limit': limit},
+    );
+    return rows
+        .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  /// Every live word's quiz fields, for Monster Hunt's distractors.
+  Future<List<QuizWordRow>> quizWords() async {
+    final rows = await _db
+        .from('words')
+        .select('id, term, reading, meaning, meaning_mn')
+        .eq('deleted', false);
+    return [
+      for (final r in rows)
+        (
+          id: r['id'] as String,
+          term: r['term'] as String? ?? '',
+          reading: r['reading'] as String?,
+          meaning: r['meaning'] as String?,
+          meaningMn: r['meaning_mn'] as String?,
+        ),
+    ];
   }
 
   /// Mature review cards, for the speed round drill. Unlike `review_queue()`

@@ -379,6 +379,15 @@ Jisho-backed `distractor_cache` an earlier draft of 3.2 called for was built,
 found too slow in real play, and dropped — `0015` created that table and `0016`
 drops it. Do not resurrect it; **item 2 under 3.2 below is solved.**
 
+**Monster Hunt on mobile** (`mobile/lib/features/battle/rules.dart`,
+`battle_controller.dart`, `battle_screen.dart`) is a port, not a redesign: the
+damage fold, quiz builder and monster bag are pinned to the TypeScript by
+`web/src/app/decks/review/battle/_lib/fixtures/battle.fixture.json` (generated
+by `generate-battle-fixture.ts`, read by `battle-fixture.test.ts` and
+`battle_rules_test.dart`). Same rule as the duel fixture: regenerate only for an
+intended behaviour change, and change both sides. Offline answers keep their
+`quiz` label through the outbox (`PendingAnswers.source`, Drift schema v2).
+
 ### 3.2 Online 1v1 battle mode (built, unplayed — see `PVP.md`)
 Fast-paced vocabulary duel, in its own feature folder so it never entangles
 with the review code.

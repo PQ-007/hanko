@@ -99,4 +99,54 @@ void main() {
     final cached = await db.cachedQueue();
     expect(cached.map((c) => c.cardId), ['a', 'b', 'c']);
   });
+
+  test('a Monster Hunt answer keeps its quiz source through the outbox', () async {
+    // Lost here, an offline quiz answer would replay as plain 'review' and
+    // vanish from the comparison 0018 added the label for.
+    await db.enqueueAnswer(PendingAnswersCompanion.insert(
+      logId: 'q',
+      cardId: 'c',
+      rating: 'good',
+      answeredAt: DateTime(2026, 10, 5),
+      source: const Value('quiz'),
+    ));
+    expect((await db.pending()).single.source, 'quiz');
+  });
+
+  test('an answer queued without a source is classic review', () async {
+    await db.enqueueAnswer(answer('plain'));
+    expect((await db.pending()).single.source, 'review');
+  });
+
+  test('the quiz word cache is replaced wholesale', () async {
+    CachedQuizWordsCompanion w(String id) =>
+        CachedQuizWordsCompanion.insert(id: id, term: 't$id', meaningMn: const Value('мн'));
+    await db.cacheQuizWords([w('1'), w('2')]);
+    await db.cacheQuizWords([w('3')]);
+    expect((await db.cachedQuizWordList()).map((x) => x.id), ['3']);
+  });
+
+  test('a v1 database on the phone upgrades without losing queued answers', () async {
+    // Built by hand in the v1 shape, the way an installed app has it today.
+    final upgraded = LocalDb.forTesting(NativeDatabase.memory(setup: (raw) {
+      raw.execute('CREATE TABLE pending_answers (log_id TEXT NOT NULL, card_id TEXT NOT NULL, '
+          'rating TEXT NOT NULL, duration_ms INTEGER NULL, answered_at INTEGER NOT NULL, '
+          'PRIMARY KEY (log_id))');
+      raw.execute('CREATE TABLE cached_cards (card_id TEXT NOT NULL, word_id TEXT NOT NULL, '
+          'deck_id TEXT NOT NULL, template TEXT NOT NULL, state TEXT NOT NULL, '
+          'learning_step INTEGER NOT NULL, due_at INTEGER NOT NULL, interval_days INTEGER NOT NULL, '
+          'repetitions INTEGER NOT NULL, ease_factor REAL NOT NULL, term TEXT NOT NULL, '
+          'reading TEXT NULL, meaning TEXT NULL, meaning_mn TEXT NULL, audio_path TEXT NULL, '
+          'position INTEGER NOT NULL, PRIMARY KEY (card_id))');
+      raw.execute("INSERT INTO pending_answers VALUES ('old', 'c1', 'again', NULL, 1780000000)");
+      raw.execute('PRAGMA user_version = 1');
+    }));
+    addTearDown(upgraded.close);
+
+    final pending = await upgraded.pending();
+    expect(pending.single.logId, 'old', reason: 'the queued answer survived');
+    expect(pending.single.source, 'review', reason: 'pre-v2 answers were classic review');
+    await upgraded.cacheQuizWords([CachedQuizWordsCompanion.insert(id: 'w', term: 't')]);
+    expect(await upgraded.cachedQuizWordList(), hasLength(1), reason: 'new table exists');
+  });
 }

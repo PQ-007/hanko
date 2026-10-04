@@ -157,6 +157,48 @@ class T {
   static const spotlightOpenDeck = 'Багц руу очих';
   static const spotlightNoMeaning = 'Утга оруулаагүй байна';
 
+  // Monster Hunt (strings.ts)
+  static const loadingWords = 'Үгсийг ачааллаж байна…';
+  static const loadingQuiz = 'Асуулт бэлдэж байна…';
+  static const noWordsDueBattle = 'Одоогоор тулаанд дайх үг алга байна.';
+  static const noWordsDueBattleHint =
+      'Бүх үгээ давтсан байна. Сурч буй үгс хэдэн минутын дараа эргэж ирнэ.';
+  static const queueLoadFailed = 'Давтах үгсийг ачаалж чадсангүй.';
+  static const freePracticeCta = 'Ямар ч үгээр чөлөөтэй тулаанд орох';
+  static const freePracticeBanner =
+      'Чөлөөт дасгал — хариултууд давтлагын хуваарь болон цувралд нөлөөлөхгүй.';
+  static const notEnoughWordsBattle =
+      'Мангас агнахад хамгийн багадаа 4 үг хэрэгтэй. Эхлээд өргөтгөл эсвэл гараар цөөн үг нэмнэ үү.';
+  static String monstersDefeated(int n) => '$n дайсан устгалаа';
+  static const stopBattle = 'Тулаан зогсоох';
+  static const retryBattle = 'Дахин оролдох';
+  static const victoryTitle = 'Ялалт!';
+  static const defeatTitle = 'Ялагдал';
+  static const clearedTitle = 'Өнөөдрийн ажил дууслаа';
+  static const clearedDesc = 'Бүх үгээ давтлаа';
+  static const critLabel = 'КРИТИКАЛ ЦОХИЛТ!';
+  static const evadedLabel = 'ЗАЙЛСХИЙВ!';
+  static const armorBlockedLabel = 'ХАМГААЛАЛТ ХААЛАА!';
+  static const timeUpLabel = 'ЦАГ ДУУСЛАА!';
+  static const armorGainedLabel = 'Хамгаалалт олдлоо';
+  static const exitBattle = 'Буцах';
+  static const pauseBattle = 'Түр зогсоох';
+  static const resumeBattle = 'Үргэлжлүүлэх';
+  static const pausedTitle = 'Түр зогсов';
+  static const pausedDesc = 'Цаг зогслоо. Үргэлжлүүлэхэд яг эндээсээ цааш явна.';
+  static String killCount(int n) => '$n устгав';
+  static const victoryFlag = 'ДАЙСАН УНАЛАА!';
+  static const resultKicker = 'Тулааны дүн';
+  static const resultWords = 'Давтсан үг';
+  static const resultCorrect = 'Зөв хариулт';
+  static const resultBestStreak = 'Дээд цуврал';
+  static const resultCrits = 'Критикал цохилт';
+  static const noMonsterDefeated = 'Энэ дайсныг дийлсэнгүй';
+  static const victoryDesc = 'Унагасан дайснуудаа доор харна уу.';
+  static const defeatDesc =
+      'Амь дуусав. Хариулсан үгс аль хэдийн хадгалагдсан — дахин орвол үлдсэн үгнээс үргэлжилнэ.';
+  static const offlineQueued = 'Офлайн — хариултууд хадгалагдаж, дараа илгээгдэнэ';
+
   // Duel (strings.ts)
   static const duelKicker = 'Тулаан';
 

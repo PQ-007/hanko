@@ -300,7 +300,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       _Shortcut(
                         leading: SpriteView(slug: hero, size: 48),
                         label: T.battleModeTitle,
-                        onTap: () => startReviewFlow(context, ref),
+                        onTap: () async {
+                          await context.push(Routes.hunt());
+                          ref.refreshAfterReview();
+                        },
                       ),
                       const SizedBox(width: 10),
                       _Shortcut(

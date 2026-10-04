@@ -1,5 +1,4 @@
-import 'dart:math';
-
+import 'rules.dart' show Rand, defaultRand;
 import 'sprite_data.dart';
 
 export 'sprite_data.dart';
@@ -46,9 +45,11 @@ String critPose(String slug) => attackPose(slug, maxAttackTier);
 /// any appears twice, nothing repeats back to back, and the player's own
 /// character is never drawn as the opponent.
 class MonsterBag {
-  MonsterBag({Random? random}) : _random = random ?? Random();
+  /// [random] returns [0, 1), like JS Math.random, and is consumed exactly as
+  /// monsters.ts consumes it — pinned by test/battle_rules_test.dart.
+  MonsterBag({Rand random = defaultRand}) : _random = random; // ignore: prefer_initializing_formals
 
-  final Random _random;
+  final Rand _random;
   final List<String> _bag = [];
   String? _last;
 
@@ -57,7 +58,7 @@ class MonsterBag {
       ..clear()
       ..addAll(monsterRoster);
     for (var i = _bag.length - 1; i > 0; i--) {
-      final j = _random.nextInt(i + 1);
+      final j = (_random() * (i + 1)).floor();
       final t = _bag[i];
       _bag[i] = _bag[j];
       _bag[j] = t;

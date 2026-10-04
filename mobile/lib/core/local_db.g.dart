@@ -58,6 +58,16 @@ class $PendingAnswersTable extends PendingAnswers
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('review'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     logId,
@@ -65,6 +75,7 @@ class $PendingAnswersTable extends PendingAnswers
     rating,
     durationMs,
     answeredAt,
+    source,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -116,6 +127,12 @@ class $PendingAnswersTable extends PendingAnswers
     } else if (isInserting) {
       context.missing(_answeredAtMeta);
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
     return context;
   }
 
@@ -145,6 +162,10 @@ class $PendingAnswersTable extends PendingAnswers
         DriftSqlType.dateTime,
         data['${effectivePrefix}answered_at'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
     );
   }
 
@@ -160,12 +181,19 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
   final String rating;
   final int? durationMs;
   final DateTime answeredAt;
+
+  /// `review_card()`'s `p_source` (schema v2). Replayed exactly as answered:
+  /// a Monster Hunt answer queued offline must still land as 'quiz', or the
+  /// label 0018 added to compare it against classic review is silently lost.
+  /// Rows queued before v2 were all classic review, hence the default.
+  final String source;
   const PendingAnswer({
     required this.logId,
     required this.cardId,
     required this.rating,
     this.durationMs,
     required this.answeredAt,
+    required this.source,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -177,6 +205,7 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
       map['duration_ms'] = Variable<int>(durationMs);
     }
     map['answered_at'] = Variable<DateTime>(answeredAt);
+    map['source'] = Variable<String>(source);
     return map;
   }
 
@@ -189,6 +218,7 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
           ? const Value.absent()
           : Value(durationMs),
       answeredAt: Value(answeredAt),
+      source: Value(source),
     );
   }
 
@@ -203,6 +233,7 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
       rating: serializer.fromJson<String>(json['rating']),
       durationMs: serializer.fromJson<int?>(json['durationMs']),
       answeredAt: serializer.fromJson<DateTime>(json['answeredAt']),
+      source: serializer.fromJson<String>(json['source']),
     );
   }
   @override
@@ -214,6 +245,7 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
       'rating': serializer.toJson<String>(rating),
       'durationMs': serializer.toJson<int?>(durationMs),
       'answeredAt': serializer.toJson<DateTime>(answeredAt),
+      'source': serializer.toJson<String>(source),
     };
   }
 
@@ -223,12 +255,14 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
     String? rating,
     Value<int?> durationMs = const Value.absent(),
     DateTime? answeredAt,
+    String? source,
   }) => PendingAnswer(
     logId: logId ?? this.logId,
     cardId: cardId ?? this.cardId,
     rating: rating ?? this.rating,
     durationMs: durationMs.present ? durationMs.value : this.durationMs,
     answeredAt: answeredAt ?? this.answeredAt,
+    source: source ?? this.source,
   );
   PendingAnswer copyWithCompanion(PendingAnswersCompanion data) {
     return PendingAnswer(
@@ -241,6 +275,7 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
       answeredAt: data.answeredAt.present
           ? data.answeredAt.value
           : this.answeredAt,
+      source: data.source.present ? data.source.value : this.source,
     );
   }
 
@@ -251,14 +286,15 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
           ..write('cardId: $cardId, ')
           ..write('rating: $rating, ')
           ..write('durationMs: $durationMs, ')
-          ..write('answeredAt: $answeredAt')
+          ..write('answeredAt: $answeredAt, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(logId, cardId, rating, durationMs, answeredAt);
+      Object.hash(logId, cardId, rating, durationMs, answeredAt, source);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -267,7 +303,8 @@ class PendingAnswer extends DataClass implements Insertable<PendingAnswer> {
           other.cardId == this.cardId &&
           other.rating == this.rating &&
           other.durationMs == this.durationMs &&
-          other.answeredAt == this.answeredAt);
+          other.answeredAt == this.answeredAt &&
+          other.source == this.source);
 }
 
 class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
@@ -276,6 +313,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
   final Value<String> rating;
   final Value<int?> durationMs;
   final Value<DateTime> answeredAt;
+  final Value<String> source;
   final Value<int> rowid;
   const PendingAnswersCompanion({
     this.logId = const Value.absent(),
@@ -283,6 +321,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
     this.rating = const Value.absent(),
     this.durationMs = const Value.absent(),
     this.answeredAt = const Value.absent(),
+    this.source = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PendingAnswersCompanion.insert({
@@ -291,6 +330,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
     required String rating,
     this.durationMs = const Value.absent(),
     required DateTime answeredAt,
+    this.source = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : logId = Value(logId),
        cardId = Value(cardId),
@@ -302,6 +342,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
     Expression<String>? rating,
     Expression<int>? durationMs,
     Expression<DateTime>? answeredAt,
+    Expression<String>? source,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -310,6 +351,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
       if (rating != null) 'rating': rating,
       if (durationMs != null) 'duration_ms': durationMs,
       if (answeredAt != null) 'answered_at': answeredAt,
+      if (source != null) 'source': source,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -320,6 +362,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
     Value<String>? rating,
     Value<int?>? durationMs,
     Value<DateTime>? answeredAt,
+    Value<String>? source,
     Value<int>? rowid,
   }) {
     return PendingAnswersCompanion(
@@ -328,6 +371,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
       rating: rating ?? this.rating,
       durationMs: durationMs ?? this.durationMs,
       answeredAt: answeredAt ?? this.answeredAt,
+      source: source ?? this.source,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -350,6 +394,9 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
     if (answeredAt.present) {
       map['answered_at'] = Variable<DateTime>(answeredAt.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -364,6 +411,7 @@ class PendingAnswersCompanion extends UpdateCompanion<PendingAnswer> {
           ..write('rating: $rating, ')
           ..write('durationMs: $durationMs, ')
           ..write('answeredAt: $answeredAt, ')
+          ..write('source: $source, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1280,11 +1328,371 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
   }
 }
 
+class $CachedQuizWordsTable extends CachedQuizWords
+    with TableInfo<$CachedQuizWordsTable, CachedQuizWord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedQuizWordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _termMeta = const VerificationMeta('term');
+  @override
+  late final GeneratedColumn<String> term = GeneratedColumn<String>(
+    'term',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readingMeta = const VerificationMeta(
+    'reading',
+  );
+  @override
+  late final GeneratedColumn<String> reading = GeneratedColumn<String>(
+    'reading',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _meaningMeta = const VerificationMeta(
+    'meaning',
+  );
+  @override
+  late final GeneratedColumn<String> meaning = GeneratedColumn<String>(
+    'meaning',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _meaningMnMeta = const VerificationMeta(
+    'meaningMn',
+  );
+  @override
+  late final GeneratedColumn<String> meaningMn = GeneratedColumn<String>(
+    'meaning_mn',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, term, reading, meaning, meaningMn];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_quiz_words';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedQuizWord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('term')) {
+      context.handle(
+        _termMeta,
+        term.isAcceptableOrUnknown(data['term']!, _termMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_termMeta);
+    }
+    if (data.containsKey('reading')) {
+      context.handle(
+        _readingMeta,
+        reading.isAcceptableOrUnknown(data['reading']!, _readingMeta),
+      );
+    }
+    if (data.containsKey('meaning')) {
+      context.handle(
+        _meaningMeta,
+        meaning.isAcceptableOrUnknown(data['meaning']!, _meaningMeta),
+      );
+    }
+    if (data.containsKey('meaning_mn')) {
+      context.handle(
+        _meaningMnMeta,
+        meaningMn.isAcceptableOrUnknown(data['meaning_mn']!, _meaningMnMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedQuizWord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedQuizWord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      term: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}term'],
+      )!,
+      reading: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reading'],
+      ),
+      meaning: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meaning'],
+      ),
+      meaningMn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meaning_mn'],
+      ),
+    );
+  }
+
+  @override
+  $CachedQuizWordsTable createAlias(String alias) {
+    return $CachedQuizWordsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedQuizWord extends DataClass implements Insertable<CachedQuizWord> {
+  final String id;
+  final String term;
+  final String? reading;
+  final String? meaning;
+  final String? meaningMn;
+  const CachedQuizWord({
+    required this.id,
+    required this.term,
+    this.reading,
+    this.meaning,
+    this.meaningMn,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['term'] = Variable<String>(term);
+    if (!nullToAbsent || reading != null) {
+      map['reading'] = Variable<String>(reading);
+    }
+    if (!nullToAbsent || meaning != null) {
+      map['meaning'] = Variable<String>(meaning);
+    }
+    if (!nullToAbsent || meaningMn != null) {
+      map['meaning_mn'] = Variable<String>(meaningMn);
+    }
+    return map;
+  }
+
+  CachedQuizWordsCompanion toCompanion(bool nullToAbsent) {
+    return CachedQuizWordsCompanion(
+      id: Value(id),
+      term: Value(term),
+      reading: reading == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reading),
+      meaning: meaning == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meaning),
+      meaningMn: meaningMn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meaningMn),
+    );
+  }
+
+  factory CachedQuizWord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedQuizWord(
+      id: serializer.fromJson<String>(json['id']),
+      term: serializer.fromJson<String>(json['term']),
+      reading: serializer.fromJson<String?>(json['reading']),
+      meaning: serializer.fromJson<String?>(json['meaning']),
+      meaningMn: serializer.fromJson<String?>(json['meaningMn']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'term': serializer.toJson<String>(term),
+      'reading': serializer.toJson<String?>(reading),
+      'meaning': serializer.toJson<String?>(meaning),
+      'meaningMn': serializer.toJson<String?>(meaningMn),
+    };
+  }
+
+  CachedQuizWord copyWith({
+    String? id,
+    String? term,
+    Value<String?> reading = const Value.absent(),
+    Value<String?> meaning = const Value.absent(),
+    Value<String?> meaningMn = const Value.absent(),
+  }) => CachedQuizWord(
+    id: id ?? this.id,
+    term: term ?? this.term,
+    reading: reading.present ? reading.value : this.reading,
+    meaning: meaning.present ? meaning.value : this.meaning,
+    meaningMn: meaningMn.present ? meaningMn.value : this.meaningMn,
+  );
+  CachedQuizWord copyWithCompanion(CachedQuizWordsCompanion data) {
+    return CachedQuizWord(
+      id: data.id.present ? data.id.value : this.id,
+      term: data.term.present ? data.term.value : this.term,
+      reading: data.reading.present ? data.reading.value : this.reading,
+      meaning: data.meaning.present ? data.meaning.value : this.meaning,
+      meaningMn: data.meaningMn.present ? data.meaningMn.value : this.meaningMn,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedQuizWord(')
+          ..write('id: $id, ')
+          ..write('term: $term, ')
+          ..write('reading: $reading, ')
+          ..write('meaning: $meaning, ')
+          ..write('meaningMn: $meaningMn')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, term, reading, meaning, meaningMn);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedQuizWord &&
+          other.id == this.id &&
+          other.term == this.term &&
+          other.reading == this.reading &&
+          other.meaning == this.meaning &&
+          other.meaningMn == this.meaningMn);
+}
+
+class CachedQuizWordsCompanion extends UpdateCompanion<CachedQuizWord> {
+  final Value<String> id;
+  final Value<String> term;
+  final Value<String?> reading;
+  final Value<String?> meaning;
+  final Value<String?> meaningMn;
+  final Value<int> rowid;
+  const CachedQuizWordsCompanion({
+    this.id = const Value.absent(),
+    this.term = const Value.absent(),
+    this.reading = const Value.absent(),
+    this.meaning = const Value.absent(),
+    this.meaningMn = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedQuizWordsCompanion.insert({
+    required String id,
+    required String term,
+    this.reading = const Value.absent(),
+    this.meaning = const Value.absent(),
+    this.meaningMn = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       term = Value(term);
+  static Insertable<CachedQuizWord> custom({
+    Expression<String>? id,
+    Expression<String>? term,
+    Expression<String>? reading,
+    Expression<String>? meaning,
+    Expression<String>? meaningMn,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (term != null) 'term': term,
+      if (reading != null) 'reading': reading,
+      if (meaning != null) 'meaning': meaning,
+      if (meaningMn != null) 'meaning_mn': meaningMn,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedQuizWordsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? term,
+    Value<String?>? reading,
+    Value<String?>? meaning,
+    Value<String?>? meaningMn,
+    Value<int>? rowid,
+  }) {
+    return CachedQuizWordsCompanion(
+      id: id ?? this.id,
+      term: term ?? this.term,
+      reading: reading ?? this.reading,
+      meaning: meaning ?? this.meaning,
+      meaningMn: meaningMn ?? this.meaningMn,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (term.present) {
+      map['term'] = Variable<String>(term.value);
+    }
+    if (reading.present) {
+      map['reading'] = Variable<String>(reading.value);
+    }
+    if (meaning.present) {
+      map['meaning'] = Variable<String>(meaning.value);
+    }
+    if (meaningMn.present) {
+      map['meaning_mn'] = Variable<String>(meaningMn.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedQuizWordsCompanion(')
+          ..write('id: $id, ')
+          ..write('term: $term, ')
+          ..write('reading: $reading, ')
+          ..write('meaning: $meaning, ')
+          ..write('meaningMn: $meaningMn, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$LocalDb extends GeneratedDatabase {
   _$LocalDb(QueryExecutor e) : super(e);
   $LocalDbManager get managers => $LocalDbManager(this);
   late final $PendingAnswersTable pendingAnswers = $PendingAnswersTable(this);
   late final $CachedCardsTable cachedCards = $CachedCardsTable(this);
+  late final $CachedQuizWordsTable cachedQuizWords = $CachedQuizWordsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1292,6 +1700,7 @@ abstract class _$LocalDb extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     pendingAnswers,
     cachedCards,
+    cachedQuizWords,
   ];
 }
 
@@ -1302,6 +1711,7 @@ typedef $$PendingAnswersTableCreateCompanionBuilder =
       required String rating,
       Value<int?> durationMs,
       required DateTime answeredAt,
+      Value<String> source,
       Value<int> rowid,
     });
 typedef $$PendingAnswersTableUpdateCompanionBuilder =
@@ -1311,6 +1721,7 @@ typedef $$PendingAnswersTableUpdateCompanionBuilder =
       Value<String> rating,
       Value<int?> durationMs,
       Value<DateTime> answeredAt,
+      Value<String> source,
       Value<int> rowid,
     });
 
@@ -1345,6 +1756,11 @@ class $$PendingAnswersTableFilterComposer
 
   ColumnFilters<DateTime> get answeredAt => $composableBuilder(
     column: $table.answeredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1382,6 +1798,11 @@ class $$PendingAnswersTableOrderingComposer
     column: $table.answeredAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PendingAnswersTableAnnotationComposer
@@ -1411,6 +1832,9 @@ class $$PendingAnswersTableAnnotationComposer
     column: $table.answeredAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 }
 
 class $$PendingAnswersTableTableManager
@@ -1449,6 +1873,7 @@ class $$PendingAnswersTableTableManager
                 Value<String> rating = const Value.absent(),
                 Value<int?> durationMs = const Value.absent(),
                 Value<DateTime> answeredAt = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingAnswersCompanion(
                 logId: logId,
@@ -1456,6 +1881,7 @@ class $$PendingAnswersTableTableManager
                 rating: rating,
                 durationMs: durationMs,
                 answeredAt: answeredAt,
+                source: source,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1465,6 +1891,7 @@ class $$PendingAnswersTableTableManager
                 required String rating,
                 Value<int?> durationMs = const Value.absent(),
                 required DateTime answeredAt,
+                Value<String> source = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingAnswersCompanion.insert(
                 logId: logId,
@@ -1472,6 +1899,7 @@ class $$PendingAnswersTableTableManager
                 rating: rating,
                 durationMs: durationMs,
                 answeredAt: answeredAt,
+                source: source,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -1913,6 +2341,206 @@ typedef $$CachedCardsTableProcessedTableManager =
       CachedCard,
       PrefetchHooks Function()
     >;
+typedef $$CachedQuizWordsTableCreateCompanionBuilder =
+    CachedQuizWordsCompanion Function({
+      required String id,
+      required String term,
+      Value<String?> reading,
+      Value<String?> meaning,
+      Value<String?> meaningMn,
+      Value<int> rowid,
+    });
+typedef $$CachedQuizWordsTableUpdateCompanionBuilder =
+    CachedQuizWordsCompanion Function({
+      Value<String> id,
+      Value<String> term,
+      Value<String?> reading,
+      Value<String?> meaning,
+      Value<String?> meaningMn,
+      Value<int> rowid,
+    });
+
+class $$CachedQuizWordsTableFilterComposer
+    extends Composer<_$LocalDb, $CachedQuizWordsTable> {
+  $$CachedQuizWordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reading => $composableBuilder(
+    column: $table.reading,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meaning => $composableBuilder(
+    column: $table.meaning,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meaningMn => $composableBuilder(
+    column: $table.meaningMn,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedQuizWordsTableOrderingComposer
+    extends Composer<_$LocalDb, $CachedQuizWordsTable> {
+  $$CachedQuizWordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reading => $composableBuilder(
+    column: $table.reading,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get meaning => $composableBuilder(
+    column: $table.meaning,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get meaningMn => $composableBuilder(
+    column: $table.meaningMn,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedQuizWordsTableAnnotationComposer
+    extends Composer<_$LocalDb, $CachedQuizWordsTable> {
+  $$CachedQuizWordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get term =>
+      $composableBuilder(column: $table.term, builder: (column) => column);
+
+  GeneratedColumn<String> get reading =>
+      $composableBuilder(column: $table.reading, builder: (column) => column);
+
+  GeneratedColumn<String> get meaning =>
+      $composableBuilder(column: $table.meaning, builder: (column) => column);
+
+  GeneratedColumn<String> get meaningMn =>
+      $composableBuilder(column: $table.meaningMn, builder: (column) => column);
+}
+
+class $$CachedQuizWordsTableTableManager
+    extends
+        RootTableManager<
+          _$LocalDb,
+          $CachedQuizWordsTable,
+          CachedQuizWord,
+          $$CachedQuizWordsTableFilterComposer,
+          $$CachedQuizWordsTableOrderingComposer,
+          $$CachedQuizWordsTableAnnotationComposer,
+          $$CachedQuizWordsTableCreateCompanionBuilder,
+          $$CachedQuizWordsTableUpdateCompanionBuilder,
+          (
+            CachedQuizWord,
+            BaseReferences<_$LocalDb, $CachedQuizWordsTable, CachedQuizWord>,
+          ),
+          CachedQuizWord,
+          PrefetchHooks Function()
+        > {
+  $$CachedQuizWordsTableTableManager(_$LocalDb db, $CachedQuizWordsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedQuizWordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedQuizWordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedQuizWordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> term = const Value.absent(),
+                Value<String?> reading = const Value.absent(),
+                Value<String?> meaning = const Value.absent(),
+                Value<String?> meaningMn = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedQuizWordsCompanion(
+                id: id,
+                term: term,
+                reading: reading,
+                meaning: meaning,
+                meaningMn: meaningMn,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String term,
+                Value<String?> reading = const Value.absent(),
+                Value<String?> meaning = const Value.absent(),
+                Value<String?> meaningMn = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedQuizWordsCompanion.insert(
+                id: id,
+                term: term,
+                reading: reading,
+                meaning: meaning,
+                meaningMn: meaningMn,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedQuizWordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$LocalDb,
+      $CachedQuizWordsTable,
+      CachedQuizWord,
+      $$CachedQuizWordsTableFilterComposer,
+      $$CachedQuizWordsTableOrderingComposer,
+      $$CachedQuizWordsTableAnnotationComposer,
+      $$CachedQuizWordsTableCreateCompanionBuilder,
+      $$CachedQuizWordsTableUpdateCompanionBuilder,
+      (
+        CachedQuizWord,
+        BaseReferences<_$LocalDb, $CachedQuizWordsTable, CachedQuizWord>,
+      ),
+      CachedQuizWord,
+      PrefetchHooks Function()
+    >;
 
 class $LocalDbManager {
   final _$LocalDb _db;
@@ -1921,4 +2549,6 @@ class $LocalDbManager {
       $$PendingAnswersTableTableManager(_db, _db.pendingAnswers);
   $$CachedCardsTableTableManager get cachedCards =>
       $$CachedCardsTableTableManager(_db, _db.cachedCards);
+  $$CachedQuizWordsTableTableManager get cachedQuizWords =>
+      $$CachedQuizWordsTableTableManager(_db, _db.cachedQuizWords);
 }
