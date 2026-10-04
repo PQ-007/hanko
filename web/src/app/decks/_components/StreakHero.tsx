@@ -1,8 +1,9 @@
 "use client";
 
-import { Flame, GraduationCap, Plus, Snowflake } from "lucide-react";
+import { Flame, GraduationCap, Pencil, Plus, Snowflake } from "lucide-react";
 import { T } from "../_lib/strings";
 import { useCountUp, useInView } from "../_lib/useAnim";
+import { RING_ADDED, RING_GOAL } from "../_lib/chartColors";
 import ProgressRing from "./ProgressRing";
 
 // The one hero figure on the dashboard: the current streak, the number that
@@ -13,20 +14,31 @@ export default function StreakHero({
   bestStreak,
   addedToday,
   masteredPct,
+  newGoal,
+  newReviewedToday,
   freezesAvailable = 0,
   onPractice,
   onAddWord,
+  onEditGoal,
 }: {
   streak: number;
   bestStreak: number;
   addedToday: number;
   masteredPct: number;
+  /** profiles.new_per_day — today's new-card goal. Not a new setting: this
+      already exists as the daily-cap preference, just surfaced here too. */
+  newGoal: number;
+  /** New cards (state_before='new') answered today. A review/relearning
+      answer does not move this number, only a first-time card does. */
+  newReviewedToday: number;
   freezesAvailable?: number;
   /** Opens the mode chooser. This used to be a link straight to the classic
       screen, which quietly made three of the four review modes unreachable
       from the dashboard. */
   onPractice: () => void;
   onAddWord: () => void;
+  /** Opens GoalModal to edit newGoal. */
+  onEditGoal: () => void;
 }) {
   const [ref, inView] = useInView<HTMLDivElement>();
   const shown = useCountUp(streak, 1000, inView);
@@ -54,7 +66,36 @@ export default function StreakHero({
         </div>
       </div>
 
-      <ProgressRing pct={masteredPct} label={T.masteredRingLabel} />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onEditGoal}
+          title={T.goalRingEdit}
+          aria-label={T.goalRingEdit}
+          className="group relative rounded-full"
+        >
+          <ProgressRing
+            pct={newGoal > 0 ? Math.min(100, Math.round((newReviewedToday / newGoal) * 100)) : newReviewedToday > 0 ? 100 : 0}
+            centerText={`${newReviewedToday}/${newGoal}`}
+            label={T.goalRingLabel}
+            size={104}
+            stroke={9}
+            color={RING_GOAL}
+          />
+          <span className="pointer-events-none absolute right-0 top-0 flex h-6 w-6 items-center justify-center rounded-full bg-ink text-paper opacity-0 shadow-sm transition group-hover:opacity-100">
+            <Pencil size={12} />
+          </span>
+        </button>
+        <ProgressRing pct={masteredPct} label={T.masteredRingLabel} size={104} stroke={9} />
+        <ProgressRing
+          pct={100}
+          centerText={String(addedToday)}
+          label={T.addedRingLabel}
+          size={104}
+          stroke={9}
+          color={RING_ADDED}
+        />
+      </div>
 
       <div className="flex flex-col items-center gap-2 sm:items-end">
         <p className="text-center text-sm text-ink-soft sm:text-right">

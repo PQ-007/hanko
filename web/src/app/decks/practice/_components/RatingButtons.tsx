@@ -1,13 +1,12 @@
 "use client";
 
-import { previewNext, type Rating } from "@/lib/srs";
-import type { QueueCard } from "../../_lib/types";
-import { formatPreview } from "../../_lib/interval";
+import type { Rating } from "@/lib/srs";
 import { T } from "../../_lib/strings";
 
-// Each button states what it will cost you: the label, the resulting interval
-// ("6 өдөр"), and its number key. Tone is carried by a tint plus the label
-// text, never by color alone.
+// Each button states the label and its number key. Deliberately no interval
+// preview ("6 өдөр") on the button itself — showing the scheduled gap read as
+// a forgetting-date prediction rather than "when I'll ask again," and was
+// confusing enough in practice that it's worth not showing at all.
 const OPTIONS: {
   rating: Rating;
   key: string;
@@ -41,35 +40,26 @@ const OPTIONS: {
 ];
 
 export default function RatingButtons({
-  card,
   onRate,
 }: {
-  card: QueueCard;
   onRate: (rating: Rating) => void;
 }) {
   return (
     <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
-      {OPTIONS.map(({ rating, key, label, className }) => {
-        // Every button states its real consequence, including the minute-scale
-        // ones: a card still in the learning steps comes back in minutes, so
-        // labelling that "1 өдөр" would be a lie.
-        const preview = formatPreview(previewNext(card, rating));
-        return (
-          <button
-            key={rating}
-            onClick={() => onRate(rating)}
-            className={`flex flex-col items-center gap-0.5 rounded-control border px-3 py-2.5 transition ${className}`}
-          >
-            <span className="flex items-center gap-1.5 text-sm font-semibold">
-              {label}
-              <kbd className="rounded-control border border-current/25 px-1 text-[10px] font-medium opacity-60">
-                {key}
-              </kbd>
-            </span>
-            <span className="text-[11px] opacity-75">{preview}</span>
-          </button>
-        );
-      })}
+      {OPTIONS.map(({ rating, key, label, className }) => (
+        <button
+          key={rating}
+          onClick={() => onRate(rating)}
+          className={`flex flex-col items-center gap-0.5 rounded-control border px-3 py-2.5 transition ${className}`}
+        >
+          <span className="flex items-center gap-1.5 text-sm font-semibold">
+            {label}
+            <kbd className="rounded-control border border-current/25 px-1 text-[10px] font-medium opacity-60">
+              {key}
+            </kbd>
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

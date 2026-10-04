@@ -100,7 +100,7 @@ export default function PracticeSession() {
       <PracticeCard card={card} revealed={revealed} onReveal={() => setRevealed(true)} />
 
       {revealed ? (
-        <RatingButtons card={card} onRate={rate} />
+        <RatingButtons onRate={rate} />
       ) : (
         <button
           onClick={() => setRevealed(true)}

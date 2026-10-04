@@ -18,6 +18,7 @@ import DeckBreakdownTable from "../_components/DeckBreakdownTable";
 import WordSpotlight from "../_components/WordSpotlight";
 import ReviewModeModal from "../_components/ReviewModeModal";
 import QuickAddWordModal from "../_components/QuickAddWordModal";
+import GoalModal from "../_components/GoalModal";
 import LoadingScene from "../review/battle/_components/LoadingScene";
 
 // One SRS day's review count, from the review_activity() RPC (migration 0013).
@@ -39,6 +40,8 @@ interface DueSummary {
   new_due: number;
   review_remaining: number;
   new_remaining: number;
+  new_goal: number;           // added in 0022 — profiles.new_per_day, surfaced for the goal ring
+  new_reviewed_today: number; // added in 0022 — new cards answered today
 }
 
 export default function StatsDashboard() {
@@ -58,7 +61,7 @@ export default function StatsDashboard() {
   const [loading, setLoading] = useState(true);
   // Which dialog, if any, is open. Both are mounted below the page rather
   // than inside the hero so a reload triggered by one can't unmount it.
-  const [modal, setModal] = useState<"review" | "add" | null>(null);
+  const [modal, setModal] = useState<"review" | "add" | "goal" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,6 +161,8 @@ export default function StatsDashboard() {
     return g === "A" || g === "B";
   }).length;
   const masteredPct = words.length === 0 ? 0 : Math.round((mastered / words.length) * 100);
+  const newGoal = due?.new_goal ?? 0;
+  const newReviewedToday = due?.new_reviewed_today ?? 0;
 
   const activeDays = new Set(activity.keys());
   const streak = currentStreak(activeDays, freezes, srsToday ?? undefined);
@@ -179,9 +184,12 @@ export default function StatsDashboard() {
         bestStreak={best}
         addedToday={addedToday}
         masteredPct={masteredPct}
+        newGoal={newGoal}
+        newReviewedToday={newReviewedToday}
         freezesAvailable={freezes}
         onPractice={() => setModal("review")}
         onAddWord={() => setModal("add")}
+        onEditGoal={() => setModal("goal")}
       />
 
       {logMissing && (
@@ -256,6 +264,17 @@ export default function StatsDashboard() {
             // the page for its loading scene, which would take the dialog with
             // it if it ran after every word.
             if (added > 0) load();
+          }}
+        />
+      )}
+      {modal === "goal" && (
+        <GoalModal
+          currentGoal={newGoal}
+          onClose={(saved) => {
+            setModal(null);
+            // Re-fetch due_summary so the ring reflects the new cap right away
+            // instead of waiting for the next natural reload.
+            if (saved !== null) load();
           }}
         />
       )}
