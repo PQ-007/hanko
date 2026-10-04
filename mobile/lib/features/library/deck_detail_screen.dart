@@ -82,8 +82,7 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
                 case 'move':
                   await moveDeck(context, ref, deck);
                 case 'txt':
-                case 'apkg':
-                  await exportDeck(context, ref, deck, v);
+                  await exportDeckTxt(context, ref, deck);
                 case 'delete':
                   if (await deleteDeck(context, ref, deck) && context.mounted) context.pop();
               }
@@ -92,7 +91,6 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
               PopupMenuItem(value: 'rename', child: Text(T.rename)),
               PopupMenuItem(value: 'move', child: Text(T.moveTo)),
               PopupMenuItem(value: 'txt', child: Text(T.exportTxt)),
-              PopupMenuItem(value: 'apkg', child: Text(T.exportApkg)),
               PopupMenuItem(value: 'delete', child: Text(T.delete)),
             ],
           ),
@@ -254,7 +252,7 @@ class _WordCardState extends ConsumerState<_WordCard> {
                                     style: const TextStyle(fontWeight: FontWeight.w600)),
                               if (w.meaning != null && w.meaning!.isNotEmpty)
                                 Text(w.meaning!,
-                                    style: const TextStyle(fontSize: 12, color: HankoColors.inkSoft)),
+                                    style: TextStyle(fontSize: 12, color: context.hk.inkSoft)),
                             ],
                           ),
                         ),
@@ -295,7 +293,7 @@ class _WordCardState extends ConsumerState<_WordCard> {
                       ),
                       if (w.reading != null && w.reading != w.term)
                         Text(w.reading!,
-                            style: const TextStyle(fontSize: 12, color: HankoColors.inkSoft)),
+                            style: TextStyle(fontSize: 12, color: context.hk.inkSoft)),
                     ],
                   ),
           ),

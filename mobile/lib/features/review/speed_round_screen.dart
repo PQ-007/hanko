@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/repository.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/widgets.dart';
 import '../../models/queue_card.dart';
 import '../battle/fight_scene.dart';
 
@@ -115,7 +116,7 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
                   Text(
                     'Хурдан давталт нь 21+ өдрийн интервалтай үгсийг ашигладаг.',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodySmall?.copyWith(color: context.hk.inkMute),
                   ),
                 ],
               ],
@@ -131,14 +132,15 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
         title: Text('Хурдан давталт · ${_queue!.length}'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        // Bottom lifted so the answer buttons sit in thumb reach.
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + thumbZoneLift(context)),
         child: Column(
           children: [
             if (_total > 0)
               Align(
                 alignment: Alignment.centerRight,
                 child: Text('$_correct / $_total',
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                    style: theme.textTheme.bodySmall?.copyWith(color: context.hk.inkMute)),
               ),
             Expanded(
               child: Center(
@@ -160,19 +162,19 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
                             if (card.reading != null && card.reading != card.term)
                               Text(card.reading!,
                                   style: theme.textTheme.titleMedium
-                                      ?.copyWith(color: Colors.grey)),
+                                      ?.copyWith(color: context.hk.inkMute)),
                             if (card.meaningMn != null && card.meaningMn!.isNotEmpty)
                               Text(card.meaningMn!, style: theme.textTheme.bodyLarge),
                             if (card.meaning != null && card.meaning!.isNotEmpty)
                               Text(card.meaning!,
                                   style: theme.textTheme.bodyMedium
-                                      ?.copyWith(color: Colors.grey)),
+                                      ?.copyWith(color: context.hk.inkMute)),
                           ] else
                             Padding(
                               padding: const EdgeInsets.only(top: 12),
                               child: Text('Товшиж хариултыг харах',
                                   style: theme.textTheme.bodySmall
-                                      ?.copyWith(color: Colors.grey)),
+                                      ?.copyWith(color: context.hk.inkMute)),
                             ),
                         ],
                       ),
@@ -188,9 +190,9 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: RatingColors.again,
-                        side: const BorderSide(color: RatingColors.again),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        foregroundColor: context.hk.again,
+                        side: BorderSide(color: context.hk.again),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                       ),
                       onPressed: () => _answer(false),
                       child: const Text('Буруу'),
@@ -200,8 +202,8 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
                   Expanded(
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: RatingColors.easy,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: context.hk.easy,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                       ),
                       onPressed: () => _answer(true),
                       child: const Text('Зөв'),

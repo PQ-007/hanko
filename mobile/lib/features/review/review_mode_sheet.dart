@@ -73,11 +73,11 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
                       d.dueNow - (d.newDue < d.newRemaining ? d.newDue : d.newRemaining),
                       d.newDue < d.newRemaining ? d.newDue : d.newRemaining,
                     ),
-                    style: const TextStyle(color: HankoColors.inkSoft),
+                    style: TextStyle(color: context.hk.inkSoft),
                   ),
                 if (d.heldBack > 0)
                   Text(T.dueHeldBack(d.heldBack),
-                      style: const TextStyle(fontSize: 12, color: HankoColors.inkMute)),
+                      style: TextStyle(fontSize: 12, color: context.hk.inkMute)),
               ],
             ),
           ),
@@ -97,8 +97,8 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
           const SizedBox(height: 16),
           _Mode(
             leading: SizedBox.square(
-              dimension: 48,
-              child: SpriteView(slug: hero, state: 'attack01', size: 48),
+              dimension: 56,
+              child: SpriteView(slug: hero, size: 56),
             ),
             title: T.battleModeTitle,
             subtitle: T.battleModeDesc,

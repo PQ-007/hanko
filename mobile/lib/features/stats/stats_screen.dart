@@ -11,7 +11,6 @@ import '../../core/widgets.dart';
 import '../../models/library.dart';
 import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
-import '../decks/word_actions.dart';
 import 'grade_bars.dart';
 import 'stats_math.dart';
 
@@ -27,8 +26,6 @@ class StatsScreen extends ConsumerWidget {
     final activity = ref.watch(activityProvider);
     final decks = ref.watch(decksProvider).value ?? const <Deck>[];
     final stats = ref.watch(reviewStatsProvider).value;
-    final forecast = ref.watch(forecastProvider).value;
-    final srsToday = ref.watch(srsTodayProvider).value;
     final hero = ref.watch(heroProvider);
 
     final body = switch ((words, activity)) {
@@ -66,14 +63,6 @@ class StatsScreen extends ConsumerWidget {
                         masteredPct: all.isEmpty ? 0 : (mastered / all.length * 100).round(),
                       ),
                       const SizedBox(height: 12),
-                      if (forecast != null) ...[
-                        _ForecastCard(forecast: forecast, today: srsToday ?? now),
-                        const SizedBox(height: 12),
-                      ],
-                      if (all.isNotEmpty) ...[
-                        _Spotlight(words: all, decks: decks, dayKey: srsToday == null ? null : dayKey(srsToday)),
-                        const SizedBox(height: 12),
-                      ],
                       _Heatmap(counts: reviewCounts, title: T.heatmapTitle, formatCount: T.reviewsN, now: now),
                       const SizedBox(height: 12),
                       _Heatmap(counts: addedCounts, title: T.addedHeatmapTitle, formatCount: T.wordsN, now: now),
@@ -105,114 +94,43 @@ class _RetentionCard extends StatelessWidget {
     return SectionCard(
       title: T.retentionTitle,
       trailing: T.lastNDays(30),
+      // Each ring gets an equal third, so a long label wraps inside its own
+      // column instead of pushing the row past the card edge.
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Tooltip(
-            message: T.retentionHint,
-            child: ProgressRing(
-              pct: s?.retentionPct ?? 0,
-              centerText: s?.retentionPct == null ? '—' : '${s!.retentionPct!.round()}%',
-              label: '${T.retentionLabel}\n${s?.reviewTotal ?? 0}',
-              size: 88,
+          Expanded(
+            child: Tooltip(
+              message: T.retentionHint,
+              child: ProgressRing(
+                pct: s?.retentionPct ?? 0,
+                centerText: s?.retentionPct == null ? '—' : '${s!.retentionPct!.round()}%',
+                label: '${T.retentionLabel}\n${s?.reviewTotal ?? 0}',
+                size: 84,
+              ),
             ),
           ),
-          Tooltip(
-            message: T.accuracyHint,
-            child: ProgressRing(
-              pct: s?.accuracyPct ?? 0,
-              centerText: s?.accuracyPct == null ? '—' : '${s!.accuracyPct!.round()}%',
-              label: '${T.accuracyLabel}\n${s?.total ?? 0}',
-              size: 88,
-              color: HankoColors.gradeD,
+          Expanded(
+            child: Tooltip(
+              message: T.accuracyHint,
+              child: ProgressRing(
+                pct: s?.accuracyPct ?? 0,
+                centerText: s?.accuracyPct == null ? '—' : '${s!.accuracyPct!.round()}%',
+                label: '${T.accuracyLabel}\n${s?.total ?? 0}',
+                size: 84,
+                color: context.hk.gradeD,
+              ),
             ),
           ),
-          ProgressRing(
-            pct: masteredPct,
-            label: '${T.masteredRingLabel}\n',
-            size: 88,
-            color: HankoColors.gradeA,
+          Expanded(
+            child: ProgressRing(
+              pct: masteredPct,
+              label: T.masteredRingLabel,
+              size: 84,
+              color: context.hk.gradeA,
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ForecastCard extends StatelessWidget {
-  const _ForecastCard({required this.forecast, required this.today});
-  final Map<DateTime, int> forecast;
-  final DateTime today;
-
-  @override
-  Widget build(BuildContext context) {
-    const days = 30;
-    final start = dayOnly(today);
-    final byKey = {for (final e in forecast.entries) dayKey(e.key): e.value};
-    final values = [
-      for (var i = 0; i < days; i++)
-        byKey[dayKey(DateTime(start.year, start.month, start.day + i))] ?? 0,
-    ];
-    final total = values.fold<int>(0, (a, b) => a + b);
-    final max = values.fold<int>(1, (a, b) => b > a ? b : a);
-
-    return SectionCard(
-      title: T.forecastTitle,
-      trailing: T.forecastSummary(total, days),
-      child: SizedBox(
-        height: 140,
-        child: BarChart(
-          BarChartData(
-            maxY: max * 1.15,
-            alignment: BarChartAlignment.spaceBetween,
-            gridData: const FlGridData(show: false),
-            borderData: FlBorderData(show: false),
-            barTouchData: BarTouchData(
-              touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (_) => HankoColors.ink,
-                getTooltipItem: (group, _, rod, _) {
-                  final d = DateTime(start.year, start.month, start.day + group.x);
-                  return BarTooltipItem(
-                    '${d.month}/${d.day}\n${T.reviewsN(rod.toY.round())}',
-                    const TextStyle(color: Colors.white, fontSize: 11),
-                  );
-                },
-              ),
-            ),
-            titlesData: FlTitlesData(
-              leftTitles: const AxisTitles(),
-              rightTitles: const AxisTitles(),
-              topTitles: const AxisTitles(),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 18,
-                  getTitlesWidget: (value, meta) {
-                    final i = value.toInt();
-                    if (i != 0 && i != 1 && i % 7 != 0) return const SizedBox.shrink();
-                    final d = DateTime(start.year, start.month, start.day + i);
-                    final label = i == 0 ? T.today : i == 1 ? T.tomorrow : '${d.month}/${d.day}';
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(label, style: const TextStyle(fontSize: 9, color: HankoColors.inkMute)),
-                    );
-                  },
-                ),
-              ),
-            ),
-            barGroups: [
-              for (var i = 0; i < days; i++)
-                BarChartGroupData(x: i, barRods: [
-                  BarChartRodData(
-                    toY: values[i].toDouble(),
-                    width: 6,
-                    color: i == 0 ? HankoColors.seal : HankoColors.gradeF,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
-                  ),
-                ]),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -231,17 +149,11 @@ class _Heatmap extends StatelessWidget {
   final String Function(int) formatCount;
   final DateTime now;
 
-  static const _steps = [
-    HankoColors.gradeF,
-    HankoColors.gradeD,
-    HankoColors.gradeC,
-    HankoColors.gradeB,
-    HankoColors.gradeA,
-  ];
-
   @override
   Widget build(BuildContext context) {
     final grid = buildHeatGrid(counts, now);
+    final hk = context.hk;
+    final steps = [hk.gradeF, hk.gradeD, hk.gradeC, hk.gradeB, hk.gradeA];
     return SectionCard(
       title: title,
       trailing: T.heatmapSummary(formatCount(grid.total), grid.activeDays),
@@ -261,7 +173,7 @@ class _Heatmap extends StatelessWidget {
                       height: cell + gap,
                       child: d.isOdd
                           ? Text(weekdayMn[d],
-                              style: const TextStyle(fontSize: 8, color: HankoColors.inkMute))
+                              style: TextStyle(fontSize: 8, color: context.hk.inkMute))
                           : null,
                     ),
                 ],
@@ -283,8 +195,8 @@ class _Heatmap extends StatelessWidget {
                             color: cellData.future
                                 ? Colors.transparent
                                 : switch (heatStep(cellData.count, grid.max)) {
-                                    -1 => HankoColors.heatmapEmpty,
-                                    final s => _steps[s],
+                                    -1 => context.hk.heatmapEmpty,
+                                    final s => steps[s],
                                   },
                             borderRadius: BorderRadius.circular(2),
                           ),
@@ -323,7 +235,7 @@ class _GrowthCard extends StatelessWidget {
             titlesData: const FlTitlesData(show: false),
             lineTouchData: LineTouchData(
               touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) => HankoColors.ink,
+                getTooltipColor: (_) => const Color(0xFF1F2933),
                 getTooltipItems: (spots) => [
                   for (final s in spots)
                     LineTooltipItem(
@@ -340,12 +252,12 @@ class _GrowthCard extends StatelessWidget {
                   for (var i = 0; i < series.length; i++)
                     FlSpot(i.toDouble(), series[i].total.toDouble()),
                 ],
-                color: HankoColors.gradeD,
+                color: context.hk.gradeD,
                 barWidth: 2.5,
                 dotData: const FlDotData(show: false),
                 belowBarData: BarAreaData(
                   show: true,
-                  color: HankoColors.gradeD.withValues(alpha: 0.15),
+                  color: context.hk.gradeD.withValues(alpha: 0.15),
                 ),
               ),
             ],
@@ -381,7 +293,7 @@ class _WeekdayCard extends StatelessWidget {
                     '${T.reviewsN(w.totals[i])} · ${T.perWeekAvg(w.seen[i] == 0 ? 0 : (w.totals[i] / w.seen[i] * 10).round() / 10)}',
                 child: Column(
                   children: [
-                    Text('${w.totals[i]}', style: const TextStyle(fontSize: 10, color: HankoColors.inkSoft)),
+                    Text('${w.totals[i]}', style: TextStyle(fontSize: 10, color: context.hk.inkSoft)),
                     const SizedBox(height: 3),
                     Container(
                       width: 20,
@@ -389,19 +301,19 @@ class _WeekdayCard extends StatelessWidget {
                       height: w.totals[i] == 0
                           ? 0
                           : (w.totals[i] / max * 100).clamp(6, 80) / 100 * chartH,
-                      decoration: const BoxDecoration(
-                        color: HankoColors.gradeD,
+                      decoration: BoxDecoration(
+                        color: context.hk.gradeD,
                         borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
                       ),
                     ),
-                    const Divider(height: 1, color: HankoColors.paperDeep),
+                    Divider(height: 1, color: context.hk.paperDeep),
                     const SizedBox(height: 4),
                     Text(
                       weekdayMn[i],
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: i == todayIdx ? FontWeight.w700 : FontWeight.w400,
-                        color: i == todayIdx ? HankoColors.ink : HankoColors.inkMute,
+                        color: i == todayIdx ? context.hk.ink : context.hk.inkMute,
                       ),
                     ),
                   ],
@@ -426,16 +338,17 @@ class _DeckBreakdown extends StatelessWidget {
     for (final w in words) {
       (byDeck[w.deckId] ??= []).add(w);
     }
+    final head = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.hk.inkMute);
     return SectionCard(
       title: T.deckBreakdownTitle,
       child: Column(
         children: [
-          const Row(
+          Row(
             children: [
-              Expanded(flex: 4, child: Text(T.colDeck, style: _head)),
-              Expanded(flex: 2, child: Text(T.colWords, style: _head, textAlign: TextAlign.right)),
-              Expanded(flex: 2, child: Text(T.colDue, style: _head, textAlign: TextAlign.right)),
-              Expanded(flex: 3, child: Text(T.colMastered, style: _head, textAlign: TextAlign.right)),
+              Expanded(flex: 4, child: Text(T.colDeck, style: head)),
+              Expanded(flex: 2, child: Text(T.colWords, style: head, textAlign: TextAlign.right)),
+              Expanded(flex: 2, child: Text(T.colDue, style: head, textAlign: TextAlign.right)),
+              Expanded(flex: 3, child: Text(T.colMastered, style: head, textAlign: TextAlign.right)),
             ],
           ),
           const Divider(),
@@ -463,8 +376,8 @@ class _DeckBreakdown extends StatelessWidget {
                               child: LinearProgressIndicator(
                                 value: m,
                                 minHeight: 5,
-                                color: HankoColors.gradeB,
-                                backgroundColor: HankoColors.sealTint,
+                                color: context.hk.gradeB,
+                                backgroundColor: context.hk.sealTint,
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -483,100 +396,4 @@ class _DeckBreakdown extends StatelessWidget {
     );
   }
 
-  static const _head = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: HankoColors.inkMute);
-}
-
-class _Spotlight extends ConsumerStatefulWidget {
-  const _Spotlight({required this.words, required this.decks, required this.dayKey});
-  final List<Word> words;
-  final List<Deck> decks;
-  final String? dayKey;
-
-  @override
-  ConsumerState<_Spotlight> createState() => _SpotlightState();
-}
-
-class _SpotlightState extends ConsumerState<_Spotlight> {
-  int _step = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final w = widget.words[spotlightIndex(widget.dayKey, _step, widget.words.length)];
-    final deckName = widget.decks.where((d) => d.id == w.deckId).firstOrNull?.name;
-    final g = gradeOfWord(w);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_awesome, size: 16, color: HankoColors.seal),
-                const SizedBox(width: 6),
-                const Text(T.spotlightTitle, style: TextStyle(fontWeight: FontWeight.w600)),
-                if (deckName != null) ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(deckName,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, color: HankoColors.inkMute)),
-                  ),
-                ],
-                const Spacer(),
-                TextButton.icon(
-                  icon: const Icon(Icons.shuffle, size: 16),
-                  label: const Text(T.spotlightAnother),
-                  onPressed: () => setState(() => _step += 1),
-                ),
-              ],
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(w.term, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700)),
-                      if (w.reading != null && w.reading != w.term)
-                        Text(w.reading!, style: const TextStyle(color: HankoColors.inkSoft)),
-                      const SizedBox(height: 6),
-                      Text(
-                        w.meaningMn?.isNotEmpty == true
-                            ? w.meaningMn!
-                            : (w.meaning?.isNotEmpty == true ? w.meaning! : T.spotlightNoMeaning),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      if (w.meaningMn?.isNotEmpty == true && w.meaning?.isNotEmpty == true)
-                        Text(w.meaning!, style: const TextStyle(fontSize: 12, color: HankoColors.inkSoft)),
-                    ],
-                  ),
-                ),
-                Column(
-                  children: [
-                    Text(g == Grade.newWord ? 'N' : g.label,
-                        style: TextStyle(
-                            fontSize: 44, fontWeight: FontWeight.w800, color: gradeColor(g).withValues(alpha: 0.35))),
-                    IconButton(
-                      icon: const Icon(Icons.volume_up_outlined, color: HankoColors.seal),
-                      onPressed: () => playWord(context, ref, w),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => context.go(Routes.deck(w.deckId)),
-                child: const Text('${T.spotlightOpenDeck} →'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

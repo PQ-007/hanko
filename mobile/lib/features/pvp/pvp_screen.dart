@@ -32,11 +32,11 @@ class PvpScreen extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SpriteView(slug: hero, size: 120),
+                    SpriteView(slug: hero, size: 130),
                     const Text('VS',
                         style: TextStyle(
                             color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 18)),
-                    SpriteView(slug: rival, size: 120, flip: true),
+                    SpriteView(slug: rival, size: 130, flip: true),
                   ],
                 ),
               ),
@@ -44,12 +44,12 @@ class PvpScreen extends ConsumerWidget {
               const Text(T.multiplayerTitle,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              const Text(T.multiplayerDesc,
-                  textAlign: TextAlign.center, style: TextStyle(color: HankoColors.inkSoft)),
+              Text(T.multiplayerDesc,
+                  textAlign: TextAlign.center, style: TextStyle(color: context.hk.inkSoft)),
               const SizedBox(height: 14),
               Chip(
                 label: const Text(T.comingSoon),
-                backgroundColor: HankoColors.sealTint,
+                backgroundColor: context.hk.sealTint,
                 side: BorderSide.none,
               ),
             ],

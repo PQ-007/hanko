@@ -32,12 +32,11 @@ class Config {
   /// in the Supabase dashboard (Authentication → URL Configuration).
   static const authRedirect = 'com.hanko.mobile://login-callback';
 
-  /// Origin of the Next.js app (no trailing slash), for the routes Supabase
-  /// alone can't serve: Jisho lookup, EN→MN translate, word audio, export.
-  /// Left empty, those features degrade to manual entry instead of failing.
-  static const webApiBase = String.fromEnvironment('WEB_API_BASE');
-
-  static bool get hasWebApi => webApiBase.isNotEmpty;
+  /// Public privacy-policy page, linked from Settings. Both app stores require
+  /// one for an app with sign-in. Optional here: left empty, the link is
+  /// hidden. Nothing else depends on any web server — the app talks only to
+  /// Supabase plus public dictionary/translate endpoints (core/dictionary.dart).
+  static const privacyUrl = String.fromEnvironment('PRIVACY_URL');
 
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;

@@ -1,0 +1,26 @@
+{
+  // Run/Debug for the Flutter app. VS Code's default launch passes no
+  // arguments, so without this the app starts with no Supabase config and
+  // shows the "Missing Supabase config" screen. The values themselves stay in
+  // mobile/env.json (git-ignored); this file only points at it.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Hanko mobile (debug)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "mobile",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "Hanko mobile (release)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "mobile",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "toolArgs": ["--dart-define-from-file=env.json"]
+    }
+  ]
+}

@@ -48,10 +48,6 @@ final reviewStatsProvider = FutureProvider<ReviewStats?>(
   (ref) => ref.watch(repositoryProvider).reviewStats(),
 );
 
-final forecastProvider = FutureProvider<Map<DateTime, int>?>(
-  (ref) => ref.watch(repositoryProvider).reviewForecast(),
-);
-
 /// Word count per deck id, derived from [allWordsProvider].
 final deckCountsProvider = Provider<AsyncValue<Map<String, int>>>((ref) {
   return ref.watch(allWordsProvider).whenData((words) {
@@ -79,7 +75,6 @@ extension Refresh on WidgetRef {
     invalidate(activityProvider);
     invalidate(allWordsProvider);
     invalidate(reviewStatsProvider);
-    invalidate(forecastProvider);
     invalidate(srsTodayProvider);
     invalidate(deckWordsProvider);
   }

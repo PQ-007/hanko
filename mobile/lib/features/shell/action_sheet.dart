@@ -90,12 +90,12 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    final fg = primary ? Colors.white : (enabled ? HankoColors.ink : HankoColors.inkMute);
+    final fg = primary ? Colors.white : (enabled ? context.hk.ink : context.hk.inkMute);
     return Material(
-      color: primary ? HankoColors.seal : Colors.white,
+      color: primary ? HankoColors.seal : context.hk.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: primary ? BorderSide.none : const BorderSide(color: HankoColors.lineSoft),
+        side: primary ? BorderSide.none : BorderSide(color: context.hk.lineSoft),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -105,13 +105,13 @@ class _Tile extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 30, color: primary ? Colors.white : (enabled ? HankoColors.seal : HankoColors.line)),
+              Icon(icon, size: 30, color: primary ? Colors.white : (enabled ? HankoColors.seal : context.hk.line)),
               const SizedBox(height: 6),
               Text(label,
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
               if (note != null)
-                Text(note!, style: const TextStyle(fontSize: 10, color: HankoColors.inkMute)),
+                Text(note!, style: TextStyle(fontSize: 10, color: context.hk.inkMute)),
             ],
           ),
         ),

@@ -69,8 +69,11 @@ class SpriteView extends StatefulWidget {
 
 class _SpriteViewState extends State<SpriteView>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _clock = AnimationController(vsync: this)
-    ..addStatusListener(_onStatus);
+  // Created in initState, not lazily: a sprite removed before its sheet has
+  // loaded would otherwise first touch the controller inside dispose(), which
+  // builds it against a deactivated element and throws. The loading scene
+  // swaps fighters every few seconds, so that happened routinely.
+  late final AnimationController _clock;
   ui.Image? _sheet;
   String _resolved = 'idle';
   int _frames = 1;
@@ -79,6 +82,7 @@ class _SpriteViewState extends State<SpriteView>
   @override
   void initState() {
     super.initState();
+    _clock = AnimationController(vsync: this)..addStatusListener(_onStatus);
     SpriteSheets.preload(widget.slug);
     _start();
   }
@@ -171,17 +175,21 @@ class _FramePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = size.width / 100;
+    // The box this widget is given spans [visibleFrame] frame pixels, not the
+    // full 100. Source frames are sized for each character's widest attack,
+    // so a standing figure fills only a small middle patch of the frame —
+    // sized to the whole frame, every character looked tiny. Same trick as the web's
+    // .hanko-fighter-slot (68 units): size the box to the body, and let swings
+    // and projectiles paint past it, unclipped.
+    final scale = size.width / visibleFrame;
     canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
     // Same order as FighterSprite.tsx: mirror, scale, then nudge the
     // character to the centre of its own frame — so the nudge grows with the
     // sprite and flips with it.
-    if (flip) {
-      canvas.translate(size.width, 0);
-      canvas.scale(-1, 1);
-    }
+    if (flip) canvas.scale(-1, 1);
     canvas.scale(scale);
-    canvas.translate(offset.x.toDouble(), offset.y.toDouble());
+    canvas.translate(offset.x - 50.0, offset.y - 50.0);
     canvas.drawImageRect(
       sheet,
       Rect.fromLTWH(frame * 100.0, 0, 100, 100),
@@ -190,6 +198,14 @@ class _FramePainter extends CustomPainter {
     );
     canvas.restore();
   }
+
+  /// Frame pixels the widget's box covers. Measured on the actual sheets
+  /// (first idle frame, trimmed): a standing character is only ~17-26 px wide
+  /// and ~14-32 px tall inside its 100px frame — knight 26x21, wizard 17x21,
+  /// black-knight-a 17x32 (the tallest). SPRITE_OFFSET centres that content,
+  /// so 36 fits the tallest idle with a little air and makes every character
+  /// ~2.8x larger than drawing the whole frame.
+  static const visibleFrame = 36.0;
 
   @override
   bool shouldRepaint(_FramePainter old) =>

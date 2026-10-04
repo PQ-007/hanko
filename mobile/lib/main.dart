@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_router.dart';
 import 'core/config.dart';
 import 'core/theme.dart';
+import 'core/theme_mode.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,8 @@ class HankoApp extends StatelessWidget {
       return MaterialApp(
         title: 'Hanko',
         debugShowCheckedModeBanner: false,
-        theme: buildHankoTheme(),
+        theme: buildHankoTheme(Brightness.light),
+        darkTheme: buildHankoTheme(Brightness.dark),
         home: const _MissingConfig(),
       );
     }
@@ -46,7 +48,9 @@ class _RoutedApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Hanko',
       debugShowCheckedModeBanner: false,
-      theme: buildHankoTheme(),
+      theme: buildHankoTheme(Brightness.light),
+      darkTheme: buildHankoTheme(Brightness.dark),
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(routerProvider),
     );
   }

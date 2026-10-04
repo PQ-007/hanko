@@ -31,7 +31,7 @@ class _HeroPicker extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(T.heroPickerTitle, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          const Text(T.heroPickerHint, style: TextStyle(color: HankoColors.inkSoft)),
+          Text(T.heroPickerHint, style: TextStyle(color: context.hk.inkSoft)),
           const SizedBox(height: 12),
           GridView.count(
             shrinkWrap: true,
@@ -42,11 +42,11 @@ class _HeroPicker extends ConsumerWidget {
             children: [
               for (final slug in playerRoster)
                 Material(
-                  color: slug == current ? HankoColors.sealTint : Colors.white,
+                  color: slug == current ? context.hk.sealTint : context.hk.card,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: slug == current ? HankoColors.seal : HankoColors.lineSoft,
+                      color: slug == current ? HankoColors.seal : context.hk.lineSoft,
                       width: slug == current ? 2 : 1,
                     ),
                   ),
@@ -56,7 +56,7 @@ class _HeroPicker extends ConsumerWidget {
                       ref.read(heroProvider.notifier).choose(slug);
                       Navigator.of(context).pop();
                     },
-                    child: Center(child: SpriteView(slug: slug, size: 76)),
+                    child: Center(child: SpriteView(slug: slug, size: 72)),
                   ),
                 ),
             ],

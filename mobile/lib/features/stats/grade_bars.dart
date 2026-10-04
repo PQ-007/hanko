@@ -4,13 +4,13 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../models/library.dart';
 
-Color gradeColor(Grade g) => switch (g) {
-      Grade.newWord => HankoColors.gradeNew,
-      Grade.f => HankoColors.gradeF,
-      Grade.d => HankoColors.gradeD,
-      Grade.c => HankoColors.gradeC,
-      Grade.b => HankoColors.gradeB,
-      Grade.a => HankoColors.gradeA,
+Color gradeColor(HankoPalette p, Grade g) => switch (g) {
+      Grade.newWord => p.gradeNew,
+      Grade.f => p.gradeF,
+      Grade.d => p.gradeD,
+      Grade.c => p.gradeC,
+      Grade.b => p.gradeB,
+      Grade.a => p.gradeA,
     };
 
 /// Words per mastery grade (web GradeChart.tsx). With [onSelect], each bar is
@@ -49,8 +49,8 @@ class GradeBars extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: HankoColors.inkSoft)),
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: context.hk.inkSoft)),
             const SizedBox(height: 14),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -68,10 +68,10 @@ class GradeBars extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Text('${counts[g]}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
-                                    color: HankoColors.inkSoft)),
+                                    color: context.hk.inkSoft)),
                             const SizedBox(height: 3),
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 500),
@@ -86,12 +86,12 @@ class GradeBars extends StatelessWidget {
                                       100 *
                                       chartHeight,
                               decoration: BoxDecoration(
-                                color: gradeColor(g).withValues(
+                                color: gradeColor(context.hk, g).withValues(
                                     alpha: selected == null || selected == g ? 1 : 0.4),
                                 borderRadius:
                                     const BorderRadius.vertical(top: Radius.circular(4)),
                                 border: selected == g
-                                    ? Border.all(color: HankoColors.ink, width: 2)
+                                    ? Border.all(color: context.hk.ink, width: 2)
                                     : null,
                               ),
                             ),
@@ -102,7 +102,7 @@ class GradeBars extends StatelessWidget {
                   ),
               ],
             ),
-            const Divider(height: 1, color: HankoColors.paperDeep),
+            Divider(height: 1, color: context.hk.paperDeep),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -114,7 +114,7 @@ class GradeBars extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: selected == g ? FontWeight.w700 : FontWeight.w400,
-                        color: selected == g ? HankoColors.ink : HankoColors.inkMute,
+                        color: selected == g ? context.hk.ink : context.hk.inkMute,
                       ),
                     ),
                   ),
@@ -141,11 +141,12 @@ class GradeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = grade.index >= Grade.c.index;
+    final fill = gradeColor(context.hk, grade);
+    final dark = fill.computeLuminance() < 0.35;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: gradeColor(grade),
+        color: fill,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -153,7 +154,7 @@ class GradeBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: dark ? Colors.white : HankoColors.ink,
+          color: dark ? Colors.white : const Color(0xFF1F2933),
         ),
       ),
     );

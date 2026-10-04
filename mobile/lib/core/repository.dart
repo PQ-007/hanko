@@ -213,22 +213,6 @@ class Repository {
     }
   }
 
-  /// Review cards due per upcoming SRS day (`review_forecast`, 0024). Null if
-  /// the migration isn't applied.
-  Future<Map<DateTime, int>?> reviewForecast({int days = 30}) async {
-    try {
-      final rows = await _db.rpc<List<dynamic>>(
-        'review_forecast',
-        params: {'p_days': days},
-      );
-      return {
-        for (final r in rows)
-          DateTime.parse((r as Map)['day'] as String): (r['due'] as num).toInt(),
-      };
-    } catch (_) {
-      return null;
-    }
-  }
 
   /// Renames a deck. `updated_at` is bumped by a trigger, so the extension's
   /// next sync pulls the new name without anything here having to stamp it —

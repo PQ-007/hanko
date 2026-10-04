@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/audio.dart';
 import '../../core/providers.dart';
 import '../../core/repository.dart';
+import '../../core/speech.dart';
 import '../../core/strings.dart';
-import '../../core/web_api.dart';
 import '../../models/library.dart';
 
 void toast(BuildContext context, String message) {
@@ -58,22 +58,27 @@ Future<bool> addWordChecked(
   }
 }
 
-/// Plays a word, generating its clip first if it has none — the web's
-/// `playWordAudio` flow. Returns the audio path now on the word (or null).
-Future<String?> playWord(BuildContext context, WidgetRef ref, Word word) async {
-  var path = word.audioPath;
-  if (path == null || path.isEmpty) {
-    try {
-      path = await ref.read(webApiProvider).generateWordAudio(word.id);
-      ref.invalidate(deckWordsProvider(word.deckId));
-      ref.invalidate(allWordsProvider);
-    } catch (_) {
-      if (context.mounted) toast(context, T.audioFailed);
-      return null;
-    }
+/// Plays a word's pronunciation: its recorded clip if it has one (captured by
+/// the extension or the web), otherwise the phone's own Japanese voice.
+Future<void> playWord(BuildContext context, WidgetRef ref, Word word) async {
+  final path = word.audioPath;
+  if (path != null && path.isNotEmpty) {
+    await ref.read(audioProvider).play(word.id, path);
+    return;
   }
-  await ref.read(audioProvider).play(word.id, path);
-  return path;
+  await speakWord(context, ref, reading: word.reading, term: word.term);
+}
+
+/// Speaks the reading (or the term, for kana words) with on-device TTS.
+Future<void> speakWord(
+  BuildContext context,
+  WidgetRef ref, {
+  String? reading,
+  required String term,
+}) async {
+  final text = (reading != null && reading.isNotEmpty) ? reading : term;
+  final ok = await ref.read(speechProvider).speakJapanese(text);
+  if (!ok && context.mounted) toast(context, T.noJapaneseVoice);
 }
 
 Future<void> confirmDeleteWord(BuildContext context, WidgetRef ref, Word word) async {

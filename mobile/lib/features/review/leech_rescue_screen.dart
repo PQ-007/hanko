@@ -7,6 +7,8 @@ import '../../core/strings.dart';
 import '../../models/queue_card.dart';
 import '../battle/fight_scene.dart';
 import 'review_screen.dart' show RatingButtonRow;
+import '../../core/theme.dart';
+import '../../core/widgets.dart';
 
 const _uuid = Uuid();
 
@@ -148,7 +150,7 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
                   Text(
                     'Leech гэдэг нь дахин дахин алдаж байгаа үг.',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodySmall?.copyWith(color: context.hk.inkMute),
                   ),
                 ],
               ],
@@ -170,17 +172,18 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        // Bottom lifted so the answer buttons sit in thumb reach.
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + thumbZoneLift(context)),
         child: Column(
           children: [
             if (_error != null)
               Container(
                 width: double.infinity,
-                color: Colors.red.shade50,
+                color: Theme.of(context).colorScheme.errorContainer,
                 padding: const EdgeInsets.all(10),
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Text('$_error',
-                    style: TextStyle(color: Colors.red.shade900, fontSize: 12)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 12)),
               ),
             Expanded(
               child: Center(
@@ -202,13 +205,13 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
                             if (card.reading != null && card.reading != card.term)
                               Text(card.reading!,
                                   style: theme.textTheme.titleMedium
-                                      ?.copyWith(color: Colors.grey)),
+                                      ?.copyWith(color: context.hk.inkMute)),
                             if (card.meaningMn != null && card.meaningMn!.isNotEmpty)
                               Text(card.meaningMn!, style: theme.textTheme.bodyLarge),
                             if (card.meaning != null && card.meaning!.isNotEmpty)
                               Text(card.meaning!,
                                   style: theme.textTheme.bodyMedium
-                                      ?.copyWith(color: Colors.grey)),
+                                      ?.copyWith(color: context.hk.inkMute)),
                           ],
                         ],
                       ),

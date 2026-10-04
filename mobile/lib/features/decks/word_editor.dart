@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/strings.dart';
-import '../../core/theme.dart';
-import '../../core/web_api.dart';
+import '../../core/dictionary.dart';
 import '../../models/library.dart';
 
 export '../../models/library.dart' show WordDraft;
@@ -110,7 +109,7 @@ class WordFormState extends ConsumerState<WordForm> {
     if (t.isEmpty || (!overwrite && t == _lastLooked)) return;
     _lastLooked = t;
     setState(() => _looking = true);
-    final r = await ref.read(webApiProvider).lookup(t);
+    final r = await ref.read(dictionaryProvider).lookup(t);
     if (!mounted) return;
     setState(() => _looking = false);
     if (r.isEmpty) return;
@@ -137,7 +136,7 @@ class WordFormState extends ConsumerState<WordForm> {
     if (t.isEmpty) return;
     _lastEn = t;
     setState(() => _translating = true);
-    final mn = await ref.read(webApiProvider).translate(t);
+    final mn = await ref.read(dictionaryProvider).translate(t);
     if (!mounted) return;
     setState(() => _translating = false);
     if (mn.isNotEmpty) _meaningMn.text = mn;
@@ -162,7 +161,6 @@ class WordFormState extends ConsumerState<WordForm> {
   @override
   Widget build(BuildContext context) {
     final editing = widget.existing != null;
-    final api = ref.watch(webApiProvider);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
@@ -177,7 +175,7 @@ class WordFormState extends ConsumerState<WordForm> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              if (editing && api.available)
+              if (editing)
                 TextButton.icon(
                   onPressed: _looking ? null : () => _lookup(overwrite: true),
                   icon: const Icon(Icons.manage_search, size: 18),
@@ -185,14 +183,6 @@ class WordFormState extends ConsumerState<WordForm> {
                 ),
             ],
           ),
-          if (!api.available)
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                T.lookupUnavailable,
-                style: TextStyle(fontSize: 11, color: HankoColors.inkMute),
-              ),
-            ),
           const SizedBox(height: 12),
           TextField(
             controller: _term,

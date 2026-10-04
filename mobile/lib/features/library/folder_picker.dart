@@ -54,7 +54,7 @@ Future<FolderChoice?> pickFolder(
               contentPadding: EdgeInsets.only(left: 16.0 + depth * 20, right: 16),
               leading: Icon(
                 Icons.folder_outlined,
-                color: exclude.contains(folder.id) ? HankoColors.line : HankoColors.seal,
+                color: exclude.contains(folder.id) ? context.hk.line : HankoColors.seal,
               ),
               title: Text(folder.name),
               enabled: !exclude.contains(folder.id),

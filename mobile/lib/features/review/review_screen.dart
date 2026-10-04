@@ -8,9 +8,11 @@ import '../../core/audio.dart';
 import '../../core/offline_review.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/widgets.dart';
 import '../../models/queue_card.dart';
 import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
+import '../decks/word_actions.dart' show speakWord;
 
 const _uuid = Uuid();
 
@@ -272,22 +274,22 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           if (_error != null)
             Container(
               width: double.infinity,
-              color: Colors.red.shade50,
+              color: Theme.of(context).colorScheme.errorContainer,
               padding: const EdgeInsets.all(12),
               child: Text(
                 'Хадгалж чадсангүй: $_error',
-                style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 12),
               ),
             ),
           if (_offline)
             Container(
               width: double.infinity,
-              color: Colors.amber.shade50,
+              color: context.hk.warnBg,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   Icon(Icons.cloud_off_outlined,
-                      size: 16, color: Colors.amber.shade900),
+                      size: 16, color: context.hk.warnFg),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -295,7 +297,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                           ? 'Офлайн — $_queuedAnswers хариулт хадгалагдсан, дараа илгээнэ'
                           : 'Офлайн — хадгалсан жагсаалтаар давтаж байна',
                       style: TextStyle(
-                          color: Colors.amber.shade900, fontSize: 12),
+                          color: context.hk.warnFg, fontSize: 12),
                     ),
                   ),
                 ],
@@ -329,23 +331,24 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                               Text(
                                 card.reading!,
                                 style: theme.textTheme.titleMedium
-                                    ?.copyWith(color: Colors.grey),
+                                    ?.copyWith(color: context.hk.inkMute),
                               ),
-                            // Only offered when there is something to play:
-                            // a speaker icon that does nothing is worse than
-                            // no icon at all.
-                            if (card.audioPath != null &&
-                                card.audioPath!.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.volume_up_outlined),
-                                iconSize: 20,
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => ref
-                                    .read(audioProvider)
-                                    .play(card.wordId, card.audioPath),
-                              ),
-                            ],
+                            // Always available: the recorded clip when there is
+                            // one (cached, so it works offline), otherwise the
+                            // phone's own Japanese voice.
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.volume_up_outlined),
+                              iconSize: 20,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                if (card.audioPath != null && card.audioPath!.isNotEmpty) {
+                                  ref.read(audioProvider).play(card.wordId, card.audioPath);
+                                } else {
+                                  speakWord(context, ref, reading: card.reading, term: card.term);
+                                }
+                              },
+                            ),
                           ],
                         ),
                         const Padding(
@@ -364,7 +367,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                             card.meaning!,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey),
+                                ?.copyWith(color: context.hk.inkMute),
                           ),
                         ],
                       ] else ...[
@@ -372,7 +375,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         Text(
                           'Хариулт харах',
                           style: theme.textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey),
+                              ?.copyWith(color: context.hk.inkMute),
                         ),
                       ],
                     ],
@@ -384,7 +387,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              // Lifted into thumb reach rather than pinned to the bottom edge.
+              padding: EdgeInsets.fromLTRB(12, 12, 12, 12 + thumbZoneLift(context)),
               child: _revealed
                   ? RatingButtonRow(enabled: !_sending, onRate: _rate)
                   : SizedBox(
@@ -392,7 +396,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                       child: FilledButton(
                         onPressed: () => setState(() => _revealed = true),
                         style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 18),
                         ),
                         child: const Text(T.showAnswer),
                       ),
@@ -450,14 +454,14 @@ class _RatingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = RatingColors.of(rating);
+    final color = context.hk.rating(rating);
     final primary = rating == 'good';
     return primary
         ? FilledButton(
             onPressed: enabled ? onTap : null,
             style: FilledButton.styleFrom(
               backgroundColor: color,
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
             ),
             child: Text(_labels[rating]!,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -468,7 +472,7 @@ class _RatingButton extends StatelessWidget {
               foregroundColor: color,
               side: BorderSide(color: color.withValues(alpha: 0.4)),
               backgroundColor: color.withValues(alpha: 0.06),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
             ),
             child: Text(_labels[rating]!,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),

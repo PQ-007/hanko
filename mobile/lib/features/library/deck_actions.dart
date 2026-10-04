@@ -8,9 +8,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/providers.dart';
 import '../../core/repository.dart';
 import '../../core/strings.dart';
-import '../../core/web_api.dart';
 import '../../models/library.dart';
 import '../decks/word_actions.dart';
+import 'export_text.dart';
 import 'folder_picker.dart';
 import 'folder_tree.dart';
 
@@ -72,20 +72,18 @@ Future<bool> deleteDeck(BuildContext context, WidgetRef ref, Deck deck) async {
   }
 }
 
-/// Builds the export on the server (same routes the web uses, Bearer-authed)
-/// and hands the file to the system share sheet.
-Future<void> exportDeck(BuildContext context, WidgetRef ref, Deck deck, String format) async {
-  final api = ref.read(webApiProvider);
-  if (!api.available) {
-    toast(context, T.lookupUnavailable);
-    return;
-  }
-  toast(context, T.building);
+/// Builds the deck's Anki-importable .txt on the phone and hands it to the
+/// system share sheet — no server involved.
+Future<void> exportDeckTxt(BuildContext context, WidgetRef ref, Deck deck) async {
   try {
-    final file = await api.exportDeck(deck.id, format);
+    final words = await ref.read(deckWordsProvider(deck.id).future);
+    if (words.isEmpty) {
+      if (context.mounted) toast(context, T.noWords);
+      return;
+    }
     final dir = await getTemporaryDirectory();
-    final out = File('${dir.path}/${file.filename}');
-    await out.writeAsBytes(file.bytes, flush: true);
+    final out = File('${dir.path}/${sanitizeFilename(deck.name)}.txt');
+    await out.writeAsString(buildDeckTxt(deck.name, words), flush: true);
     await SharePlus.instance.share(ShareParams(files: [XFile(out.path)], subject: deck.name));
   } catch (e) {
     if (context.mounted) toast(context, '${T.exportFailed}: $e');

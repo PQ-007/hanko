@@ -180,6 +180,10 @@ class T {
   static const leechDesc = 'Дахин дахин алддаг үгсээ тусад нь давтана.';
 
   static const settings = 'Тохиргоо';
+  static const appearance = 'Харагдах байдал';
+  static const themeSystem = 'Утасны дагуу';
+  static const themeLight = 'Цайвар';
+  static const themeDark = 'Бараан';
   static const signOut = 'Гарах';
   static const privacy = 'Нууцлалын бодлого';
   static const reminder = 'Өдөр тутмын сануулга';
@@ -202,15 +206,9 @@ class T {
   static const accuracyLabel = 'Нарийвчлал';
   static const accuracyHint = 'Бүх хариултаас зөвийн хувь';
   static String lastNDays(int n) => 'Сүүлийн $n хоног';
-  static const forecastTitle = 'Ирэх давталтууд';
-  static String forecastSummary(int n, int days) =>
-      'Ирэх $days хоногт $n давталт';
-  static const today = 'Өнөөдөр';
-  static const tomorrow = 'Маргааш';
-  static const noData = 'Өгөгдөл алга';
 
-  static const lookupUnavailable =
-      'Толь бичгийн хайлт тохируулагдаагүй (WEB_API_BASE).';
+  static const noJapaneseVoice =
+      'Утсанд япон хэлний дуу хоолой суугаагүй байна. Тохиргоо → Текст-яриа хэсгээс татаж авна уу.';
   static const back = 'Буцах';
   static const offline = 'Офлайн';
   static const loadFailed = 'Уншиж чадсангүй';

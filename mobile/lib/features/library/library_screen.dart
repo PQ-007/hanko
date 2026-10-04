@@ -173,7 +173,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       if (node.children.isEmpty && node.decks.isEmpty) {
         rows.add(Padding(
           padding: EdgeInsets.only(left: 56.0 + (depth + 1) * 18, bottom: 6),
-          child: const Text(T.emptyFolder, style: TextStyle(color: HankoColors.inkMute, fontSize: 12)),
+          child: Text(T.emptyFolder, style: TextStyle(color: context.hk.inkMute, fontSize: 12)),
         ));
       }
     }
@@ -183,10 +183,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
     if (tree.unfiled.isNotEmpty) {
       if (tree.roots.isNotEmpty) {
-        rows.add(const Padding(
+        rows.add(Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Text(T.noFolder,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: HankoColors.inkMute)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.hk.inkMute)),
         ));
       }
       for (final d in tree.unfiled) {
@@ -219,7 +219,7 @@ class _FolderRow extends ConsumerWidget {
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(open ? Icons.expand_more : Icons.chevron_right, size: 20, color: HankoColors.inkMute),
+          Icon(open ? Icons.expand_more : Icons.chevron_right, size: 20, color: context.hk.inkMute),
           const SizedBox(width: 2),
           Icon(open ? Icons.folder_open_outlined : Icons.folder_outlined, color: HankoColors.seal),
         ],
@@ -273,7 +273,7 @@ class _DeckRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
       contentPadding: EdgeInsets.only(left: 30.0 + depth * 18, right: 4),
-      leading: const Icon(Icons.style_outlined, color: HankoColors.inkSoft),
+      leading: Icon(Icons.style_outlined, color: context.hk.inkSoft),
       title: Text(deck.name),
       subtitle: Text(T.wordCount(count), style: const TextStyle(fontSize: 11)),
       onTap: () => onOpen(deck.id),

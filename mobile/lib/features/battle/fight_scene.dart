@@ -14,7 +14,7 @@ import 'sprites.dart';
 /// Decoration only: it owns no data, and whatever mounts it decides when it
 /// goes away.
 class FightScene extends StatefulWidget {
-  const FightScene({super.key, this.hero, this.size = 96, this.label, this.heroWins = false});
+  const FightScene({super.key, this.hero, this.size = 128, this.label, this.heroWins = false});
 
   /// Fixed fighter, or null to draw a new hero with each pair.
   final String? hero;
@@ -120,7 +120,7 @@ class _FightSceneState extends State<FightScene> with SingleTickerProviderStateM
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Transform.translate(
-                    offset: Offset(-56 * (1 - t), 0),
+                    offset: Offset(-widget.size * 0.6 * (1 - t), 0),
                     child: SpriteView(
                       key: ValueKey('hero$_round'),
                       slug: hero,
@@ -130,7 +130,7 @@ class _FightSceneState extends State<FightScene> with SingleTickerProviderStateM
                     ),
                   ),
                   Transform.translate(
-                    offset: Offset(56 * (1 - t), 0),
+                    offset: Offset(widget.size * 0.6 * (1 - t), 0),
                     child: SpriteView(
                       key: ValueKey('monster$_round'),
                       slug: _monster,
@@ -149,7 +149,7 @@ class _FightSceneState extends State<FightScene> with SingleTickerProviderStateM
           const SizedBox(height: 8),
           Text(
             widget.label!,
-            style: const TextStyle(fontSize: 13, color: HankoColors.inkSoft),
+            style: TextStyle(fontSize: 13, color: context.hk.inkSoft),
           ),
         ],
       ],
@@ -199,7 +199,7 @@ class HeroEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SpriteView(slug: hero, state: state, size: 120),
+            SpriteView(slug: hero, state: state, size: 150),
             const SizedBox(height: 8),
             Text(title, textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
             if (subtitle != null) ...[
@@ -207,7 +207,7 @@ class HeroEmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(color: HankoColors.inkSoft),
+                style: theme.textTheme.bodySmall?.copyWith(color: context.hk.inkSoft),
               ),
             ],
             if (action != null) ...[const SizedBox(height: 16), action!],
