@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BookMarked, CalendarCheck, Layers, Repeat, Sparkles } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { Deck, DeckWithCount, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
-import { addDays, currentStreak, localDateKey, longestStreak, startOfDay } from "../_lib/dates";
-import StatTile from "../_components/StatTile";
+import { currentStreak, localDateKey, longestStreak } from "../_lib/dates";
 import StreakHero from "../_components/StreakHero";
 import ActivityHeatmap from "../_components/ActivityHeatmap";
 import GrowthChart from "../_components/GrowthChart";
@@ -155,7 +154,6 @@ export default function StatsDashboard() {
   // client-side count is the pre-0011 fallback.
   const backlog = words.filter((w) => new Date(w.due_at) <= now).length;
   const dueToday = due ? due.due_now : backlog;
-  const heldBack = due ? due.review_due + due.new_due - due.due_now : 0;
   const mastered = words.filter((w) => {
     const g = gradeFor(w);
     return g === "A" || g === "B";
@@ -170,12 +168,6 @@ export default function StatsDashboard() {
 
   const todayKey = localDateKey(now);
   const addedToday = words.filter((w) => localDateKey(new Date(w.date_added)) === todayKey).length;
-
-  const weekStart = addDays(startOfDay(now), -6);
-  let reviewsThisWeek = 0;
-  for (let i = 0; i < 7; i++) {
-    reviewsThisWeek += activity.get(localDateKey(addDays(weekStart, i))) ?? 0;
-  }
 
   return (
     <div className="mx-auto flex max-w-[1700px] flex-col gap-4 p-4 sm:px-8 sm:py-6">
@@ -198,26 +190,6 @@ export default function StatsDashboard() {
           {T.migrationHint}
         </p>
       )}
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatTile icon={BookMarked} label={T.statTotalWords} value={words.length} />
-        <StatTile icon={Layers} label={T.statTotalDecks} value={decks.length} />
-        <StatTile
-          icon={CalendarCheck}
-          label={T.statDueToday}
-          value={dueToday}
-          // When the daily cap holds cards back, say so — otherwise the tile
-          // and the deck breakdown below look like they contradict each other.
-          sub={heldBack > 0 ? T.dueHeldBack(heldBack) : undefined}
-        />
-        <StatTile
-          icon={Sparkles}
-          label={T.statMastered}
-          value={mastered}
-          sub={words.length > 0 ? `${masteredPct}%` : undefined}
-        />
-        <StatTile icon={Repeat} label={T.reviewsThisWeek} value={reviewsThisWeek} />
-      </div>
 
       {/* srsToday, not the device date, so the word of the day turns over at
           the same moment the scheduler's day does. */}

@@ -35,8 +35,8 @@ export function heatmapColor(count: number, max: number): string {
 export const ACCENT = GRADE_COLOR.D.fill;
 export const ACCENT_DARK = GRADE_COLOR.A.fill;
 
-// StreakHero's two non-mastery rings. Deliberately off the grade ramp (which
-// is reserved for ordinal mastery data) and deliberately different from each
-// other, so three same-shaped rings side by side don't read as one metric.
-export const RING_GOAL = "#b03a2e";   // matches --color-seal, the primary CTA accent
-export const RING_ADDED = "#1f8a5f";  // emerald — reads as "growth"
+// StreakHero's two non-mastery rings. Both the brand accent (matches
+// --color-seal) rather than one of them getting a distinct hue — on request,
+// so the three rings read as one coherent blue set.
+export const RING_GOAL = GRADE_COLOR.C.fill;
+export const RING_ADDED = GRADE_COLOR.C.fill;

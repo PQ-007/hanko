@@ -138,11 +138,12 @@ test("isBotDifficulty rejects anything not in the roster", () => {
 // playing at all: the difficulties are actually different, and a match lasts.
 //
 // Bounds are deliberately loose. The measured rates at 4,000 matches per
-// difficulty are 94% / 51% / 12% against an 0.8-accuracy 2.8s opponent; the
+// difficulty are 94% / 51% / 12% against an 0.8-accuracy 5.6s opponent (2.8s
+// doubled alongside the round timer and BOT_PROFILES — see bot.ts); the
 // assertions below would survive a fair amount of retuning and only fail if a
 // change made a difficulty pointless or ended matches in a handful of rounds.
 test("the three difficulties produce genuinely different matches", () => {
-  const HUMAN: BotProfile = { accuracy: 0.8, meanReactionMs: 2800, reactionJitterMs: 1200 };
+  const HUMAN: BotProfile = { accuracy: 0.8, meanReactionMs: 5600, reactionJitterMs: 2400 };
   const MATCHES = 2000;
 
   function winRate(foe: BotProfile) {

@@ -13,7 +13,11 @@ export async function lookupWord(term: string): Promise<LookupResult> {
   const url = `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(
     term
   )}`;
-  const res = await fetch(url);
+  // Jisho's WAF 403s the bare default User-Agent Node's fetch sends ("node") —
+  // a dead giveaway for an unmodified script. Any non-default UA clears it.
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; Hanko/1.0)" },
+  });
   if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
   const data = await res.json();
   const entry = data?.data?.[0];

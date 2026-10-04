@@ -42,11 +42,14 @@ export default function GradeChart({
 
   return (
     <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-ink-soft">{title ?? T.gradeTitle}</h3>
+      <h3 className="mb-5 text-sm font-semibold text-ink-soft">{title ?? T.gradeTitle}</h3>
       <div className="flex items-end gap-3">
         {GRADE_ORDER.map((g, i) => {
           const count = counts.get(g) ?? 0;
-          const heightPct = count === 0 ? 0 : Math.max(6, (count / max) * 100);
+          // Capped below 100: the count label sits just above the bar top, so
+          // an uncapped bar at the max value pushed its label past the box's
+          // own top edge and into the title row above it.
+          const heightPct = count === 0 ? 0 : Math.min(80, Math.max(6, (count / max) * 100));
           const pct = total === 0 ? 0 : Math.round((count / total) * 100);
           const isSelected = selected === g;
           return (
@@ -55,7 +58,7 @@ export default function GradeChart({
               type="button"
               disabled={!onSelect || count === 0}
               onClick={() => onSelect?.(isSelected ? null : g)}
-              className="relative h-24 flex-1 disabled:cursor-default"
+              className="relative h-28 flex-1 disabled:cursor-default"
               onMouseEnter={() => setHover(g)}
               onMouseLeave={() => setHover(null)}
               title={`${g === "new" ? T.gradeNew : g} — ${count} (${pct}%)`}
