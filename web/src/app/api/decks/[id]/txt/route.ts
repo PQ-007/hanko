@@ -6,16 +6,18 @@ import {
   frontText,
   backText,
 } from "@/lib/decks";
+import { clientForRequest } from "@/lib/supabase/bearer";
 
 // POST /api/decks/[id]/txt
 // Tab-separated Anki import file (Front \t Back \t Tag), matching the
 // extension's original .txt export so existing import instructions still apply.
+// Accepts the web's cookie session or the mobile app's Bearer token.
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: RouteContext<"/api/decks/[id]/txt">
 ) {
   const { id } = await ctx.params;
-  const result = await loadDeckWithWords(id);
+  const result = await loadDeckWithWords(await clientForRequest(req), id);
   if (!result) {
     return NextResponse.json({ error: "Deck not found" }, { status: 404 });
   }

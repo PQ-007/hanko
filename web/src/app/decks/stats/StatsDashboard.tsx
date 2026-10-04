@@ -66,7 +66,10 @@ export default function StatsDashboard() {
     setLoading(true);
     const [decksRes, wordsRes, logRes, dueRes, todayRes, freezeRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
-      supabase.from("words").select("*").eq("deleted", false),
+      // Ordered by id so WordSpotlight's day-seeded index lands on the same
+      // word here and on mobile (which runs the same query) — Postgres row
+      // order is otherwise unspecified.
+      supabase.from("words").select("*").eq("deleted", false).order("id"),
       // Bucketed server-side by SRS day. The RPC also excludes undone answers
       // and battle/drill sources, so activity can't be inflated by answers the
       // user took back or by gamified modes.

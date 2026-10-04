@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/repository.dart';
+import '../../core/strings.dart';
 import '../../models/queue_card.dart';
-import 'srs_preview.dart';
+import '../battle/fight_scene.dart';
+import 'review_screen.dart' show RatingButtonRow;
 
 const _uuid = Uuid();
 
@@ -118,7 +120,10 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
       );
     }
     if (_queue == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text(T.leechTitle)),
+        body: const LoadingScene(label: T.loading),
+      );
     }
     if (_queue!.isEmpty) {
       return Scaffold(
@@ -214,21 +219,7 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
             ),
             const SizedBox(height: 16),
             if (_revealed)
-              Row(
-                children: [
-                  for (final rating in const ['again', 'hard', 'good', 'easy'])
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: _RescueButton(
-                          rating: rating,
-                          card: card,
-                          onPressed: _sending ? null : () => _rate(rating),
-                        ),
-                      ),
-                    ),
-                ],
-              )
+              RatingButtonRow(enabled: !_sending, onRate: _rate)
             else
               SizedBox(
                 width: double.infinity,
@@ -244,48 +235,3 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
   }
 }
 
-class _RescueButton extends StatelessWidget {
-  const _RescueButton({required this.rating, required this.card, this.onPressed});
-  final String rating;
-  final QueueCard card;
-  final VoidCallback? onPressed;
-
-  static const _labels = {'again': 'Дахин', 'hard': 'Хэцүү', 'good': 'Сайн', 'easy': 'Амархан'};
-  static const _colors = {
-    'again': Colors.red,
-    'hard': Colors.orange,
-    'good': Colors.blue,
-    'easy': Colors.green,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _colors[rating]!;
-    final preview = previewNext(
-      state: card.state,
-      learningStep: card.learningStep,
-      intervalDays: card.intervalDays,
-      repetitions: card.repetitions,
-      easeFactor: card.easeFactor,
-      rating: rating,
-    );
-    final label = preview.unit == PreviewUnit.minutes
-        ? '${preview.value} мин'
-        : '${preview.value} өд';
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color.withValues(alpha: 0.5)),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-      ),
-      onPressed: onPressed,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(_labels[rating]!, style: const TextStyle(fontSize: 13)),
-          Text(label, style: const TextStyle(fontSize: 10)),
-        ],
-      ),
-    );
-  }
-}

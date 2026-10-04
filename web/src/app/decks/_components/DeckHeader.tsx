@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FolderClosed, GraduationCap, LayoutGrid, LayoutList, Plus, RefreshCw } from "lucide-react";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
+import { buildLibraryTree, flattenTree } from "../_lib/folderTree";
 import { T } from "../_lib/strings";
 import type { WordView } from "../_lib/types";
 
@@ -138,14 +139,17 @@ export default function DeckHeader({
         <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-control border border-line px-2 py-1 sm:flex-none">
           <FolderClosed size={15} className="shrink-0 text-ink-soft" />
           <select
-            value={deck.folder_id ?? ""}
+            // A folder that's been deleted reads as "no folder", matching
+            // where the sidebar now files the deck.
+            value={folders.some((f) => f.id === deck.folder_id) ? deck.folder_id! : ""}
             onChange={(e) => moveToFolder(e.target.value)}
             className="min-w-0 flex-1 bg-transparent text-sm text-ink focus:outline-none"
           >
             <option value="">{T.noFolderOption}</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
+            {flattenTree(buildLibraryTree(folders, []).roots).map(({ folder, depth }) => (
+              <option key={folder.id} value={folder.id}>
+                {"  ".repeat(depth)}
+                {folder.name}
               </option>
             ))}
           </select>

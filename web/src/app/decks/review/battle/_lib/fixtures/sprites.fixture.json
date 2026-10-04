@@ -1,0 +1,1126 @@
+{
+  "oneShotMs": 500,
+  "loopMs": 900,
+  "sprites": {
+    "archer": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 12
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "armored-axeman": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "attack03": {
+        "frames": 12
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "armored-orc": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "attack03": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      },
+      "block": {
+        "frames": 4
+      }
+    },
+    "armored-skeleton": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "bat": {
+      "idle": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 7
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "black-knight-a": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 16
+      },
+      "attack02": {
+        "frames": 15
+      },
+      "attack03": {
+        "frames": 15
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "black-knight-b": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "attack03": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      },
+      "block": {
+        "frames": 4
+      }
+    },
+    "black-knight-c": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "attack03": {
+        "frames": 13
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 10
+      }
+    },
+    "blood-monster-a": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "blood-monster-b": {
+      "idle": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 6
+      }
+    },
+    "demon-a": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 7
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "demon-b": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 6
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "demon-c": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 6
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "demon-d": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 11
+      },
+      "attack02": {
+        "frames": 18
+      },
+      "attack03": {
+        "frames": 12
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "demon-e": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 13
+      },
+      "attack03": {
+        "frames": 8
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "demoness-a": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 15
+      },
+      "attack03": {
+        "frames": 16
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "demoness-b": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "elite-orc": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 11
+      },
+      "attack03": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "eyeball-monster": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "attack03": {
+        "frames": 6
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "flame-golem": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 12
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "attack03": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 6
+      }
+    },
+    "ghostfire": {
+      "idle": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 7
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 6
+      }
+    },
+    "greatsword-skeleton": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 9
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 12
+      },
+      "attack03": {
+        "frames": 8
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "hellbat": {
+      "idle": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 7
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "hellhound": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "knight": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 10
+      },
+      "attack03": {
+        "frames": 11
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      },
+      "block": {
+        "frames": 4
+      }
+    },
+    "knight-templar": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 8
+      },
+      "attack03": {
+        "frames": 11
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      },
+      "block": {
+        "frames": 4
+      }
+    },
+    "lancer": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "attack03": {
+        "frames": 8
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "lava-slime": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "minotaur": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 7
+      },
+      "attack03": {
+        "frames": 7
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "necromancer": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 10
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 9
+      }
+    },
+    "orc": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 6
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "orc-rider": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 8
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "attack03": {
+        "frames": 11
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      },
+      "block": {
+        "frames": 4
+      }
+    },
+    "priest": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "skeleton": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 7
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      },
+      "block": {
+        "frames": 4
+      }
+    },
+    "skeleton-archer": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "slime": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 6
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 12
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "soldier": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 6
+      },
+      "attack03": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "swordsman": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 15
+      },
+      "attack03": {
+        "frames": 12
+      },
+      "hurt": {
+        "frames": 5
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "warlock": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 7
+      },
+      "attack02": {
+        "frames": 6
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 11
+      }
+    },
+    "werebear": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 13
+      },
+      "attack03": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "werewolf": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 9
+      },
+      "attack02": {
+        "frames": 13
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    },
+    "wizard": {
+      "idle": {
+        "frames": 6
+      },
+      "walk": {
+        "frames": 8
+      },
+      "attack01": {
+        "frames": 6
+      },
+      "attack02": {
+        "frames": 9
+      },
+      "hurt": {
+        "frames": 4
+      },
+      "death": {
+        "frames": 4
+      }
+    }
+  },
+  "offsets": {
+    "archer": {
+      "x": -1,
+      "y": 0
+    },
+    "armored-axeman": {
+      "x": -3,
+      "y": 2
+    },
+    "armored-orc": {
+      "x": -4,
+      "y": 2
+    },
+    "armored-skeleton": {
+      "x": -4,
+      "y": 3
+    },
+    "bat": {
+      "x": 0,
+      "y": 2
+    },
+    "black-knight-a": {
+      "x": -2,
+      "y": 6
+    },
+    "black-knight-b": {
+      "x": 0,
+      "y": 2
+    },
+    "black-knight-c": {
+      "x": -6,
+      "y": 6
+    },
+    "blood-monster-a": {
+      "x": -2,
+      "y": -1
+    },
+    "blood-monster-b": {
+      "x": -3,
+      "y": 3
+    },
+    "demon-a": {
+      "x": -3,
+      "y": 1
+    },
+    "demon-b": {
+      "x": -2,
+      "y": 0
+    },
+    "demon-c": {
+      "x": -4,
+      "y": 4
+    },
+    "demon-d": {
+      "x": -6,
+      "y": 4
+    },
+    "demon-e": {
+      "x": -5,
+      "y": 2
+    },
+    "demoness-a": {
+      "x": -5,
+      "y": 4
+    },
+    "demoness-b": {
+      "x": 1,
+      "y": 3
+    },
+    "elite-orc": {
+      "x": -6,
+      "y": 4
+    },
+    "eyeball-monster": {
+      "x": 0,
+      "y": -2
+    },
+    "flame-golem": {
+      "x": -2,
+      "y": 6
+    },
+    "ghostfire": {
+      "x": -2,
+      "y": 7
+    },
+    "greatsword-skeleton": {
+      "x": 6,
+      "y": 2
+    },
+    "hellbat": {
+      "x": 1,
+      "y": 4
+    },
+    "hellhound": {
+      "x": 0,
+      "y": 0
+    },
+    "knight": {
+      "x": -4,
+      "y": 1
+    },
+    "knight-templar": {
+      "x": -6,
+      "y": 0
+    },
+    "lancer": {
+      "x": 0,
+      "y": 10
+    },
+    "lava-slime": {
+      "x": 2,
+      "y": -1
+    },
+    "minotaur": {
+      "x": -6,
+      "y": 1
+    },
+    "necromancer": {
+      "x": 4,
+      "y": 5
+    },
+    "orc": {
+      "x": -4,
+      "y": 0
+    },
+    "orc-rider": {
+      "x": -3,
+      "y": 6
+    },
+    "priest": {
+      "x": -2,
+      "y": 2
+    },
+    "skeleton": {
+      "x": -6,
+      "y": 0
+    },
+    "skeleton-archer": {
+      "x": -2,
+      "y": 2
+    },
+    "slime": {
+      "x": 2,
+      "y": 0
+    },
+    "soldier": {
+      "x": 0,
+      "y": 1
+    },
+    "swordsman": {
+      "x": -4,
+      "y": 1
+    },
+    "warlock": {
+      "x": 0,
+      "y": 4
+    },
+    "werebear": {
+      "x": -2,
+      "y": 0
+    },
+    "werewolf": {
+      "x": -6,
+      "y": 0
+    },
+    "wizard": {
+      "x": -2,
+      "y": 1
+    }
+  },
+  "playerRoster": [
+    "archer",
+    "armored-axeman",
+    "knight",
+    "knight-templar",
+    "lancer",
+    "priest",
+    "soldier",
+    "swordsman",
+    "wizard",
+    "black-knight-a",
+    "black-knight-b",
+    "black-knight-c"
+  ],
+  "monsterRoster": [
+    "armored-orc",
+    "armored-skeleton",
+    "bat",
+    "black-knight-a",
+    "black-knight-b",
+    "black-knight-c",
+    "blood-monster-a",
+    "blood-monster-b",
+    "demon-a",
+    "demon-b",
+    "demon-c",
+    "demon-d",
+    "demon-e",
+    "demoness-a",
+    "demoness-b",
+    "elite-orc",
+    "eyeball-monster",
+    "flame-golem",
+    "ghostfire",
+    "greatsword-skeleton",
+    "hellbat",
+    "hellhound",
+    "lava-slime",
+    "minotaur",
+    "necromancer",
+    "orc",
+    "orc-rider",
+    "skeleton",
+    "skeleton-archer",
+    "slime",
+    "warlock",
+    "werebear",
+    "werewolf"
+  ],
+  "playerCharacter": "knight"
+}

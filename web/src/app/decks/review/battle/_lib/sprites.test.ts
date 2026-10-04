@@ -80,3 +80,22 @@ test("frame counts are positive integers", () => {
     }
   }
 });
+
+// fixtures/sprites.fixture.json is what the Flutter app's sprite table is
+// tested against (mobile/test/sprites_test.dart). If this fails, the TS changed
+// without the fixture: regenerate it from sprites.ts/monsters.ts, then make the
+// Dart side agree. Editing the JSON by hand to turn this green defeats it.
+test("the shared sprite fixture matches sprites.ts and monsters.ts", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const url = new URL("./fixtures/sprites.fixture.json", import.meta.url);
+  const fixture = JSON.parse(await readFile(url, "utf8"));
+  const { ONE_SHOT_MS, LOOP_MS } = await import("./sprites.ts");
+  const { PLAYER_CHARACTER } = await import("./monsters.ts");
+  assert.deepEqual(fixture.sprites, SPRITES);
+  assert.deepEqual(fixture.offsets, SPRITE_OFFSET);
+  assert.deepEqual(fixture.playerRoster, [...PLAYER_ROSTER]);
+  assert.deepEqual(fixture.monsterRoster, [...MONSTER_ROSTER]);
+  assert.equal(fixture.playerCharacter, PLAYER_CHARACTER);
+  assert.equal(fixture.oneShotMs, ONE_SHOT_MS);
+  assert.equal(fixture.loopMs, LOOP_MS);
+});

@@ -5,6 +5,8 @@ export const T = {
   noFolder: "Хавтасгүй",
   newFolder: "Шинэ хавтасны нэр",
   newFolderTitle: "Шинэ хавтас нэмэх",
+  newSubfolder: "Дотор нь хавтас нэмэх",
+  folderMoveFailed: "Хавтсыг зөөж чадсангүй.",
   emptyFolder: "хоосон",
   decks: "Багцууд",
   newDeck: "Шинэ багцын нэр",

@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Every feature talks to Supabase (and the web API). Without this in the
+         main manifest only debug builds could reach the network — the debug
+         manifest declares it for the Flutter tool, which hid the gap. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Hanko"
         android:name="${applicationName}"

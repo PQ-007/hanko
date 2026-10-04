@@ -4,6 +4,8 @@ export interface Folder {
   id: string;
   user_id: string;
   name: string;
+  /** Parent folder (0024). Null, or a folder that's deleted/unknown, means root. */
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
   deleted: boolean;

@@ -16,6 +16,8 @@ class QueueCard {
     required this.intervalDays,
     required this.repetitions,
     required this.easeFactor,
+    this.stability,
+    this.difficulty,
     required this.term,
     this.reading,
     this.meaning,
@@ -36,6 +38,11 @@ class QueueCard {
   final int repetitions;
   final double easeFactor;
 
+  /// FSRS state (0021_fsrs.sql). Null until a card first graduates, and on
+  /// rows from RPCs that don't return it (mature_cards, leech_cards).
+  final double? stability;
+  final double? difficulty;
+
   final String term;
   final String? reading;
   final String? meaning;
@@ -51,6 +58,8 @@ class QueueCard {
     int? intervalDays,
     int? repetitions,
     double? easeFactor,
+    double? stability,
+    double? difficulty,
   }) =>
       QueueCard(
         cardId: cardId,
@@ -63,6 +72,8 @@ class QueueCard {
         intervalDays: intervalDays ?? this.intervalDays,
         repetitions: repetitions ?? this.repetitions,
         easeFactor: easeFactor ?? this.easeFactor,
+        stability: stability ?? this.stability,
+        difficulty: difficulty ?? this.difficulty,
         term: term,
         reading: reading,
         meaning: meaning,
@@ -81,6 +92,8 @@ class QueueCard {
         intervalDays: (json['interval_days'] as num?)?.toInt() ?? 0,
         repetitions: (json['repetitions'] as num?)?.toInt() ?? 0,
         easeFactor: (json['ease_factor'] as num?)?.toDouble() ?? 2.5,
+        stability: (json['stability'] as num?)?.toDouble(),
+        difficulty: (json['difficulty'] as num?)?.toDouble(),
         term: json['term'] as String,
         reading: json['reading'] as String?,
         meaning: json['meaning'] as String?,
@@ -100,13 +113,38 @@ class DueSummary {
     required this.newDue,
     required this.reviewRemaining,
     required this.newRemaining,
+    this.newGoal = 0,
+    this.newReviewedToday = 0,
   });
+
+  static const empty = DueSummary(
+    dueNow: 0,
+    reviewDue: 0,
+    newDue: 0,
+    reviewRemaining: 0,
+    newRemaining: 0,
+  );
 
   final int dueNow;
   final int reviewDue;
   final int newDue;
   final int reviewRemaining;
   final int newRemaining;
+
+  /// `profiles.new_per_day` (0022), surfaced so the goal ring needs no
+  /// separate profile read.
+  final int newGoal;
+
+  /// New cards answered today (`state_before = 'new'` only, 0022).
+  final int newReviewedToday;
+
+  /// How full the goal ring is, 0–100, capped: answering past the goal still
+  /// shows the real "x/n" in the middle.
+  int get goalPct {
+    if (newGoal <= 0) return newReviewedToday > 0 ? 100 : 0;
+    final pct = (newReviewedToday / newGoal * 100).round();
+    return pct > 100 ? 100 : pct;
+  }
 
   /// Cards that are due but held back by today's cap.
   int get heldBack {
@@ -120,5 +158,7 @@ class DueSummary {
         newDue: (json['new_due'] as num?)?.toInt() ?? 0,
         reviewRemaining: (json['review_remaining'] as num?)?.toInt() ?? 0,
         newRemaining: (json['new_remaining'] as num?)?.toInt() ?? 0,
+        newGoal: (json['new_goal'] as num?)?.toInt() ?? 0,
+        newReviewedToday: (json['new_reviewed_today'] as num?)?.toInt() ?? 0,
       );
 }

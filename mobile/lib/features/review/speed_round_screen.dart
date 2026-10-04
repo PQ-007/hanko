@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/repository.dart';
+import '../../core/strings.dart';
+import '../../core/theme.dart';
 import '../../models/queue_card.dart';
+import '../battle/fight_scene.dart';
 
 const _uuid = Uuid();
 
@@ -84,7 +87,10 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
       );
     }
     if (_queue == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text(T.speedRoundTitle)),
+        body: const LoadingScene(label: T.loading),
+      );
     }
     if (_queue!.isEmpty) {
       return Scaffold(
@@ -182,8 +188,8 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                        foregroundColor: RatingColors.again,
+                        side: const BorderSide(color: RatingColors.again),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () => _answer(false),
@@ -194,7 +200,7 @@ class _SpeedRoundScreenState extends ConsumerState<SpeedRoundScreen> {
                   Expanded(
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: RatingColors.easy,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () => _answer(true),
