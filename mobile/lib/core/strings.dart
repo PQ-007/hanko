@@ -201,6 +201,52 @@ class T {
 
   // Duel (strings.ts)
   static const duelKicker = 'Тулаан';
+  static const duelLobbyTitle = 'Хэнтэй тулах вэ?';
+  static const duelBotSection = 'Боттой тулах';
+  static const duelBotDesc = 'Хүлээх шаардлагагүй. Гурван түвшин.';
+  static const duelBotRookie = 'Дасгалжигч';
+  static const duelBotRookieDesc = 'Удаан бөгөөд олон алддаг.';
+  static const duelBotRival = 'Өрсөлдөгч';
+  static const duelBotRivalDesc = 'Тэнцүү хиртэй тулаан.';
+  static const duelBotMaster = 'Мастер';
+  static const duelBotMasterDesc = 'Хурдан, бараг алддаггүй.';
+  static const duelFriendSection = 'Найзтайгаа тулах';
+  static const duelCreate = 'Тулаан үүсгэх';
+  static const duelJoin = 'Кодоор нэгдэх';
+  static const duelCodeLabel = 'Тулааны код';
+  static const duelCodePlaceholder = 'ЖИШЭЭ: 7K2Q';
+  static const duelCodeShare = 'Энэ кодыг найздаа явуулаарай.';
+  static const duelWaitingGuest = 'Найзаа хүлээж байна…';
+  static const duelJoinFailed = 'Ийм кодтой тулаан олдсонгүй, эсвэл аль хэдийн эхэлсэн байна.';
+  static const duelCreateFailed = 'Тулаан үүсгэж чадсангүй.';
+  static const duelCancel = 'Тулааныг цуцлах';
+  static const duelYou = 'Та';
+  static String duelRoundOf(int n, int total) => '$n / $total тойрог';
+  static const duelOpponentAnswered = 'Өрсөлдөгч хариуллаа';
+  static const duelOpponentThinking = 'Өрсөлдөгч бодож байна…';
+  static String duelStreakLabel(int n) => '$n дараалан';
+  static const duelWon = 'Ялалт!';
+  static const duelLost = 'Ялагдал';
+  static const duelDraw = 'Тэнцлээ';
+  static const duelWonDesc = 'Өрсөлдөгчөө дийллээ.';
+  static const duelLostDesc = 'Энэ удаад бүтсэнгүй. Дахин оролдоорой.';
+  static const duelDrawDesc = 'Хоёулаа тэнцүү үлдлээ.';
+  static const duelRematch = 'Дахин тулах';
+  static const duelResultRounds = 'Тойрог';
+  static const duelResultCorrect = 'Зөв хариулт';
+  static const duelResultBestStreak = 'Дээд цуврал';
+  static const duelResultDamage = 'Хийсэн хохирол';
+  static const duelTimedOut = 'Хоцорлоо';
+  static const duelNotScheduled = 'Тулааны хариултууд давтлагын хуваарьт нөлөөлөхгүй — зөвхөн тэмдэглэгдэнэ.';
+  static const duelLoading = 'Тулаан бэлдэж байна…';
+  static const duelLoadFailed = 'Тулааны үгсийг ачаалж чадсангүй.';
+  static const duelOpponentLeft = 'Өрсөлдөгч гарлаа.';
+  // Mobile only
+  static const duelLeaveTitle = 'Тулаанаас гарах уу?';
+  static const duelLeaveDesc = 'Гарвал энэ тулаанд ялагдсанд тооцогдоно.';
+  static const duelLeave = 'Гарах';
+  static const duelStay = 'Үргэлжлүүлэх';
+  static const duelOnlineUnavailable = 'Онлайн тулаан одоогоор боломжгүй (сервер бэлэн биш эсвэл интернэт алга).';
 
   // ---- Mobile only -------------------------------------------------------
   static const navHome = 'Нүүр';
@@ -212,8 +258,7 @@ class T {
   static const actionStartReview = 'Давталт эхлүүлэх';
   static const actionAddWord = 'Үг нэмэх';
   static const actionScan = 'Камераар унших';
-  static const actionAudioDeck = 'Аудио багц үүсгэх';
-  static const nextStage = 'Удахгүй нэмэгдэнэ';
+  static const actionAudioDeck = 'Аудио багц';
 
   // Camera capture
   static const captureTitle = 'Камераар унших';
@@ -260,11 +305,87 @@ class T {
   static String captureQueued(int n) =>
       'Офлайн — $n үг утсанд хадгалагдлаа, холболт сэргэхэд илгээгдэнэ';
 
-  static const speedRoundTitle = 'Хурдан давталт';
-  static const speedRoundDesc =
-      'Эзэмшсэн үгсээ хурдан шалгана. Хуваарь өөрчлөгдөхгүй.';
   static const leechTitle = 'Leech аврах';
+  static String leechLink(int n) => '$n хэцүү үг давтах →';
   static const leechDesc = 'Дахин дахин алддаг үгсээ тусад нь давтана.';
+
+  // Kanji writing practice
+  static const writingTitle = 'Ханз бичих';
+  static const writingDesc = 'Ханз бүрийг дагаж, хагас харж, санаж бичих хичээл. Хуваарь өөрчлөгдөхгүй.';
+  static const writingModelDownloading = 'Гар бичмэл танигчийг татаж байна… (зөвхөн анх удаа)';
+  static const writingModelFailed =
+      'Гар бичмэл танигчийг татаж чадсангүй. Интернэтээ шалгаад дахин оролдоно уу.';
+  static const writingNoKanji = 'Ханзтай үг алга байна.';
+  static const writingPrompt = 'Энэ үгийг ханзаар бичнэ үү';
+  static const writingCheck = 'Шалгах';
+  static const writingUndo = 'Буцаах';
+  static const writingClear = 'Арилгах';
+  static const writingReveal = 'Хариуг харах';
+  static const writingCorrect = 'Зөв!';
+  static const writingWrong = 'Буруу';
+  static const writingRevealed = 'Хариу';
+  static const writingYouWrote = 'Танигдсан:';
+  static const writingNothingRead = 'Юу ч танигдсангүй — илүү том бичээд үзээрэй';
+  static const writingRetry = 'Дахин бичих';
+  static const writingNext = 'Дараах';
+  static const writingAgain = 'Дахин эхлэх';
+  static const writingPreparing = 'Хичээл бэлдэж байна…';
+  static const writingStepTrace = 'Шинэ ханз — дарааллыг ажиглаад дагаж бичээрэй';
+  static const writingStepPartial = 'Зарим зурлага харагдана — бүтнээр нь бичээрэй';
+  static const writingStepBlank = 'Одоо санаж бичээрэй';
+  static const writingStepWord = 'Үгийг бүтнээр нь бичээрэй';
+  static const writingReplay = 'Дахин үзүүлэх';
+  static const writingContinue = 'Үргэлжлүүлэх';
+  static const writingSkip = 'Алгасах';
+  static const writingLessonDone = 'Хичээл дууслаа!';
+  static const writingStatWords = 'Үг';
+  static const writingStatNewKanji = 'Шинэ ханз';
+  static const writingStatAccuracy = 'Анхны оролдлогоор';
+  static const writingNextLesson = 'Дараагийн хичээл';
+  static const writingFinish = 'Дуусгах';
+  static String writingStrokeCount(int drawn, int expected) => 'Зурлагын тоо буруу: $drawn / $expected';
+  static String writingStrokeOrder(int i, int j) => '$i-р зурлагын дараалал буруу — энэ $j-р зурлага';
+  static String writingStrokeDirection(int i) => '$i-р зурлагыг эсрэг чиглэлд татсан';
+  static String writingStrokeShape(int i) => '$i-р зурлагын хэлбэр эсвэл байрлал буруу';
+  static String writingShapeNotRead(String guesses) => 'Зурлагууд зөв ч ханз танигдсангүй: $guesses';
+  static const writingSetupDeck = 'Багц';
+  static const writingAllDecks = 'Бүх багц';
+  static const writingByWord = 'Үгээр';
+  static const writingByKanji = 'Ханзаар';
+  static const writingPickNew = 'Шинэ ханзтай';
+  static const writingPickAll = 'Бүгд';
+  static const writingPickNone = 'Цэвэрлэх';
+  static const writingLearnedLegend = '✓ — сурсан ханз';
+  static String writingStartLesson(int n) => 'Хичээл эхлэх ($n үг)';
+  static String writingKanjiSelected(int k, int w) => '$k ханз → $w үг';
+  static const writingBackToPick = 'Өөр үг сонгох';
+  static const huntDescMobile =
+      'Утгыг нь сонгох, ханзаар нь бичих асуултаар дайсантай тулалдана. Бичвэл илүү хүчтэй цохино.';
+  // Audio decks
+  static const audioTitle = 'Аудио багц';
+  static const audioIntro = 'Багцаа MP3 болгоод алхаж, явж байхдаа сонсоорой. Япон үг, дараа нь англи утга нь уншигдана.';
+  static const audioMnNote = 'Монгол утгыг дуугаар уншуулах боломжгүй тул тоглуулагч дээр бичгээр харагдана.';
+  static const audioCreate = 'Үүсгэх';
+  static const audioOpenInMusic = 'Хөгжмийн аппаар сонсох (дэлгэц түгжигдсэн үед)';
+  static const audioRegenerate = 'Дахин үүсгэх';
+  static const audioPlay = 'Тоглуулах';
+  static const audioShare = 'MP3 хуваалцах';
+  static const audioDelete = 'Аудиог устгах';
+  static String audioBuilding(int done, int total) => 'Дуу бэлдэж байна… $done / $total';
+  static const audioDeckFailed = 'Дуу татаж чадсангүй. Интернэтээ шалгаад дахин оролдоно уу.';
+  static String audioSkipped(int n) => '$n үгийн дуу татагдсангүй, алгаслаа';
+  static const audioOptionsTitle = 'Аудио тохиргоо';
+  static const audioEnglish = 'Англи утгыг уншуулах';
+  static const audioRepeat = 'Үг бүрийг давтах';
+  static const audioPause = 'Завсарлага';
+  static const audioShuffle = 'Санамсаргүй дараалал';
+  static const audioNoWords = 'Энэ багцад үг алга байна.';
+  static String audioSummary(int words, String length) => '$words үг · $length';
+  static String audioRepeatN(int n) => '$n удаа';
+  static String audioPauseS(double s) => '${s.toStringAsFixed(s == s.roundToDouble() ? 0 : 1)} сек';
+  static const kanjiVgCredit = 'Зурлагын дараалал: KanjiVG (CC BY-SA 3.0)';
+  static String writingProgress(int i, int n) => '$i / $n';
+  static String writingDone(int correct, int total) => '$total үгээс $correct-г зөв бичлээ';
 
   static const settings = 'Тохиргоо';
   static const appearance = 'Харагдах байдал';

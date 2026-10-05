@@ -280,6 +280,33 @@ capture — but only the extension is positioned to collect it.
 
 ---
 
+## Audio decks (mobile) — deck → MP3 for listening
+
+`mobile/lib/features/audio/`. Built on the phone, no server of ours:
+- **Speech** is Google Translate's keyless TTS (`tts_clips.dart`, the same
+  endpoint as the web's `tts.ts`), Japanese (the reading, else the term) then
+  the English meaning. **There is no Mongolian voice** — verified: the
+  endpoint answers 400 for `tl=mn` and no phone engine ships one; only Azure
+  has one, and that was declined (paid, plus an Edge Function). Mongolian
+  meanings show as text in the player instead.
+- **One real MP3** is assembled without an encoder (`mp3.dart`): every clip is
+  MPEG-2 Layer III 24 kHz mono, so clips concatenate frame for frame and the
+  pauses are zeroed frames in the same format. Verified to decode cleanly in
+  ffmpeg with exact length; `mp3_test.dart` runs on real clips.
+- Clips are cached on disk by language + FNV-1a hash of the text, so
+  rebuilding is cheap. Each deck is `audio_decks/<deckId>.mp3` plus a JSON
+  sidecar with the options and per-word cues (start ms), which is how the
+  player shows the word being spoken.
+- Playback is plain `just_audio` in the app (`deck_player.dart`), with its
+  own player separate from word pronunciation in `core/audio.dart`. **Do not
+  add `audio_service` back** without testing on a device: on Flutter 3.44 it
+  deadlocked Android's main thread (Dart and the platform share one thread
+  since 3.29, and the `DisableMergedPlatformUIThread` opt-out now crashes the
+  app at launch) — an ANR on first play, a hang at the splash screen when
+  started from `main()`. For listening with the screen locked, the player
+  shares the MP3 to the phone's music app, which has its own lock-screen
+  controls.
+
 ## Phase 2 — Parity polish (done)
 
 - Streaks/stats screens matching `web/src/app/decks/stats/`. Both clients read
@@ -375,6 +402,7 @@ Do not confuse it with 3.2 below — different mode, different `source` value:
 | Classic review | `review` | yes |
 | **Monster Hunt (scored)** | **`quiz`** | **yes** |
 | Free practice / speed round | `drill` | no |
+| Kanji writing (mobile, ML Kit handwriting) | `drill` | no |
 | PvP duel (3.2, unbuilt) | `battle` | no |
 
 **`quiz` is not a downgrade of `review`.** Monster Hunt is real recall practice
@@ -405,6 +433,25 @@ by `generate-battle-fixture.ts`, read by `battle-fixture.test.ts` and
 intended behaviour change, and change both sides. Offline answers keep their
 `quiz` label through the outbox (`PendingAnswers.source`, Drift schema v2).
 
+**Mobile's hunt also asks the learner to write the word; the web's doesn't.**
+Each mobile question is either the word → its meaning (the web's only kind,
+still built by the fixture-pinned `buildQuiz`) or reading + meaning → write
+the kanji (`question_kinds.dart`, 3:2), one kanji per box, checked by the same
+`KanjiChecker` as the writing lessons. A missed kanji's correction is drawn on
+the pad and the clock holds (`holdForCorrection`) until the learner continues;
+only then does the miss land. Writing gets 12 s per kanji, its speed tier is
+judged against that limit (`speedFor`), and a correct written answer does
+×1.5 damage — applied to the event *after* `rollEvent`, so the shared rules
+and battle.fixture.json are untouched. Both kinds answer as `quiz` and
+schedule. "Pick the word" and "listen" kinds were tried and dropped as
+clutter. If the web adopts writing, port `question_kinds.dart` and pin it with
+a fixture the same way.
+
+Mobile's review sheet is three modes — Monster Hunt, classic cards, kanji
+writing — plus a leech-rescue link shown only when leeches exist. Speed round
+was removed from mobile (free practice covers it); `mature_cards()` stays in
+the database for the web.
+
 ### 3.2 Online 1v1 battle mode (built, unplayed — see `PVP.md`)
 Fast-paced vocabulary duel, in its own feature folder so it never entangles
 with the review code.
@@ -421,6 +468,16 @@ the same tables and RPCs.
 Phases 1–4 are in the tree: `/decks/review/duel` plays a bot with no network at
 all, and an invite-code match against a real player via `0020_pvp.sql` and one
 Realtime channel. **Nobody has played it** — that is phase 5.
+
+**Mobile now has the duel too** (`mobile/lib/features/duel/`, the PvP tab):
+bot duels offline at three levels and invite-code PvP against the same
+`0020` RPCs and Realtime, so web and mobile players can fight each other.
+`duel_rules.dart` is a port of `duel.ts` + `bot.ts`, pinned by the same
+`duel.fixture.json` (all 484 cases), and `duel_rules_test.dart` also checks
+the newest SQL `duel_round_duration_ms` against the client curve — it had
+drifted (clients 10 s→6 s, server still 5 s→3 s, so the server closed PvP
+rounds early); `0025_duel_timing.sql` fixes it. Leaving a live PvP match on
+mobile forfeits it (`forfeit_match`), after a confirmation.
 
 Two things a future session must not "tidy up":
 
@@ -525,6 +582,20 @@ scheduling anything, with nothing erroring — see 3.1b.
   being an open proxy, but per-instance, so it is not a defence against a
   distributed caller. Revisit if the app is ever deployed to more than one
   instance.
+- **Mobile: Dart runs on Android's main thread** (Flutter 3.29+, no opt-out —
+  the `DisableMergedPlatformUIThread` flag now crashes the app at launch). Any
+  long synchronous Dart work is an ANR, not just jank: heavy work goes to an
+  isolate (`Isolate.run`, as audio-deck MP3 assembly does), and plugins that
+  block the main thread are out (audio_service deadlocked — see Audio decks).
+- **Mobile release builds need `android/app/proguard-rules.pro`**: the ML Kit
+  text-recognition plugin references every script's recognizer but only the
+  Japanese one is bundled, and R8 refuses the missing classes without the
+  `-dontwarn` rules. AGP 9 also runs R8 in full mode, which stripped the
+  reflectively-created ML Kit/Firebase component registrars and Room's
+  `WorkDatabase_Impl` — the release app crashed at launch until the `-keep`
+  rules in the same file were added. Build `--release` **and launch it on a
+  device** after adding any ML Kit or native plugin; debug builds don't
+  shrink, so they show neither problem.
 - The extension has **no build step** — edits to `src/sync.js` must be copied
   verbatim into both `chrome/` and `firefox/`.
 - Never commit `config.js` or `.env.local`. The publishable key is safe to ship;

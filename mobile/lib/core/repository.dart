@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -17,7 +18,9 @@ typedef QuizWordRow = ({
   String? meaningMn,
 });
 
-final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
+final supabaseProvider = Provider<SupabaseClient>(
+  (ref) => Supabase.instance.client,
+);
 
 /// Emits on every sign-in / sign-out so the UI can follow the session.
 final authStateProvider = StreamProvider<AuthState>(
@@ -66,11 +69,7 @@ class Repository {
   Future<String> createFolder(String name, {String? parentId}) async {
     final row = await _db
         .from('folders')
-        .insert({
-          'user_id': _uid,
-          'name': name,
-          'parent_id': ?parentId,
-        })
+        .insert({'user_id': _uid, 'name': name, 'parent_id': ?parentId})
         .select('id')
         .single();
     return row['id'] as String;
@@ -83,7 +82,10 @@ class Repository {
   /// Cycles are rejected server-side by the `folders_check_parent` trigger
   /// (0024), so a bad move surfaces as an error rather than corrupting the tree.
   Future<void> moveFolder(String folderId, String? parentId) async {
-    await _db.from('folders').update({'parent_id': parentId}).eq('id', folderId);
+    await _db
+        .from('folders')
+        .update({'parent_id': parentId})
+        .eq('id', folderId);
   }
 
   /// Tombstone only, like the web sidebar. Its decks and sub-folders keep
@@ -108,11 +110,7 @@ class Repository {
   Future<String> createDeck(String name, {String? folderId}) async {
     final row = await _db
         .from('decks')
-        .insert({
-          'user_id': _uid,
-          'name': name,
-          'folder_id': ?folderId,
-        })
+        .insert({'user_id': _uid, 'name': name, 'folder_id': ?folderId})
         .select('id')
         .single();
     return row['id'] as String;
@@ -142,7 +140,11 @@ class Repository {
   /// this list by a day seed, so both clients need the same order to show the
   /// same "word of the day".
   Future<List<Word>> allWords() async {
-    final rows = await _db.from('words').select().eq('deleted', false).order('id');
+    final rows = await _db
+        .from('words')
+        .select()
+        .eq('deleted', false)
+        .order('id');
     return rows.map((r) => Word.fromJson(r)).toList();
   }
 
@@ -156,7 +158,9 @@ class Repository {
         .from('words')
         .select('*, deck:decks(name)')
         .eq('deleted', false)
-        .or('term.ilike.$like,reading.ilike.$like,meaning.ilike.$like,meaning_mn.ilike.$like')
+        .or(
+          'term.ilike.$like,reading.ilike.$like,meaning.ilike.$like,meaning_mn.ilike.$like',
+        )
         .order('date_added', ascending: false)
         .limit(100);
     return rows.map((r) => Word.fromJson(r)).toList();
@@ -165,16 +169,33 @@ class Repository {
   /// Terms from [terms] that already exist (live) in [deckId]. One query for
   /// any number of candidates — the camera's batch add asks about a whole page
   /// of words at once.
-  Future<Set<String>> existingTerms(String deckId, Iterable<String> terms) async {
-    final list = terms.toSet().toList();
-    if (list.isEmpty) return {};
-    final rows = await _db
-        .from('words')
-        .select('term')
-        .eq('deck_id', deckId)
-        .eq('deleted', false)
-        .inFilter('term', list);
-    return {for (final r in rows) r['term'] as String};
+  Future<Set<String>> existingTerms(
+    String deckId,
+    Iterable<String> terms,
+  ) async {
+    final out = <String>{};
+    for (final chunk in _chunks(terms.toSet().toList())) {
+      final rows = await _db
+          .from('words')
+          .select('term')
+          .eq('deck_id', deckId)
+          .eq('deleted', false)
+          .inFilter('term', chunk);
+      out.addAll(rows.map((r) => r['term'] as String));
+    }
+    return out;
+  }
+
+  /// `in.(…)` filters go in the URL. Japanese terms percent-encode to ~9
+  /// bytes a character and UUIDs are 36, so a long list overruns the URL
+  /// length a proxy accepts (414) and the whole request fails. Batches of
+  /// [_inBatch] stay well inside it.
+  static const _inBatch = 100;
+
+  static Iterable<List<String>> _chunks(List<String> items) sync* {
+    for (var i = 0; i < items.length; i += _inBatch) {
+      yield items.sublist(i, min(i + _inBatch, items.length));
+    }
   }
 
   /// The one way words get created on mobile — manual add, quick add and the
@@ -205,7 +226,9 @@ class Repository {
         },
     ];
     if (rows.isEmpty) return const [];
-    await _db.from('words').upsert(rows, onConflict: 'id', ignoreDuplicates: true);
+    await _db
+        .from('words')
+        .upsert(rows, onConflict: 'id', ignoreDuplicates: true);
     return rowIds;
   }
 
@@ -234,7 +257,6 @@ class Repository {
     }
   }
 
-
   /// Renames a deck. `updated_at` is bumped by a trigger, so the extension's
   /// next sync pulls the new name without anything here having to stamp it —
   /// and last-write-wins on that column means a rename can't be clobbered by a
@@ -261,12 +283,15 @@ class Repository {
   }
 
   Future<void> updateWord(String wordId, WordDraft draft) async {
-    await _db.from('words').update({
-      'term': draft.term,
-      'reading': draft.reading,
-      'meaning': draft.meaning,
-      'meaning_mn': draft.meaningMn,
-    }).eq('id', wordId);
+    await _db
+        .from('words')
+        .update({
+          'term': draft.term,
+          'reading': draft.reading,
+          'meaning': draft.meaning,
+          'meaning_mn': draft.meaningMn,
+        })
+        .eq('id', wordId);
   }
 
   /// Tombstone rather than a hard delete: the extension syncs by last-write-wins
@@ -333,7 +358,10 @@ class Repository {
 
   /// Any card regardless of due date (`practice_cards`, 0017), random order —
   /// Monster Hunt's free mode. Answers to these go in as 'drill'.
-  Future<List<QueueCard>> practiceCards({String? deckId, int limit = 60}) async {
+  Future<List<QueueCard>> practiceCards({
+    String? deckId,
+    int limit = 60,
+  }) async {
     final rows = await _db.rpc<List<dynamic>>(
       'practice_cards',
       params: {'p_deck_id': deckId, 'p_limit': limit},
@@ -341,6 +369,24 @@ class Repository {
     return rows
         .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
         .toList();
+  }
+
+  /// Each word's recognition card id — what a drill answer is logged
+  /// against when practice starts from words rather than from a card queue
+  /// (kanji writing lessons picked from a deck).
+  Future<Map<String, String>> recognitionCardIds(List<String> wordIds) async {
+    final out = <String, String>{};
+    for (final chunk in _chunks(wordIds.toSet().toList())) {
+      final rows = await _db
+          .from('cards')
+          .select('id, word_id')
+          .eq('template', 'recognition')
+          .inFilter('word_id', chunk);
+      for (final r in rows) {
+        out[r['word_id'] as String] = r['id'] as String;
+      }
+    }
+    return out;
   }
 
   /// Every live word's quiz fields, for Monster Hunt's distractors.
@@ -359,20 +405,6 @@ class Repository {
           meaningMn: r['meaning_mn'] as String?,
         ),
     ];
-  }
-
-  /// Mature review cards, for the speed round drill. Unlike `review_queue()`
-  /// this ignores `due_at` and the daily caps on purpose — a drill is extra,
-  /// opt-in practice, not part of today's scheduled workload, so it must not
-  /// compete with it for the cap.
-  Future<List<QueueCard>> matureCards({String? deckId, int limit = 30}) async {
-    final rows = await _db.rpc<List<dynamic>>(
-      'mature_cards',
-      params: {'p_deck_id': deckId, 'p_limit': limit},
-    );
-    return rows
-        .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
-        .toList();
   }
 
   /// Cards with a high lapse count, for a focused rescue session. Also ignores
@@ -399,8 +431,8 @@ class Repository {
     );
     return {
       for (final r in rows)
-        DateTime.parse((r as Map)['day'] as String):
-            ((r)['reviews'] as num).toInt(),
+        DateTime.parse((r as Map)['day'] as String): ((r)['reviews'] as num)
+            .toInt(),
     };
   }
 

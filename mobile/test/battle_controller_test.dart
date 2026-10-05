@@ -5,6 +5,7 @@ import 'package:mobile/core/local_db.dart';
 import 'package:mobile/core/offline_review.dart';
 import 'package:mobile/core/repository.dart';
 import 'package:mobile/features/battle/battle_controller.dart';
+import 'package:mobile/features/battle/question_kinds.dart';
 import 'package:mobile/features/battle/rules.dart';
 import 'package:mobile/features/battle/sprites.dart';
 import 'package:mobile/models/queue_card.dart';
@@ -81,7 +82,13 @@ QueueCard card(int i, {String state = 'review'}) => QueueCard(
     );
 
 /// Builds a controller in a fake-time zone and finishes loading.
-BattleController make(FakeAsync async, FakeRepo repo, {bool free = false}) {
+BattleController make(
+  FakeAsync async,
+  FakeRepo repo, {
+  bool free = false,
+  Set<QuestionKind> kinds = const {QuestionKind.meaning},
+  bool canWrite = false,
+}) {
   final db = LocalDb.forTesting(NativeDatabase.memory());
   // 0.99: never crit, never evade, so damage is exactly the base number.
   final clock = async.getClock(DateTime(2026));
@@ -93,6 +100,10 @@ BattleController make(FakeAsync async, FakeRepo repo, {bool free = false}) {
     rand: () => 0.99,
     bag: MonsterBag(random: () => 0.5),
     now: () => clock.now().millisecondsSinceEpoch,
+    // Pinned to the web's question kind unless a test is about the others,
+    // so the damage and timing expectations stay exact.
+    kinds: kinds,
+    writingReady: () async => canWrite,
   );
   c.load();
   async.flushMicrotasks();
@@ -275,6 +286,8 @@ void main() {
         hero: 'knight',
         rand: () => 0.99,
         bag: MonsterBag(random: () => 0.5),
+        kinds: const {QuestionKind.meaning},
+        writingReady: () async => false,
       )..load();
       async.flushMicrotasks();
       repo.offline = true;
@@ -287,6 +300,85 @@ void main() {
       async.flushMicrotasks();
       expect(pending.single.source, 'quiz');
       expect(pending.single.rating, 'good');
+      c.dispose();
+    });
+  });
+
+  test('without the handwriting model, writing is never asked', () {
+    fakeAsync((async) {
+      final repo = FakeRepo([card(1)]);
+      final c = make(async, repo, kinds: {QuestionKind.write, QuestionKind.meaning});
+      expect(c.canWrite, isFalse);
+      expect(c.kind, QuestionKind.meaning);
+      c.dispose();
+    });
+  });
+
+  test('writing: one kanji at a time, then the blow lands half again as hard', () {
+    fakeAsync((async) {
+      // '語1' has one kanji; the first card is a two-kanji word.
+      final repo = FakeRepo([
+        QueueCard(
+          cardId: 'c1', wordId: 'w1', deckId: 'd', template: 'recognition', state: 'review', learningStep: 0,
+          dueAt: DateTime(2026), intervalDays: 3, repetitions: 2, easeFactor: 2.5,
+          term: '連帯', reading: 'れんたい', meaningMn: 'эв нэгдэл',
+        ),
+        card(2),
+      ]);
+      final c = make(async, repo, kinds: {QuestionKind.write}, canWrite: true);
+      expect(c.kind, QuestionKind.write);
+      expect(c.timeLimitMs, 2 * writeMsPerKanji);
+      expect(c.remainingMs, 2 * writeMsPerKanji);
+      c.writeResult(true);
+      expect(c.writeSlot, 1, reason: 'first kanji done, second next');
+      expect(repo.calls, isEmpty, reason: 'not answered until the whole word is written');
+      c.writeResult(true);
+      async.flushMicrotasks();
+      // Instant: easy tier 16 damage, x1.5 for writing = 24.
+      expect(c.events.single.damage, 24);
+      expect(c.state.monsterHp, monsterMaxHp - 24);
+      expect(repo.calls.single['rating'], 'good', reason: 'still never easy');
+      c.dispose();
+    });
+  });
+
+  test('a wrong kanji ends the writing question as a miss', () {
+    fakeAsync((async) {
+      final repo = FakeRepo([card(1), card(2)]);
+      final c = make(async, repo, kinds: {QuestionKind.write}, canWrite: true);
+      c.writeResult(false);
+      async.flushMicrotasks();
+      expect(repo.calls.single['rating'], 'again');
+      expect(c.state.playerHp, playerMaxHp - 15);
+      c.dispose();
+    });
+  });
+
+  test('a writing question gets its own, longer clock', () {
+    fakeAsync((async) {
+      final repo = FakeRepo([card(1), card(2)]);
+      final c = make(async, repo, kinds: {QuestionKind.write}, canWrite: true);
+      async.elapse(const Duration(seconds: 11));
+      expect(repo.calls, isEmpty, reason: 'a choice question would have timed out by now');
+      async.elapse(const Duration(milliseconds: 1200));
+      expect(repo.calls.single['rating'], 'again');
+      c.dispose();
+    });
+  });
+
+  test('a correction on screen stops the clock; continuing lands the miss', () {
+    fakeAsync((async) {
+      final repo = FakeRepo([card(1), card(2)]);
+      final c = make(async, repo, kinds: {QuestionKind.write}, canWrite: true);
+      async.elapse(const Duration(seconds: 5));
+      c.holdForCorrection();
+      async.elapse(const Duration(seconds: 60));
+      expect(repo.calls, isEmpty, reason: 'no timeout while the correction is shown');
+      c.writeResult(false);
+      async.flushMicrotasks();
+      expect(repo.calls.single['rating'], 'again');
+      expect(c.held, isFalse);
+      expect(c.remainingMs, writeMsPerKanji, reason: 'the next question starts with a full clock');
       c.dispose();
     });
   });

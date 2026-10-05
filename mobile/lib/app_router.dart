@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/repository.dart';
 import 'features/auth/sign_in_screen.dart';
+import 'features/audio/audio_decks_screen.dart';
 import 'features/battle/battle_screen.dart';
 import 'features/capture/capture_screen.dart';
 import 'features/home/home_screen.dart';
@@ -16,9 +17,9 @@ import 'features/library/library_screen.dart';
 import 'features/pvp/pvp_screen.dart';
 import 'features/review/leech_rescue_screen.dart';
 import 'features/review/review_screen.dart';
-import 'features/review/speed_round_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'features/stats/stats_screen.dart';
+import 'features/writing/writing_screen.dart';
 
 final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -48,9 +49,11 @@ class Routes {
   static const library = '/library';
   static String deck(String id) => '/library/deck/$id';
   static const settings = '/settings';
-  static const speed = '/speed';
   static const leech = '/leech';
   static const capture = '/capture';
+  static const writing = '/writing';
+  static const audio = '/audio';
+  static String audioPlayer(String deckId) => '/audio/play/$deckId';
 
   /// Monster Hunt. [free] practises any card as a drill (nothing rescheduled).
   static String hunt({String? deckId, bool free = false}) => Uri(
@@ -139,7 +142,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       fullScreen(Routes.capture, (_) => const CaptureScreen()),
-      fullScreen(Routes.speed, (s) => SpeedRoundScreen(deckId: s.uri.queryParameters['deck'])),
+      fullScreen(Routes.audio, (_) => const AudioDecksScreen()),
+      fullScreen('/audio/play/:deck', (s) => AudioPlayerScreen(deckId: s.pathParameters['deck']!)),
+      fullScreen(Routes.writing, (s) => WritingScreen(deckId: s.uri.queryParameters['deck'])),
       fullScreen(Routes.leech, (s) => LeechRescueScreen(deckId: s.uri.queryParameters['deck'])),
     ],
   );

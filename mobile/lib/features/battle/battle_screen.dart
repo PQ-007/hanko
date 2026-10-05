@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_recognition.dart'
+    as mlkit;
 
 import '../../app_router.dart';
 import '../../core/offline_review.dart';
@@ -10,10 +12,15 @@ import '../../core/repository.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../writing/kanji_checker.dart';
+import '../writing/kanji_strokes.dart';
+import '../writing/lesson.dart';
+import '../writing/writing_pad.dart';
 import 'battle_controller.dart';
 import 'battle_result.dart';
 import 'fight_scene.dart';
 import 'hero.dart';
+import 'question_kinds.dart';
 import 'rules.dart';
 import 'sprite_view.dart';
 
@@ -23,12 +30,16 @@ const _paper = Color(0xFFFAF7F0);
 /// Monster Hunt (web /decks/review/battle). The session and the fight live in
 /// [BattleController]; this only draws them.
 class BattleScreen extends ConsumerStatefulWidget {
-  const BattleScreen({super.key, this.deckId, this.free = false});
+  const BattleScreen({super.key, this.deckId, this.free = false, this.kinds});
 
   final String? deckId;
 
   /// Free practice: any card, answers logged as drills, nothing rescheduled.
   final bool free;
+
+  /// Pins the question kinds (tests and screenshots); null asks all.
+  @visibleForTesting
+  final Set<QuestionKind>? kinds;
 
   @override
   ConsumerState<BattleScreen> createState() => _BattleScreenState();
@@ -41,11 +52,36 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     hero: ref.read(heroProvider),
     deckId: widget.deckId,
     free: widget.free,
+    kinds: widget.kinds,
   )..load();
+
+  /// Handwriting checks for writing questions; made on first use.
+  KanjiChecker? _checker;
+  bool _prefetched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    c.addListener(_prefetchStrokes);
+  }
+
+  /// Fetches stroke data for every kanji in the queue as soon as it's
+  /// loaded, so a writing question can grade strokes (and draw its
+  /// correction) without waiting on the network mid-fight.
+  void _prefetchStrokes() {
+    final queue = c.queue;
+    if (_prefetched || queue == null || !c.canWrite) return;
+    _prefetched = true;
+    ref.read(kanjiStrokesProvider).prefetch({
+      for (final card in queue) ...kanjiOf(card.term),
+    });
+  }
 
   @override
   void dispose() {
+    c.removeListener(_prefetchStrokes);
     c.dispose();
+    _checker?.close();
     super.dispose();
   }
 
@@ -113,7 +149,11 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     }
     return Stack(
       children: [
-        _Arena(c: c, free: widget.free),
+        _Arena(
+          c: c,
+          free: widget.free,
+          checker: () => _checker ??= KanjiChecker(),
+        ),
         if (c.paused) _PauseOverlay(c: c),
       ],
     );
@@ -121,7 +161,8 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
 }
 
 class _Arena extends StatelessWidget {
-  const _Arena({required this.c, required this.free});
+  const _Arena({required this.c, required this.free, required this.checker});
+  final KanjiChecker Function() checker;
   final BattleController c;
   final bool free;
 
@@ -179,14 +220,26 @@ class _Arena extends StatelessWidget {
             height: 34,
             child: Center(child: _AnswerLine(c: c)),
           ),
-          // The fighters take the space that's left; the question card is
-          // sized to its content and sits in thumb reach rather than being
-          // stretched down to the bottom edge.
-          Expanded(
-            child: Center(child: _FighterRow(c: c)),
-          ),
-          const SizedBox(height: 10),
-          _QuestionCard(c: c),
+          // Choice questions: the fighters take the space that's left and the
+          // card sits in thumb reach. Writing needs the room more than the
+          // fight does, so the fighters shrink to a strip and the card — the
+          // pad — takes the rest.
+          if (c.kind == QuestionKind.write && c.card != null) ...[
+            SizedBox(
+              height: 96,
+              child: Center(child: _FighterRow(c: c)),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: _QuestionCard(c: c, checker: checker),
+            ),
+          ] else ...[
+            Expanded(
+              child: Center(child: _FighterRow(c: c)),
+            ),
+            const SizedBox(height: 10),
+            _QuestionCard(c: c, checker: checker),
+          ],
           SizedBox(height: thumbZoneLift(context) * 0.5),
         ],
       ),
@@ -349,7 +402,9 @@ class _FighterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        final size = min(150.0, box.maxWidth * 0.36);
+        var size = min(150.0, box.maxWidth * 0.36);
+        // In the writing strip the height is what's short.
+        if (box.hasBoundedHeight) size = min(size, box.maxHeight - 20);
         final heroX = box.maxWidth * 0.27;
         final monsterX = box.maxWidth * 0.73;
         return SizedBox(
@@ -533,8 +588,9 @@ class _Spawn extends StatelessWidget {
 }
 
 class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({required this.c});
+  const _QuestionCard({required this.c, required this.checker});
   final BattleController c;
+  final KanjiChecker Function() checker;
 
   // Fixed colour per grid position, never per correctness (QuizOptions.tsx).
   static const _slots = [
@@ -556,11 +612,9 @@ class _QuestionCard extends StatelessWidget {
         ),
       );
     }
-    final pct = c.remainingMs / questionTimeLimitMs;
-    final low = pct <= 1 / 3;
-    const ink = Color(0xFF1F2933);
+    final timer = _Countdown(c: c);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
         color: HankoColors.parchment,
         borderRadius: BorderRadius.circular(18),
@@ -572,79 +626,100 @@ class _QuestionCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              card.term,
-              style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.w800,
-                color: ink,
+      child: c.kind == QuestionKind.write
+          // The card is parchment in both themes, so the pad and its
+          // buttons take the light theme, whatever the app's mode.
+          ? Theme(
+              data: buildHankoTheme(Brightness.light),
+              child: _WriteQuestion(
+                key: ValueKey('${c.questionKey}:${c.writeSlot}'),
+                c: c,
+                checker: checker,
+                timer: timer,
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: pct,
-                    minHeight: 9,
-                    backgroundColor: Colors.black.withValues(alpha: 0.08),
-                    color: low
-                        ? const Color(0xFFEF4444)
-                        : const Color(0xFFF59E0B),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 26,
-                child: Text(
-                  '${(c.remainingMs / 1000).ceil()}',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: low
-                        ? const Color(0xFFDC2626)
-                        : const Color(0xFF666053),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Every option the same fixed size, so the card never resizes
-          // between questions (a meaning can be a ten-line synonym list).
-          for (var row = 0; row < (quiz.length + 1) ~/ 2; row++) ...[
-            if (row > 0) const SizedBox(height: 10),
-            SizedBox(
-              height: 78,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var col = 0; col < 2; col++) ...[
-                    if (col > 0) const SizedBox(width: 10),
-                    Expanded(
-                      child: row * 2 + col < quiz.length
-                          ? _Option(
-                              letter: _slots[(row * 2 + col) % 4].$1,
-                              color: _slots[(row * 2 + col) % 4].$2,
-                              text: quiz[row * 2 + col].answerText,
-                              onTap: () => c.pick(quiz[row * 2 + col]),
-                            )
-                          : const SizedBox(),
+            )
+          : Column(
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    card.term,
+                    style: const TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F2933),
                     ),
-                  ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                timer,
+                const SizedBox(height: 14),
+                // Every option the same fixed size, so the card never resizes
+                // between questions (a meaning can be a ten-line synonym list).
+                for (var row = 0; row < (quiz.length + 1) ~/ 2; row++) ...[
+                  if (row > 0) const SizedBox(height: 10),
+                  SizedBox(
+                    height: 78,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var col = 0; col < 2; col++) ...[
+                          if (col > 0) const SizedBox(width: 10),
+                          Expanded(
+                            child: row * 2 + col < quiz.length
+                                ? _Option(
+                                    letter: _slots[(row * 2 + col) % 4].$1,
+                                    color: _slots[(row * 2 + col) % 4].$2,
+                                    text: quiz[row * 2 + col].answerText,
+                                    onTap: () => c.pick(quiz[row * 2 + col]),
+                                  )
+                                : const SizedBox(),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ],
-      ),
+    );
+  }
+}
+
+/// The question's time left: a bar, and the seconds.
+class _Countdown extends StatelessWidget {
+  const _Countdown({required this.c});
+  final BattleController c;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = c.remainingMs / c.timeLimitMs;
+    final low = pct <= 1 / 3;
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 9,
+              backgroundColor: Colors.black.withValues(alpha: 0.08),
+              color: low ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 30,
+          child: Text(
+            '${(c.remainingMs / 1000).ceil()}',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: low ? const Color(0xFFDC2626) : const Color(0xFF666053),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -707,10 +782,26 @@ class _FitText extends StatelessWidget {
 
   static const _ink = Color(0xFF1F2933);
 
+  /// Sizes already worked out, by text and box. The arena rebuilds on every
+  /// clock tick (10 a second); re-measuring four answers at up to six sizes
+  /// each time is visible jank on a slow phone with Dart on the main thread.
+  static final _sizes = <String, double>{};
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
+        final key =
+            '${box.maxWidth.round()}x${box.maxHeight.round()}x${MediaQuery.textScalerOf(context).scale(1)}|$text';
+        final cached = _sizes[key];
+        if (cached != null) {
+          return Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 4,
+            style: TextStyle(fontSize: cached, height: 1.25, color: _ink),
+          );
+        }
         final scaler = MediaQuery.textScalerOf(context);
         final dir = Directionality.of(context);
         TextStyle styleAt(double size) =>
@@ -738,6 +829,8 @@ class _FitText extends StatelessWidget {
         while (size > 9 && !fits(size)) {
           size -= 1;
         }
+        if (_sizes.length > 500) _sizes.clear();
+        _sizes[key] = size;
         return Text(
           text,
           overflow: TextOverflow.ellipsis,
@@ -745,6 +838,260 @@ class _FitText extends StatelessWidget {
           style: styleAt(size),
         );
       },
+    );
+  }
+}
+
+/// A writing question: the word's reading and meaning, the word a box per
+/// character, and a pad for the kanji being written — the largest thing on
+/// screen. After a miss the correction is drawn on the pad itself (the right
+/// kanji in red over the learner's strokes, the wrong stroke marked, what went
+/// wrong above it) and the fight waits until the learner has seen it.
+class _WriteQuestion extends ConsumerStatefulWidget {
+  const _WriteQuestion({
+    super.key,
+    required this.c,
+    required this.checker,
+    required this.timer,
+  });
+  final BattleController c;
+  final KanjiChecker Function() checker;
+  final Widget timer;
+
+  @override
+  ConsumerState<_WriteQuestion> createState() => _WriteQuestionState();
+}
+
+class _WriteQuestionState extends ConsumerState<_WriteQuestion> {
+  static const _ink = Color(0xFF1F2933);
+  static const _muted = Color(0xFF666053);
+
+  final _strokesDrawn = <List<mlkit.StrokePoint>>[];
+  KanjiStrokes? _strokes;
+  bool _checking = false;
+  KanjiCheck? _miss;
+  Size _area = Size.zero;
+
+  BattleController get c => widget.c;
+
+  List<String> get _chars =>
+      c.card!.term.runes.map(String.fromCharCode).toList();
+  List<int> get _positions => kanjiPositions(c.card!.term);
+  int get _current => _positions[min(c.writeSlot, _positions.length - 1)];
+  String get _target => _chars[_current];
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(kanjiStrokesProvider).load(_target).then((s) {
+      if (mounted) setState(() => _strokes = s);
+    });
+  }
+
+  int get _now => DateTime.now().millisecondsSinceEpoch;
+
+  Future<void> _check() async {
+    if (_strokesDrawn.isEmpty || _checking || _miss != null) return;
+    // The clock keeps running during the check. If it expires meanwhile the
+    // question resolves and the next one appears — this result must not then
+    // land on that next question.
+    final question = '${c.questionKey}:${c.writeSlot}';
+    setState(() => _checking = true);
+    final result = await widget.checker().check(
+      target: _target,
+      ink: _strokesDrawn,
+      area: _area,
+      strokes: _strokes,
+      preContext: _chars.take(_current).join(),
+    );
+    if (!mounted) return;
+    setState(() => _checking = false);
+    if ('${c.questionKey}:${c.writeSlot}' != question) return;
+    if (result.ok) {
+      c.writeResult(true);
+      return;
+    }
+    // Hold the fight on the correction; the miss lands on "continue".
+    setState(() => _miss = result);
+    c.holdForCorrection();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final card = c.card!;
+    final meaning = answerTextOf(card.meaningMn, card.meaning);
+    final miss = _miss;
+    final strokes = _strokes;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Prompt: reading big, meaning under it.
+        Row(
+          children: [
+            const Icon(Icons.draw_outlined, size: 18, color: HankoColors.seal),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                card.reading ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: _ink,
+                ),
+              ),
+            ),
+            // The word, a box per character: kana given, kanji filled in as
+            // they're written (and revealed on a miss), the current one outlined.
+            for (var i = 0; i < _chars.length; i++)
+              Container(
+                width: 34,
+                height: 38,
+                margin: const EdgeInsets.only(left: 3),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: i == _current
+                      ? HankoColors.seal.withValues(alpha: 0.12)
+                      : null,
+                  border: Border.all(
+                    color: i == _current
+                        ? (miss != null ? writingRed : HankoColors.seal)
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  !_positions.contains(i) ||
+                          _positions.indexOf(i) < c.writeSlot ||
+                          (i == _current && miss != null)
+                      ? _chars[i]
+                      : '?',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: i == _current && miss != null ? writingRed : _ink,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (meaning.isNotEmpty)
+          Text(
+            meaning,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, color: _muted),
+          ),
+        const SizedBox(height: 8),
+        widget.timer,
+        const SizedBox(height: 6),
+        // What went wrong, right above the pad it's drawn on.
+        SizedBox(
+          height: 20,
+          child: miss == null
+              ? null
+              : Text(
+                  missMessage(miss),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: writingRed,
+                  ),
+                ),
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  _area = box.biggest;
+                  return WritingPad(
+                    strokes: strokes,
+                    // The correction: every stroke of the right kanji, in red,
+                    // numbered, under what was drawn.
+                    guideCount: miss != null ? (strokes?.count ?? 0) : 0,
+                    answer: miss != null,
+                    demo: false,
+                    ink: _strokesDrawn,
+                    borderColor: miss != null ? writingRed : null,
+                    badInk: miss?.grade?.stroke,
+                    focusStroke: miss?.grade?.stroke,
+                    onStart: (p) {
+                      if (miss != null) return;
+                      setState(
+                        () => _strokesDrawn.add([
+                          mlkit.StrokePoint(x: p.dx, y: p.dy, t: _now),
+                        ]),
+                      );
+                    },
+                    onUpdate: (p) {
+                      if (miss != null || _strokesDrawn.isEmpty) return;
+                      setState(
+                        () => _strokesDrawn.last.add(
+                          mlkit.StrokePoint(x: p.dx, y: p.dy, t: _now),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (miss != null)
+          FilledButton(
+            onPressed: () => c.writeResult(false),
+            style: FilledButton.styleFrom(
+              backgroundColor: writingRed,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text(T.writingContinue),
+          )
+        else
+          Row(
+            children: [
+              IconButton.outlined(
+                tooltip: T.writingUndo,
+                onPressed: _strokesDrawn.isEmpty
+                    ? null
+                    : () => setState(_strokesDrawn.removeLast),
+                icon: const Icon(Icons.undo),
+              ),
+              const SizedBox(width: 6),
+              IconButton.outlined(
+                tooltip: T.writingClear,
+                onPressed: _strokesDrawn.isEmpty
+                    ? null
+                    : () => setState(_strokesDrawn.clear),
+                icon: const Icon(Icons.delete_outline),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _strokesDrawn.isEmpty || _checking ? null : _check,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: _checking
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(T.writingCheck),
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

@@ -8,6 +8,9 @@ import 'package:uuid/uuid.dart';
 import '../../core/offline_review.dart';
 import '../../core/repository.dart';
 import '../../models/queue_card.dart';
+import '../writing/kanji_checker.dart';
+import '../writing/lesson.dart';
+import 'question_kinds.dart';
 import 'rules.dart';
 import 'sprites.dart';
 
@@ -73,6 +76,15 @@ class _QuestionClock {
 
 int _wallClockMs() => DateTime.now().millisecondsSinceEpoch;
 
+/// Writing questions need the handwriting model on the phone. If it isn't
+/// there yet, this hunt goes without them and the model downloads in the
+/// background for the next one — a fight never waits on a download.
+Future<bool> _writingReadyOrFetch() async {
+  if (await handwritingReady()) return true;
+  unawaited(handwritingReady(download: true));
+  return false;
+}
+
 class _Answered {
   const _Answered(this.logId, this.card, this.requeued);
   final String logId;
@@ -83,6 +95,10 @@ class _Answered {
 /// Monster Hunt: a skin over a real review session. Port of the web's
 /// BattleArena.tsx (the fight) and usePracticeSession.ts (the session), with
 /// the answers going through mobile's offline outbox.
+///
+/// On mobile a question either asks for the meaning (the web's only kind) or
+/// for the word to be written (question_kinds.dart). Writing takes longer, so
+/// it gets more time, and hits harder.
 ///
 /// Due mode reads `review_queue()` and answers as 'quiz' — real scheduling,
 /// labelled (0018). Free mode reads `practice_cards()` and answers as 'drill' —
@@ -102,7 +118,10 @@ class BattleController extends ChangeNotifier {
     this.rand = defaultRand,
     MonsterBag? bag,
     int Function() now = _wallClockMs,
+    this.kinds,
+    Future<bool> Function()? writingReady,
   })  : bag = bag ?? monsterBag,
+        _writingReady = writingReady ?? _writingReadyOrFetch,
         _clock = _QuestionClock(now) {
     monster = this.bag.pick(exclude: hero);
   }
@@ -115,6 +134,13 @@ class BattleController extends ChangeNotifier {
   final String hero;
   final String? deckId;
   final bool free;
+
+  /// Restricts the question kinds asked (tests pin one); null asks all.
+  final Set<QuestionKind>? kinds;
+  final Future<bool> Function() _writingReady;
+
+  /// Whether writing questions can be asked this hunt.
+  bool canWrite = false;
 
   String get _source => free ? 'drill' : 'quiz';
 
@@ -137,6 +163,28 @@ class BattleController extends ChangeNotifier {
   late String monster;
   final defeatedMonsters = <String>[];
   List<QuizOption>? quiz;
+
+  /// How the current question is asked.
+  QuestionKind kind = QuestionKind.meaning;
+
+  /// Writing questions: which of the word's kanji is being written.
+  int writeSlot = 0;
+
+  /// A missed kanji's correction is on screen: the clock stops until the
+  /// learner has looked at it ([writeResult] then lands the miss).
+  bool held = false;
+
+  void holdForCorrection() {
+    if (held) return;
+    held = true;
+    _afterChange();
+  }
+
+  /// Changes whenever a new question is shown (also for a requeued card).
+  String? get questionKey => _questionKey;
+
+  /// The current question's time limit.
+  int get timeLimitMs => card == null ? questionTimeLimitMs : timeLimitFor(kind, card!.term);
 
   String playerPose = 'idle';
   String monsterPose = 'idle';
@@ -195,6 +243,11 @@ class BattleController extends ChangeNotifier {
       await offline.flush();
     } catch (_) {}
     try {
+      try {
+        canWrite = await _writingReady();
+      } catch (_) {
+        canWrite = false;
+      }
       final rows = await offline.quizWords();
       words = [
         for (final w in rows)
@@ -223,22 +276,52 @@ class BattleController extends ChangeNotifier {
       return;
     }
     _answered = true;
-    _resolve(option.correct ? ratingForElapsed(_clock.elapsedMilliseconds) : 'again', timedOut: false);
+    _resolve(option.correct ? speedFor(_clock.elapsedMilliseconds, timeLimitMs) : 'again', timedOut: false);
+  }
+
+  /// A writing question's current kanji was checked. A miss ends the question
+  /// as wrong (the monster strikes); a hit moves to the word's next kanji, and
+  /// the last one lands the blow — harder than a picked answer.
+  void writeResult(bool ok) {
+    final c = card;
+    if (c == null || kind != QuestionKind.write || _answered || (paused && !held) || outcome != BattleOutcome.ongoing) {
+      return;
+    }
+    if (ok && writeSlot + 1 < kanjiOf(c.term).length) {
+      writeSlot++;
+      _notify();
+      return;
+    }
+    _answered = true;
+    held = false;
+    _resolve(ok ? speedFor(_clock.elapsedMilliseconds, timeLimitMs) : 'again', timedOut: false, written: ok);
   }
 
   /// Shared by a pick and an expired clock. [speed] grades the answer for the
   /// fight; what reaches the scheduler is capped (never 'easy').
-  void _resolve(String speed, {required bool timedOut}) {
+  void _resolve(String speed, {required bool timedOut, bool written = false}) {
     final answeredCard = card;
     final rating = scheduleRating(speed);
     final before = state;
-    final event = rollEvent(
+    var event = rollEvent(
       speed,
       streak: before.streak,
       armorCharges: before.armorCharges,
       timedOut: timedOut,
       rand: rand,
     );
+    // Applied after the shared roll, so rollEvent stays identical to the
+    // web's (battle.fixture.json) — the bonus is mobile's, for its own kind.
+    if (written && event.correct) {
+      event = BattleEvent(
+        rating: event.rating,
+        timedOut: event.timedOut,
+        crit: event.crit,
+        evaded: event.evaded,
+        armorConsumed: event.armorConsumed,
+        damage: (event.damage * writeDamageBonus).round(),
+      );
+    }
     events.add(event);
     final after = state;
     final killed = after.monsterDefeated;
@@ -515,21 +598,13 @@ class BattleController extends ChangeNotifier {
     if (key != _questionKey) {
       _questionKey = key;
       _answered = false;
-      quiz = (c != null && words != null)
-          ? buildQuiz(
-              wordId: c.wordId,
-              term: c.term,
-              reading: c.reading,
-              meaning: c.meaning,
-              meaningMn: c.meaningMn,
-              allWords: words!,
-              rand: rand,
-            )
-          : null;
+      writeSlot = 0;
+      held = false;
+      quiz = (c != null && words != null) ? _buildQuestion(c) : null;
       _clock
         ..stop()
         ..reset();
-      remainingMs = questionTimeLimitMs;
+      remainingMs = timeLimitMs;
     }
 
     final s = state;
@@ -544,7 +619,7 @@ class BattleController extends ChangeNotifier {
       _spawnTimer = null;
     }
 
-    final running = c != null && quiz != null && ongoing && !paused;
+    final running = c != null && quiz != null && ongoing && !paused && !held;
     if (running) {
       _clock.start();
       _tick ??= Timer.periodic(const Duration(milliseconds: _tickMs), (_) => _onTick());
@@ -556,8 +631,27 @@ class BattleController extends ChangeNotifier {
     _notify();
   }
 
+  /// Picks how [c] is asked and builds its options. A writing question has
+  /// none — an empty list, so the question still counts as live.
+  List<QuizOption> _buildQuestion(QueueCard c) {
+    final w = QuizWord(id: c.wordId, term: c.term, reading: c.reading, meaning: c.meaning, meaningMn: c.meaningMn);
+    kind = pickKind(eligibleKinds(w, canWrite: canWrite), rand, allowed: kinds);
+    return switch (kind) {
+      QuestionKind.meaning => buildQuiz(
+          wordId: c.wordId,
+          term: c.term,
+          reading: c.reading,
+          meaning: c.meaning,
+          meaningMn: c.meaningMn,
+          allWords: words!,
+          rand: rand,
+        ),
+      QuestionKind.write => const [],
+    };
+  }
+
   void _onTick() {
-    remainingMs = max(0, questionTimeLimitMs - _clock.elapsedMilliseconds);
+    remainingMs = max(0, timeLimitMs - _clock.elapsedMilliseconds);
     if (remainingMs <= 0 && !_answered) {
       _answered = true;
       _resolve('again', timedOut: true);

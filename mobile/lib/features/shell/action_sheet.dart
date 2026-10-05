@@ -43,10 +43,10 @@ Future<void> showActionSheet(BuildContext context, WidgetRef ref) async {
             label: T.actionScan,
             onTap: () => Navigator.of(ctx).pop(_Action.scan),
           ),
-          const _Tile(
+          _Tile(
             icon: Icons.headphones_outlined,
             label: T.actionAudioDeck,
-            note: T.nextStage,
+            onTap: () => Navigator.of(ctx).pop(_Action.audioDeck),
           ),
         ],
       ),
@@ -62,7 +62,7 @@ Future<void> showActionSheet(BuildContext context, WidgetRef ref) async {
       await context.push(Routes.capture);
       ref.refreshLibrary();
     case _Action.audioDeck:
-      break;
+      await context.push(Routes.audio);
   }
 }
 
@@ -80,14 +80,12 @@ class _Tile extends StatelessWidget {
     required this.icon,
     required this.label,
     this.onTap,
-    this.note,
     this.primary = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
-  final String? note;
   final bool primary;
 
   @override
@@ -113,8 +111,6 @@ class _Tile extends StatelessWidget {
               Text(label,
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
-              if (note != null)
-                Text(note!, style: TextStyle(fontSize: 10, color: context.hk.inkMute)),
             ],
           ),
         ),

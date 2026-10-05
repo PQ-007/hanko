@@ -12,14 +12,26 @@ import '../battle/hero.dart';
 import '../battle/rules.dart' show minWordsForBattle;
 import '../battle/sprite_view.dart';
 
+/// Words you keep failing in the scope, for the leech link. Zero (no link)
+/// if it can't be fetched — the link is a nudge, not a feature to fail on.
+final _leechCountProvider = FutureProvider.family<int, String?>((ref, deckId) async {
+  try {
+    return (await ref.watch(repositoryProvider).leechCards(deckId: deckId)).length;
+  } catch (_) {
+    return 0;
+  }
+});
+
 final _scopedDueProvider = FutureProvider.family<DueSummary, String?>(
   (ref, deckId) => ref.watch(repositoryProvider).dueSummary(deckId: deckId),
 );
 
 /// Mode picker, the mobile take on web/src/app/decks/review/_components/
 /// ReviewModePicker.tsx: the due count for the chosen scope up front (split
-/// into reviews and new, under the daily caps), deck scope chips, then the
-/// modes. Returns the route to push, or null if dismissed.
+/// into reviews and new, under the daily caps), deck scope chips, then three
+/// modes — Monster Hunt (every question kind), classic cards, kanji writing —
+/// and a link to leech rescue when there are leeches. Returns the route to
+/// push, or null if dismissed.
 Future<String?> showReviewModeSheet(BuildContext context, {String? deckId}) {
   return showModalBottomSheet<String>(
     context: context,
@@ -105,20 +117,11 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
               child: SpriteView(slug: hero, size: 56),
             ),
             title: T.battleModeTitle,
-            subtitle: T.battleModeDesc,
+            subtitle: T.huntDescMobile,
             note: huntLocked ? T.battleLocked(minWordsForBattle) : null,
             onTap: huntLocked
                 ? null
                 : () => Navigator.of(context).pop(Routes.hunt(deckId: _deckId)),
-          ),
-          _Mode(
-            leading: const Icon(Icons.sports_martial_arts, color: HankoColors.seal, size: 30),
-            title: T.freeModeTitle,
-            subtitle: T.freeModeDesc,
-            note: huntLocked ? T.battleLocked(minWordsForBattle) : null,
-            onTap: huntLocked
-                ? null
-                : () => Navigator.of(context).pop(Routes.hunt(deckId: _deckId, free: true)),
           ),
           _Mode(
             leading: const Icon(Icons.style_outlined, color: HankoColors.seal, size: 30),
@@ -128,21 +131,31 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
                 .pop(Routes.review(deckId: _deckId, deckName: deckName)),
           ),
           _Mode(
-            leading: const Icon(Icons.bolt_outlined, color: HankoColors.seal, size: 30),
-            title: T.speedRoundTitle,
-            subtitle: T.speedRoundDesc,
+            leading: const Icon(Icons.draw_outlined, color: HankoColors.seal, size: 30),
+            title: T.writingTitle,
+            subtitle: T.writingDesc,
             onTap: () => Navigator.of(context).pop(
-              Uri(path: Routes.speed, queryParameters: {'deck': ?_deckId}).toString(),
+              Uri(path: Routes.writing, queryParameters: {'deck': ?_deckId}).toString(),
             ),
           ),
-          _Mode(
-            leading: const Icon(Icons.healing_outlined, color: HankoColors.seal, size: 30),
-            title: T.leechTitle,
-            subtitle: T.leechDesc,
-            onTap: () => Navigator.of(context).pop(
-              Uri(path: Routes.leech, queryParameters: {'deck': ?_deckId}).toString(),
-            ),
-          ),
+          // Leeches aren't a mode: most days there are none, and a permanent
+          // row for an empty list is clutter. The link appears only when
+          // there's something to rescue.
+          ref.watch(_leechCountProvider(_deckId)).maybeWhen(
+                data: (n) => n == 0
+                    ? const SizedBox.shrink()
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.healing_outlined, size: 18),
+                          label: Text(T.leechLink(n)),
+                          onPressed: () => Navigator.of(context).pop(
+                            Uri(path: Routes.leech, queryParameters: {'deck': ?_deckId}).toString(),
+                          ),
+                        ),
+                      ),
+                orElse: () => const SizedBox.shrink(),
+              ),
         ],
       ),
     );

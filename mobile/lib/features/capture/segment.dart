@@ -113,7 +113,7 @@ String _ending(String run) {
 /// kanji word starts with the same kanji (食べました → 食べる); a katakana
 /// word is its own dictionary form.
 bool lookupMatches(String candidate, String dictionaryForm) {
-  if (dictionaryForm.isEmpty) return false;
+  if (dictionaryForm.isEmpty || candidate.isEmpty) return false;
   final first = candidate.runes.first;
   if (_scriptOf(first) == _Script.katakana) return dictionaryForm == candidate;
   return dictionaryForm.runes.first == first;
