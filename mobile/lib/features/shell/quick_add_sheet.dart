@@ -12,7 +12,8 @@ import '../decks/word_editor.dart';
 
 /// Same key name as the web (QuickAddWordModal.tsx): per-device is the honest
 /// scope for a convenience no other client reads.
-const _deckKey = 'hanko.quickAdd.deck';
+/// The camera capture shares it, so both remember one "last deck".
+const quickAddDeckKey = 'hanko.quickAdd.deck';
 
 /// Add words without opening a deck first. Stays open after each add — the
 /// reason to want this is a handful of words at once — and shows a running
@@ -54,7 +55,7 @@ class _QuickAddState extends ConsumerState<_QuickAdd> {
   Future<void> _restoreDeck() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final stored = prefs.getString(_deckKey);
+      final stored = prefs.getString(quickAddDeckKey);
       if (mounted && stored != null) setState(() => _deckId = stored);
     } catch (_) {}
   }
@@ -63,7 +64,7 @@ class _QuickAddState extends ConsumerState<_QuickAdd> {
     setState(() => _deckId = id);
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_deckKey, id);
+      await prefs.setString(quickAddDeckKey, id);
     } catch (_) {}
   }
 

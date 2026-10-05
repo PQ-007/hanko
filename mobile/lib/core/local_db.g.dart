@@ -1685,6 +1685,462 @@ class CachedQuizWordsCompanion extends UpdateCompanion<CachedQuizWord> {
   }
 }
 
+class $PendingWordsTable extends PendingWords
+    with TableInfo<$PendingWordsTable, PendingWord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingWordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deckIdMeta = const VerificationMeta('deckId');
+  @override
+  late final GeneratedColumn<String> deckId = GeneratedColumn<String>(
+    'deck_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _termMeta = const VerificationMeta('term');
+  @override
+  late final GeneratedColumn<String> term = GeneratedColumn<String>(
+    'term',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readingMeta = const VerificationMeta(
+    'reading',
+  );
+  @override
+  late final GeneratedColumn<String> reading = GeneratedColumn<String>(
+    'reading',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _meaningMeta = const VerificationMeta(
+    'meaning',
+  );
+  @override
+  late final GeneratedColumn<String> meaning = GeneratedColumn<String>(
+    'meaning',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _meaningMnMeta = const VerificationMeta(
+    'meaningMn',
+  );
+  @override
+  late final GeneratedColumn<String> meaningMn = GeneratedColumn<String>(
+    'meaning_mn',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    deckId,
+    term,
+    reading,
+    meaning,
+    meaningMn,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_words';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingWord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('deck_id')) {
+      context.handle(
+        _deckIdMeta,
+        deckId.isAcceptableOrUnknown(data['deck_id']!, _deckIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deckIdMeta);
+    }
+    if (data.containsKey('term')) {
+      context.handle(
+        _termMeta,
+        term.isAcceptableOrUnknown(data['term']!, _termMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_termMeta);
+    }
+    if (data.containsKey('reading')) {
+      context.handle(
+        _readingMeta,
+        reading.isAcceptableOrUnknown(data['reading']!, _readingMeta),
+      );
+    }
+    if (data.containsKey('meaning')) {
+      context.handle(
+        _meaningMeta,
+        meaning.isAcceptableOrUnknown(data['meaning']!, _meaningMeta),
+      );
+    }
+    if (data.containsKey('meaning_mn')) {
+      context.handle(
+        _meaningMnMeta,
+        meaningMn.isAcceptableOrUnknown(data['meaning_mn']!, _meaningMnMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingWord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingWord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      deckId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deck_id'],
+      )!,
+      term: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}term'],
+      )!,
+      reading: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reading'],
+      ),
+      meaning: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meaning'],
+      ),
+      meaningMn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meaning_mn'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingWordsTable createAlias(String alias) {
+    return $PendingWordsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingWord extends DataClass implements Insertable<PendingWord> {
+  final String id;
+  final String deckId;
+  final String term;
+  final String? reading;
+  final String? meaning;
+  final String? meaningMn;
+  final DateTime createdAt;
+  const PendingWord({
+    required this.id,
+    required this.deckId,
+    required this.term,
+    this.reading,
+    this.meaning,
+    this.meaningMn,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['deck_id'] = Variable<String>(deckId);
+    map['term'] = Variable<String>(term);
+    if (!nullToAbsent || reading != null) {
+      map['reading'] = Variable<String>(reading);
+    }
+    if (!nullToAbsent || meaning != null) {
+      map['meaning'] = Variable<String>(meaning);
+    }
+    if (!nullToAbsent || meaningMn != null) {
+      map['meaning_mn'] = Variable<String>(meaningMn);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PendingWordsCompanion toCompanion(bool nullToAbsent) {
+    return PendingWordsCompanion(
+      id: Value(id),
+      deckId: Value(deckId),
+      term: Value(term),
+      reading: reading == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reading),
+      meaning: meaning == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meaning),
+      meaningMn: meaningMn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meaningMn),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PendingWord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingWord(
+      id: serializer.fromJson<String>(json['id']),
+      deckId: serializer.fromJson<String>(json['deckId']),
+      term: serializer.fromJson<String>(json['term']),
+      reading: serializer.fromJson<String?>(json['reading']),
+      meaning: serializer.fromJson<String?>(json['meaning']),
+      meaningMn: serializer.fromJson<String?>(json['meaningMn']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'deckId': serializer.toJson<String>(deckId),
+      'term': serializer.toJson<String>(term),
+      'reading': serializer.toJson<String?>(reading),
+      'meaning': serializer.toJson<String?>(meaning),
+      'meaningMn': serializer.toJson<String?>(meaningMn),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PendingWord copyWith({
+    String? id,
+    String? deckId,
+    String? term,
+    Value<String?> reading = const Value.absent(),
+    Value<String?> meaning = const Value.absent(),
+    Value<String?> meaningMn = const Value.absent(),
+    DateTime? createdAt,
+  }) => PendingWord(
+    id: id ?? this.id,
+    deckId: deckId ?? this.deckId,
+    term: term ?? this.term,
+    reading: reading.present ? reading.value : this.reading,
+    meaning: meaning.present ? meaning.value : this.meaning,
+    meaningMn: meaningMn.present ? meaningMn.value : this.meaningMn,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PendingWord copyWithCompanion(PendingWordsCompanion data) {
+    return PendingWord(
+      id: data.id.present ? data.id.value : this.id,
+      deckId: data.deckId.present ? data.deckId.value : this.deckId,
+      term: data.term.present ? data.term.value : this.term,
+      reading: data.reading.present ? data.reading.value : this.reading,
+      meaning: data.meaning.present ? data.meaning.value : this.meaning,
+      meaningMn: data.meaningMn.present ? data.meaningMn.value : this.meaningMn,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingWord(')
+          ..write('id: $id, ')
+          ..write('deckId: $deckId, ')
+          ..write('term: $term, ')
+          ..write('reading: $reading, ')
+          ..write('meaning: $meaning, ')
+          ..write('meaningMn: $meaningMn, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, deckId, term, reading, meaning, meaningMn, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingWord &&
+          other.id == this.id &&
+          other.deckId == this.deckId &&
+          other.term == this.term &&
+          other.reading == this.reading &&
+          other.meaning == this.meaning &&
+          other.meaningMn == this.meaningMn &&
+          other.createdAt == this.createdAt);
+}
+
+class PendingWordsCompanion extends UpdateCompanion<PendingWord> {
+  final Value<String> id;
+  final Value<String> deckId;
+  final Value<String> term;
+  final Value<String?> reading;
+  final Value<String?> meaning;
+  final Value<String?> meaningMn;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const PendingWordsCompanion({
+    this.id = const Value.absent(),
+    this.deckId = const Value.absent(),
+    this.term = const Value.absent(),
+    this.reading = const Value.absent(),
+    this.meaning = const Value.absent(),
+    this.meaningMn = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingWordsCompanion.insert({
+    required String id,
+    required String deckId,
+    required String term,
+    this.reading = const Value.absent(),
+    this.meaning = const Value.absent(),
+    this.meaningMn = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       deckId = Value(deckId),
+       term = Value(term),
+       createdAt = Value(createdAt);
+  static Insertable<PendingWord> custom({
+    Expression<String>? id,
+    Expression<String>? deckId,
+    Expression<String>? term,
+    Expression<String>? reading,
+    Expression<String>? meaning,
+    Expression<String>? meaningMn,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (deckId != null) 'deck_id': deckId,
+      if (term != null) 'term': term,
+      if (reading != null) 'reading': reading,
+      if (meaning != null) 'meaning': meaning,
+      if (meaningMn != null) 'meaning_mn': meaningMn,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingWordsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? deckId,
+    Value<String>? term,
+    Value<String?>? reading,
+    Value<String?>? meaning,
+    Value<String?>? meaningMn,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return PendingWordsCompanion(
+      id: id ?? this.id,
+      deckId: deckId ?? this.deckId,
+      term: term ?? this.term,
+      reading: reading ?? this.reading,
+      meaning: meaning ?? this.meaning,
+      meaningMn: meaningMn ?? this.meaningMn,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (deckId.present) {
+      map['deck_id'] = Variable<String>(deckId.value);
+    }
+    if (term.present) {
+      map['term'] = Variable<String>(term.value);
+    }
+    if (reading.present) {
+      map['reading'] = Variable<String>(reading.value);
+    }
+    if (meaning.present) {
+      map['meaning'] = Variable<String>(meaning.value);
+    }
+    if (meaningMn.present) {
+      map['meaning_mn'] = Variable<String>(meaningMn.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingWordsCompanion(')
+          ..write('id: $id, ')
+          ..write('deckId: $deckId, ')
+          ..write('term: $term, ')
+          ..write('reading: $reading, ')
+          ..write('meaning: $meaning, ')
+          ..write('meaningMn: $meaningMn, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$LocalDb extends GeneratedDatabase {
   _$LocalDb(QueryExecutor e) : super(e);
   $LocalDbManager get managers => $LocalDbManager(this);
@@ -1693,6 +2149,7 @@ abstract class _$LocalDb extends GeneratedDatabase {
   late final $CachedQuizWordsTable cachedQuizWords = $CachedQuizWordsTable(
     this,
   );
+  late final $PendingWordsTable pendingWords = $PendingWordsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1701,6 +2158,7 @@ abstract class _$LocalDb extends GeneratedDatabase {
     pendingAnswers,
     cachedCards,
     cachedQuizWords,
+    pendingWords,
   ];
 }
 
@@ -2541,6 +2999,241 @@ typedef $$CachedQuizWordsTableProcessedTableManager =
       CachedQuizWord,
       PrefetchHooks Function()
     >;
+typedef $$PendingWordsTableCreateCompanionBuilder =
+    PendingWordsCompanion Function({
+      required String id,
+      required String deckId,
+      required String term,
+      Value<String?> reading,
+      Value<String?> meaning,
+      Value<String?> meaningMn,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$PendingWordsTableUpdateCompanionBuilder =
+    PendingWordsCompanion Function({
+      Value<String> id,
+      Value<String> deckId,
+      Value<String> term,
+      Value<String?> reading,
+      Value<String?> meaning,
+      Value<String?> meaningMn,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$PendingWordsTableFilterComposer
+    extends Composer<_$LocalDb, $PendingWordsTable> {
+  $$PendingWordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deckId => $composableBuilder(
+    column: $table.deckId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reading => $composableBuilder(
+    column: $table.reading,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meaning => $composableBuilder(
+    column: $table.meaning,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meaningMn => $composableBuilder(
+    column: $table.meaningMn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingWordsTableOrderingComposer
+    extends Composer<_$LocalDb, $PendingWordsTable> {
+  $$PendingWordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deckId => $composableBuilder(
+    column: $table.deckId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reading => $composableBuilder(
+    column: $table.reading,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get meaning => $composableBuilder(
+    column: $table.meaning,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get meaningMn => $composableBuilder(
+    column: $table.meaningMn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingWordsTableAnnotationComposer
+    extends Composer<_$LocalDb, $PendingWordsTable> {
+  $$PendingWordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get deckId =>
+      $composableBuilder(column: $table.deckId, builder: (column) => column);
+
+  GeneratedColumn<String> get term =>
+      $composableBuilder(column: $table.term, builder: (column) => column);
+
+  GeneratedColumn<String> get reading =>
+      $composableBuilder(column: $table.reading, builder: (column) => column);
+
+  GeneratedColumn<String> get meaning =>
+      $composableBuilder(column: $table.meaning, builder: (column) => column);
+
+  GeneratedColumn<String> get meaningMn =>
+      $composableBuilder(column: $table.meaningMn, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$PendingWordsTableTableManager
+    extends
+        RootTableManager<
+          _$LocalDb,
+          $PendingWordsTable,
+          PendingWord,
+          $$PendingWordsTableFilterComposer,
+          $$PendingWordsTableOrderingComposer,
+          $$PendingWordsTableAnnotationComposer,
+          $$PendingWordsTableCreateCompanionBuilder,
+          $$PendingWordsTableUpdateCompanionBuilder,
+          (
+            PendingWord,
+            BaseReferences<_$LocalDb, $PendingWordsTable, PendingWord>,
+          ),
+          PendingWord,
+          PrefetchHooks Function()
+        > {
+  $$PendingWordsTableTableManager(_$LocalDb db, $PendingWordsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingWordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingWordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PendingWordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> deckId = const Value.absent(),
+                Value<String> term = const Value.absent(),
+                Value<String?> reading = const Value.absent(),
+                Value<String?> meaning = const Value.absent(),
+                Value<String?> meaningMn = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingWordsCompanion(
+                id: id,
+                deckId: deckId,
+                term: term,
+                reading: reading,
+                meaning: meaning,
+                meaningMn: meaningMn,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String deckId,
+                required String term,
+                Value<String?> reading = const Value.absent(),
+                Value<String?> meaning = const Value.absent(),
+                Value<String?> meaningMn = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PendingWordsCompanion.insert(
+                id: id,
+                deckId: deckId,
+                term: term,
+                reading: reading,
+                meaning: meaning,
+                meaningMn: meaningMn,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingWordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$LocalDb,
+      $PendingWordsTable,
+      PendingWord,
+      $$PendingWordsTableFilterComposer,
+      $$PendingWordsTableOrderingComposer,
+      $$PendingWordsTableAnnotationComposer,
+      $$PendingWordsTableCreateCompanionBuilder,
+      $$PendingWordsTableUpdateCompanionBuilder,
+      (PendingWord, BaseReferences<_$LocalDb, $PendingWordsTable, PendingWord>),
+      PendingWord,
+      PrefetchHooks Function()
+    >;
 
 class $LocalDbManager {
   final _$LocalDb _db;
@@ -2551,4 +3244,6 @@ class $LocalDbManager {
       $$CachedCardsTableTableManager(_db, _db.cachedCards);
   $$CachedQuizWordsTableTableManager get cachedQuizWords =>
       $$CachedQuizWordsTableTableManager(_db, _db.cachedQuizWords);
+  $$PendingWordsTableTableManager get pendingWords =>
+      $$PendingWordsTableTableManager(_db, _db.pendingWords);
 }

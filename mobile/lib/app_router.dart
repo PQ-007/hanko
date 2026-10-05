@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/repository.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/battle/battle_screen.dart';
+import 'features/capture/capture_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/home/settings_screen.dart';
 import 'features/library/deck_detail_screen.dart';
@@ -49,6 +50,7 @@ class Routes {
   static const settings = '/settings';
   static const speed = '/speed';
   static const leech = '/leech';
+  static const capture = '/capture';
 
   /// Monster Hunt. [free] practises any card as a drill (nothing rescheduled).
   static String hunt({String? deckId, bool free = false}) => Uri(
@@ -136,6 +138,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           free: s.uri.queryParameters['mode'] == 'free',
         ),
       ),
+      fullScreen(Routes.capture, (_) => const CaptureScreen()),
       fullScreen(Routes.speed, (s) => SpeedRoundScreen(deckId: s.uri.queryParameters['deck'])),
       fullScreen(Routes.leech, (s) => LeechRescueScreen(deckId: s.uri.queryParameters['deck'])),
     ],

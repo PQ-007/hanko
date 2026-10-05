@@ -5,10 +5,11 @@ part 'local_db.g.dart';
 
 /// Answers given while offline, waiting to be replayed to the server.
 ///
-/// This is the only write path that is allowed to be queued. Everything else
-/// (adding words, renaming decks) simply fails when offline, because those are
-/// deliberate actions a user will retry — whereas losing a review means losing
-/// scheduling state you can't reconstruct.
+/// One of only two write paths allowed to be queued (the other is
+/// [PendingWords]). Everything else (renaming decks, editing a word) simply
+/// fails when offline, because those are deliberate actions a user will
+/// retry — whereas losing a review means losing scheduling state you can't
+/// reconstruct.
 ///
 /// [logId] is generated at answer time and reused on every replay attempt.
 /// `review_card()` treats it as an idempotency key, so replaying a queue after
@@ -73,14 +74,35 @@ class CachedQuizWords extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [PendingAnswers, CachedCards, CachedQuizWords])
+/// Words saved from a camera capture with no connection (schema v3), waiting
+/// to be inserted. A photographed page isn't something the user can simply
+/// retry later — the page may be gone — so these are queued rather than
+/// failed.
+///
+/// [id] is generated on the device and reused on every attempt, and the insert
+/// ignores a conflicting id (`Repository.addWords`), so a save whose reply was
+/// lost can be replayed without creating the word twice.
+class PendingWords extends Table {
+  TextColumn get id => text()();
+  TextColumn get deckId => text().named('deck_id')();
+  TextColumn get term => text()();
+  TextColumn get reading => text().nullable()();
+  TextColumn get meaning => text().nullable()();
+  TextColumn get meaningMn => text().named('meaning_mn').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [PendingAnswers, CachedCards, CachedQuizWords, PendingWords])
 class LocalDb extends _$LocalDb {
   LocalDb() : super(driftDatabase(name: 'hanko'));
 
   LocalDb.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -91,6 +113,8 @@ class LocalDb extends _$LocalDb {
             await m.addColumn(pendingAnswers, pendingAnswers.source);
             await m.createTable(cachedQuizWords);
           }
+          // v2 → v3: the camera capture's offline word outbox.
+          if (from < 3) await m.createTable(pendingWords);
         },
       );
 
@@ -125,4 +149,13 @@ class LocalDb extends _$LocalDb {
   }
 
   Future<List<CachedQuizWord>> cachedQuizWordList() => select(cachedQuizWords).get();
+
+  Future<void> enqueueWords(List<PendingWordsCompanion> words) =>
+      batch((b) => b.insertAll(pendingWords, words, mode: InsertMode.insertOrReplace));
+
+  Future<List<PendingWord>> pendingWordList() =>
+      (select(pendingWords)..orderBy([(t) => OrderingTerm(expression: t.createdAt)])).get();
+
+  Future<void> clearWords(Iterable<String> ids) =>
+      (delete(pendingWords)..where((t) => t.id.isIn(ids))).go();
 }

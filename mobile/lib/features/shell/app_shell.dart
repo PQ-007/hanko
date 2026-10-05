@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/offline_words.dart';
+import '../../core/providers.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import 'action_sheet.dart';
@@ -12,10 +14,46 @@ import 'action_sheet.dart';
 /// position and navigation stack. The center slot is a NavigationBar
 /// destination drawn as a raised button; selecting it opens the action sheet
 /// and never becomes the selected tab.
-class AppShell extends ConsumerWidget {
+///
+/// Also where words captured offline get sent: on start and whenever the app
+/// comes back to the foreground, which is when a connection has most likely
+/// returned.
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
+
+  @override
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
+  StatefulNavigationShell get shell => widget.shell;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _flushWords();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _flushWords();
+  }
+
+  Future<void> _flushWords() async {
+    try {
+      final sent = await ref.read(wordOutboxProvider).flush();
+      if (sent > 0 && mounted) ref.refreshLibrary();
+    } catch (_) {}
+  }
 
   static const _center = 2;
 
@@ -33,7 +71,7 @@ class AppShell extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Scaffold(
       body: shell,
       bottomNavigationBar: NavigationBar(

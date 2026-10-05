@@ -215,6 +215,51 @@ class T {
   static const actionAudioDeck = 'Аудио багц үүсгэх';
   static const nextStage = 'Удахгүй нэмэгдэнэ';
 
+  // Camera capture
+  static const captureTitle = 'Камераар унших';
+  static const captureIntro =
+      'Япон текстийн зураг аваад эсвэл сонгоод, хадгалах үгсээ сонгоно уу.';
+  static const captureTakePhoto = 'Зураг авах';
+  static const captureFromGallery = 'Зургийн сангаас';
+  static const captureAnotherPhoto = 'Өөр зураг нэмэх';
+  static const captureReading = 'Текст уншиж байна…';
+  static const captureNothingFound =
+      'Энэ зургаас япон текст олдсонгүй. Илүү ойроос, тод гэрэлтэй дахин оролдоно уу.';
+  static const captureFailed = 'Зургийг уншиж чадсангүй';
+  static const captureSuggestions = 'Санал болгох үгс';
+  static const captureSuggestionsHint = 'Бүгд сонгогдсон — хэрэггүйгээ товшиж болиулна уу.';
+  static const captureText = 'Танигдсан текст';
+  static const captureTextHint = 'Санал болгоогүй үг байвал текстээс тэмдэглээд «Үг болгох»-ыг дарна уу.';
+  static const captureAddSelection = 'Үг болгох';
+  static const captureRemovePhoto = 'Зургийг хасах';
+  static const captureEditPhoto = 'Тайрах, сонгох';
+  static const capturePhotoTitle = 'Тайрах, сонгох';
+  static const captureModeCrop = 'Тайрах';
+  static const captureModeSelect = 'Сонгох';
+  static const captureCropHint = 'Булан эсвэл хүрээг чирж хэрэгтэй хэсгээ үлдээнэ үү.';
+  static const captureSelectHint = 'Үгсийн дээгүүр хуруугаараа зурж сонгоно. Сонгосон үг дээгүүр зурвал болино.';
+  static const captureClear = 'Цэвэрлэх';
+  static const captureNewDeck = 'Шинэ багц';
+  static const captureNewDeckTitle = 'Шинэ багц үүсгэх';
+  static const captureFolderLabel = 'Хавтас';
+  static const captureNewFolderOption = '+ Шинэ хавтас';
+  static String captureDeckName(DateTime d) => 'Скан ${d.month}/${d.day}';
+  static const captureAutoHint = 'Тайрсан хэсгийн санал болгох үгс автоматаар сонгогдоно.';
+  static const captureAll = 'Бүгдийг сонгох';
+  static const captureNone = 'Бүгдийг болих';
+  static const captureDone = 'Болсон';
+  static String captureDoneN(int n) => 'Болсон ($n үг)';
+  static String capturePhotoN(int n) => '$n-р зураг';
+  static String captureNext(int n) => 'Үргэлжлүүлэх ($n)';
+  static const captureReviewTitle = 'Үгсээ шалгах';
+  static const captureLookingUp = 'Толь бичгээс хайж байна…';
+  static const captureAlreadyInDeck = 'Багцад байгаа';
+  static const captureNoLookup = 'Толь бичигт олдсонгүй — гараар засна уу';
+  static String captureSave(int n) => '$n үг хадгалах';
+  static String captureSaved(int n) => '$n үг хадгалагдлаа';
+  static String captureQueued(int n) =>
+      'Офлайн — $n үг утсанд хадгалагдлаа, холболт сэргэхэд илгээгдэнэ';
+
   static const speedRoundTitle = 'Хурдан давталт';
   static const speedRoundDesc =
       'Эзэмшсэн үгсээ хурдан шалгана. Хуваарь өөрчлөгдөхгүй.';

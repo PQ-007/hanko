@@ -71,6 +71,51 @@ void main() {
       );
     });
 
+    // Jisho lists an entry under its common spelling: searching 附属 returns
+    // the 付属 entry, with 附属 as an alternative writing.
+    final variant = {
+      'data': [
+        {
+          'slug': '付属',
+          'japanese': [
+            {'word': '付属', 'reading': 'ふぞく'},
+            {'word': '附属', 'reading': 'ふぞく'},
+          ],
+          'senses': [
+            {'english_definitions': ['attached']},
+          ],
+        },
+        {
+          'slug': '籠る',
+          'japanese': [
+            {'word': '篭る', 'reading': 'こもる'},
+            {'word': '籠る', 'reading': 'こもる'},
+          ],
+          'senses': [
+            {'english_definitions': ['to shut oneself in']},
+          ],
+        },
+      ],
+    };
+
+    test("the kanji as typed is kept when it's one of the entry's writings", () {
+      final r = parseJisho(variant, term: '附属');
+      expect(r.word, '附属', reason: 'not swapped for the common 付属');
+      expect(r.reading, 'ふぞく');
+      expect(r.meaning, 'attached');
+    });
+
+    test('a later entry that has the typed writing wins over the first', () {
+      final r = parseJisho(variant, term: '籠る');
+      expect(r.word, '籠る');
+      expect(r.meaning, 'to shut oneself in', reason: 'meaning comes from the matching entry');
+    });
+
+    test('a form no entry lists (conjugated) still gets the dictionary form', () {
+      expect(parseJisho(variant, term: '付属します').word, '付属');
+      expect(parseJisho(variant).word, '付属', reason: 'no term: first entry, as before');
+    });
+
     test('no results or a malformed body is empty, never a throw', () {
       expect(parseJisho({'data': []}).isEmpty, isTrue);
       expect(parseJisho(null).isEmpty, isTrue);

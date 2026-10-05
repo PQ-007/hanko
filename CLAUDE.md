@@ -243,19 +243,36 @@ any third-party sign-in. Add it as a second Supabase provider before submitting.
 
 ---
 
-## Capture stays on the extension — deliberate scope decision
+## Capture — extension, manual entry, and (since mobile Stage 3) the camera
 
-**Mobile does not capture words.** No share-target intent, no OCR, no in-app
-browser. Words enter the system two ways only:
+**Reversed by the owner:** the original rule was "mobile does not capture
+words". Mobile now has camera capture (`mobile/lib/features/capture/`), and is
+a standalone product that must not depend on the Next.js server. Words enter
+the system three ways:
 
 1. The browser extension, automated as far as it can go
 2. Manual entry in the web app or mobile app
+3. Mobile camera capture: photo or gallery image → ML Kit text recognition on
+   the device (bundled Japanese model, works offline) → suggested words plus
+   manual span selection → Jisho lookup + EN→MN from the phone → batch save
 
-Don't propose mobile capture features; the split is intentional — desktop
-captures, mobile reviews.
+How it's built, so nobody re-litigates it:
+- **No tokenizer, on purpose.** `segment.dart` suggests words by script
+  boundaries (kanji run + okurigana, katakana runs) and Jisho resolves the
+  dictionary form; `lookupMatches()` rejects Jisho's fuzzy guesses at other
+  words. kuromoji/MeCab would mean tens of MB on the device or a server
+  dependency. Hiragana-only words are never suggested — manual selection
+  covers them.
+- **Saves go through `WordOutbox`** (`core/offline_words.dart`, Drift
+  `PendingWords`, schema v3): device-generated ids + `addWords`' ignore-on-
+  conflict make replay idempotent, same reasoning as the answer outbox.
+  Flushed on app start and resume (`AppShell`). It writes `words` only; the
+  trigger creates the cards.
+- `image_picker` (system camera/gallery) rather than a live `camera` preview:
+  fewer permissions to manage, and screenshots work too.
 
-Worth doing on the extension side, since it is now the only automated capture
-surface: `chrome/content.js` already holds the full selection and throws away
+Still worth doing on the extension side, since it is the only capture
+surface that sees the original page: `chrome/content.js` already holds the full selection and throws away
 everything but the word. Add `words.context_sentence` and `words.source_url` and
 populate them at capture time. Context and cloze cards retain substantially
 better than bare word→meaning pairs, and the data is free at the moment of

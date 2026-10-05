@@ -19,7 +19,10 @@ export '../../models/library.dart' show WordDraft;
 ///   hasn't changed since the last translation (so a hand-typed Mongolian
 ///   meaning isn't overwritten just by tapping through);
 /// - "re-search" (edit only) overwrites term, reading and English from Jisho.
-Future<WordDraft?> showWordEditor(BuildContext context, {Word? existing}) {
+///
+/// [draft] edits an unsaved word (the camera capture's review list) the same
+/// way [existing] edits a saved one.
+Future<WordDraft?> showWordEditor(BuildContext context, {Word? existing, WordDraft? draft}) {
   return showModalBottomSheet<WordDraft>(
     context: context,
     isScrollControlled: true,
@@ -28,6 +31,7 @@ Future<WordDraft?> showWordEditor(BuildContext context, {Word? existing}) {
       padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
       child: WordForm(
         existing: existing,
+        draft: draft,
         onSubmit: (draft) => Navigator.of(ctx).pop(draft),
       ),
     ),
@@ -40,12 +44,14 @@ class WordForm extends ConsumerStatefulWidget {
   const WordForm({
     super.key,
     this.existing,
+    this.draft,
     required this.onSubmit,
     this.submitLabel,
     this.busy = false,
   });
 
   final Word? existing;
+  final WordDraft? draft;
   final ValueChanged<WordDraft> onSubmit;
   final String? submitLabel;
   final bool busy;
@@ -55,10 +61,13 @@ class WordForm extends ConsumerStatefulWidget {
 }
 
 class WordFormState extends ConsumerState<WordForm> {
-  late final _term = TextEditingController(text: widget.existing?.term ?? '');
-  late final _reading = TextEditingController(text: widget.existing?.reading ?? '');
-  late final _meaning = TextEditingController(text: widget.existing?.meaning ?? '');
-  late final _meaningMn = TextEditingController(text: widget.existing?.meaningMn ?? '');
+  late final _term = TextEditingController(text: widget.existing?.term ?? widget.draft?.term ?? '');
+  late final _reading =
+      TextEditingController(text: widget.existing?.reading ?? widget.draft?.reading ?? '');
+  late final _meaning =
+      TextEditingController(text: widget.existing?.meaning ?? widget.draft?.meaning ?? '');
+  late final _meaningMn =
+      TextEditingController(text: widget.existing?.meaningMn ?? widget.draft?.meaningMn ?? '');
   final _termFocus = FocusNode();
   final _meaningFocus = FocusNode();
 
@@ -66,10 +75,10 @@ class WordFormState extends ConsumerState<WordForm> {
   bool _translating = false;
 
   /// The English we last translated from.
-  late String _lastEn = widget.existing?.meaning?.trim() ?? '';
+  late String _lastEn = (widget.existing?.meaning ?? widget.draft?.meaning)?.trim() ?? '';
 
   /// The term we last looked up, so blurring an unchanged field is free.
-  late String _lastLooked = widget.existing?.term.trim() ?? '';
+  late String _lastLooked = (widget.existing?.term ?? widget.draft?.term)?.trim() ?? '';
 
   @override
   void initState() {
@@ -160,7 +169,7 @@ class WordFormState extends ConsumerState<WordForm> {
 
   @override
   Widget build(BuildContext context) {
-    final editing = widget.existing != null;
+    final editing = widget.existing != null || widget.draft != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(

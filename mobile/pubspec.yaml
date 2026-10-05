@@ -52,6 +52,8 @@ dependencies:
   share_plus: ^13.3.1
   url_launcher: ^6.3.3
   flutter_tts: ^4.2.5
+  image_picker: ^1.2.3
+  google_mlkit_text_recognition: ^0.17.1
 
 dev_dependencies:
   flutter_test:

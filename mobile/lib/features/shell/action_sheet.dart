@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app_router.dart';
 import '../../core/providers.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -37,10 +38,10 @@ Future<void> showActionSheet(BuildContext context, WidgetRef ref) async {
             label: T.actionAddWord,
             onTap: () => Navigator.of(ctx).pop(_Action.addWord),
           ),
-          const _Tile(
+          _Tile(
             icon: Icons.document_scanner_outlined,
             label: T.actionScan,
-            note: T.nextStage,
+            onTap: () => Navigator.of(ctx).pop(_Action.scan),
           ),
           const _Tile(
             icon: Icons.headphones_outlined,
@@ -58,6 +59,8 @@ Future<void> showActionSheet(BuildContext context, WidgetRef ref) async {
     case _Action.addWord:
       await showQuickAddSheet(context, ref);
     case _Action.scan:
+      await context.push(Routes.capture);
+      ref.refreshLibrary();
     case _Action.audioDeck:
       break;
   }

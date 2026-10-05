@@ -46,6 +46,9 @@ kotlin {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    // Japanese script model for camera capture (bundled, works offline); the
+    // ML Kit plugin only declares it compileOnly.
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
 }
 
 flutter {

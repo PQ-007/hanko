@@ -46,7 +46,7 @@ class Dictionary {
           )
           .timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return LookupResult.empty;
-      return parseJisho(jsonDecode(utf8.decode(res.bodyBytes)));
+      return parseJisho(jsonDecode(utf8.decode(res.bodyBytes)), term: t);
     } catch (_) {
       return LookupResult.empty;
     }
@@ -81,18 +81,37 @@ class Dictionary {
   }
 }
 
-/// First Jisho entry → dictionary form, reading, up to three senses joined
-/// with "; " (jisho.ts `lookupWord`).
-LookupResult parseJisho(Object? data) {
+/// Jisho's results → dictionary form, reading, up to three senses joined with
+/// "; " (jisho.ts `parseJisho`, same rules).
+///
+/// The entry and writing are chosen to keep [term] as typed when Jisho knows
+/// it: Jisho lists an entry under its most common spelling, so the first
+/// entry's first writing would swap a rarer kanji the user deliberately
+/// entered (籠る, 附属) for the common one (篭る, 付属). Only when no entry has
+/// [term] as a writing — a conjugated form like 食べました — is the first
+/// entry's main writing used, which is what turns it into 食べる.
+LookupResult parseJisho(Object? data, {String term = ''}) {
   if (data is! Map) return LookupResult.empty;
   final entries = data['data'];
   if (entries is! List || entries.isEmpty || entries.first is! Map) return LookupResult.empty;
-  final entry = entries.first as Map;
 
-  final japanese = entry['japanese'];
-  final jp = japanese is List && japanese.isNotEmpty && japanese.first is Map
-      ? japanese.first as Map
-      : const {};
+  List<Map> writingsOf(Object? entry) {
+    final japanese = entry is Map ? entry['japanese'] : null;
+    return japanese is List ? japanese.whereType<Map>().toList() : const [];
+  }
+
+  var entry = entries.first as Map;
+  Map jp = writingsOf(entry).firstOrNull ?? const {};
+  if (term.isNotEmpty) {
+    for (final e in entries.whereType<Map>()) {
+      final exact = writingsOf(e).where((w) => w['word'] == term).firstOrNull;
+      if (exact != null) {
+        entry = e;
+        jp = exact;
+        break;
+      }
+    }
+  }
   final reading = jp['reading'] as String? ?? '';
   // Dictionary form: the kanji writing, or the slug, or the reading (kana words).
   final word = jp['word'] as String? ?? entry['slug'] as String? ?? reading;

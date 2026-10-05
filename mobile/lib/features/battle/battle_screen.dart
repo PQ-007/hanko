@@ -70,11 +70,18 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
       );
     }
     if (c.notEnoughWords) {
-      return _Message(text: T.notEnoughWordsBattle, onBack: () => context.pop());
+      return _Message(
+        text: T.notEnoughWordsBattle,
+        onBack: () => context.pop(),
+      );
     }
     if (c.card == null && c.events.isEmpty) {
       if (c.loadError != null) {
-        return _Message(text: T.queueLoadFailed, detail: c.loadError, onBack: () => context.pop());
+        return _Message(
+          text: T.queueLoadFailed,
+          detail: c.loadError,
+          onBack: () => context.pop(),
+        );
       }
       return _Message(
         text: T.noWordsDueBattle,
@@ -84,8 +91,9 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         action: widget.free
             ? null
             : FilledButton(
-                onPressed: () =>
-                    context.pushReplacement(Routes.hunt(deckId: widget.deckId, free: true)),
+                onPressed: () => context.pushReplacement(
+                  Routes.hunt(deckId: widget.deckId, free: true),
+                ),
                 child: const Text(T.freePracticeCta),
               ),
       );
@@ -127,14 +135,25 @@ class _Arena extends StatelessWidget {
           // Leave / pause on the left; kills, armour and undo on the right.
           Row(
             children: [
-              _BarButton(icon: Icons.arrow_back, label: T.exitBattle, onTap: () => context.pop()),
-              _BarButton(icon: Icons.pause, label: T.pauseBattle, onTap: c.togglePause),
+              _BarButton(
+                icon: Icons.arrow_back,
+                label: T.exitBattle,
+                onTap: () => context.pop(),
+              ),
+              _BarButton(
+                icon: Icons.pause,
+                label: T.pauseBattle,
+                onTap: c.togglePause,
+              ),
               const Spacer(),
               if (c.defeatedMonsters.isNotEmpty)
                 _Chip(text: '☠ ${T.killCount(c.defeatedMonsters.length)}'),
               if (s.armorCharges > 0) ...[
                 const SizedBox(width: 6),
-                const _Chip(text: '🛡 ${T.armorGainedLabel}', tint: Color(0xFF38BDF8)),
+                const _Chip(
+                  text: '🛡 ${T.armorGainedLabel}',
+                  tint: Color(0xFF38BDF8),
+                ),
               ],
               IconButton(
                 tooltip: T.undoTitle,
@@ -145,20 +164,27 @@ class _Arena extends StatelessWidget {
               ),
             ],
           ),
-          if (c.saveError) const _Banner(text: T.saveFailed, color: Color(0xFFF87171)),
+          if (c.saveError)
+            const _Banner(text: T.saveFailed, color: Color(0xFFF87171)),
           // Stated plainly: free answers don't count toward scheduling.
-          if (free) const _Banner(text: T.freePracticeBanner, color: Color(0xFF38BDF8)),
+          if (free)
+            const _Banner(text: T.freePracticeBanner, color: Color(0xFF38BDF8)),
           if (c.fromCache || c.queuedOffline > 0)
             const _Banner(text: T.offlineQueued, color: Color(0xFFFBBF24)),
           const SizedBox(height: 6),
           _HpStrip(playerHp: s.playerHp, monsterHp: s.monsterHp),
           // Fixed height, always present, so nothing below jumps between
           // questions.
-          SizedBox(height: 34, child: Center(child: _AnswerLine(c: c))),
+          SizedBox(
+            height: 34,
+            child: Center(child: _AnswerLine(c: c)),
+          ),
           // The fighters take the space that's left; the question card is
           // sized to its content and sits in thumb reach rather than being
           // stretched down to the bottom edge.
-          Expanded(child: Center(child: _FighterRow(c: c))),
+          Expanded(
+            child: Center(child: _FighterRow(c: c)),
+          ),
           const SizedBox(height: 10),
           _QuestionCard(c: c),
           SizedBox(height: thumbZoneLift(context) * 0.5),
@@ -178,11 +204,18 @@ class _HpStrip extends StatelessWidget {
     Widget bar(int hp, {required bool fromRight}) {
       final pct = (hp / playerMaxHp).clamp(0.0, 1.0);
       return Column(
-        crossAxisAlignment: fromRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: fromRight
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
-          Text('$hp/$playerMaxHp',
-              style: TextStyle(
-                  color: _paper.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(
+            '$hp/$playerMaxHp',
+            style: TextStyle(
+              color: _paper.withValues(alpha: 0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 3),
           Container(
             height: 14,
@@ -200,7 +233,9 @@ class _HpStrip extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF43F5E)]),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFDC2626), Color(0xFFF43F5E)],
+                  ),
                 ),
               ),
             ),
@@ -225,8 +260,14 @@ class _HpStrip extends StatelessWidget {
               colors: [HankoColors.seal, HankoColors.sealDark],
             ),
           ),
-          child: const Text('VS',
-              style: TextStyle(color: _paper, fontSize: 11, fontWeight: FontWeight.w800)),
+          child: const Text(
+            'VS',
+            style: TextStyle(
+              color: _paper,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
         Expanded(child: bar(monsterHp, fromRight: false)),
       ],
@@ -250,37 +291,52 @@ class _AnswerLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = c.lastAnswer;
     final f = c.flag;
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 10,
-      children: [
-        // The word just answered, with its reading — answering by meaning never
-        // shows how it's pronounced, so it's shown after, when it can't help.
-        if (a != null)
-          Text.rich(
-            TextSpan(children: [
-              TextSpan(text: a.term),
-              if (a.reading != null && a.reading!.isNotEmpty && a.reading != a.term)
-                TextSpan(text: '  ${a.reading}', style: const TextStyle(fontWeight: FontWeight.w400)),
-            ]),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: a.correct ? const Color(0xFF34D399) : const Color(0xFFF87171),
+    // One line, shrunk to fit: the strip is a fixed 34px, so wrapping a long
+    // term and its reading onto a second line would just clip it.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 10,
+        children: [
+          // The word just answered, with its reading — answering by meaning never
+          // shows how it's pronounced, so it's shown after, when it can't help.
+          if (a != null)
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: a.term),
+                  if (a.reading != null &&
+                      a.reading!.isNotEmpty &&
+                      a.reading != a.term)
+                    TextSpan(
+                      text: '  ${a.reading}',
+                      style: const TextStyle(fontWeight: FontWeight.w400),
+                    ),
+                ],
+              ),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: a.correct
+                    ? const Color(0xFF34D399)
+                    : const Color(0xFFF87171),
+              ),
             ),
-          ),
-        if (f != null)
-          Text(
-            _flagText[f]!,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-              color: f == BattleFlag.victory ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+          if (f != null)
+            Text(
+              _flagText[f]!,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: f == BattleFlag.victory
+                    ? const Color(0xFF34D399)
+                    : const Color(0xFFFBBF24),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -291,68 +347,76 @@ class _FighterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, box) {
-      final size = min(150.0, box.maxWidth * 0.36);
-      final heroX = box.maxWidth * 0.27;
-      final monsterX = box.maxWidth * 0.73;
-      return SizedBox(
-        height: size + 20,
-        child: _Shake(
-          shakeId: c.shakeId,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: heroX - size / 2,
-                bottom: 0,
-                child: SpriteView(
-                  slug: c.hero,
-                  state: c.playerDisplayPose,
-                  replayKey: c.playerPoseKey,
-                  size: size,
-                  onOneShotEnd: c.playerPoseEnded,
-                ),
-              ),
-              Positioned(
-                left: monsterX - size / 2,
-                bottom: 0,
-                child: _Spawn(
-                  key: ValueKey(c.monster),
+    return LayoutBuilder(
+      builder: (context, box) {
+        final size = min(150.0, box.maxWidth * 0.36);
+        final heroX = box.maxWidth * 0.27;
+        final monsterX = box.maxWidth * 0.73;
+        return SizedBox(
+          height: size + 20,
+          child: _Shake(
+            shakeId: c.shakeId,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: heroX - size / 2,
+                  bottom: 0,
                   child: SpriteView(
-                    slug: c.monster,
-                    state: c.monsterDisplayPose,
-                    replayKey: c.monsterPoseKey,
+                    slug: c.hero,
+                    state: c.playerDisplayPose,
+                    replayKey: c.playerPoseKey,
                     size: size,
-                    flip: true,
-                    onOneShotEnd: c.monsterPoseEnded,
+                    onOneShotEnd: c.playerPoseEnded,
                   ),
                 ),
-              ),
-              if (c.shot case final shot?)
-                _Flight(
-                  key: ValueKey(shot.id),
-                  shot: shot,
-                  fromX: shot.towardRight ? heroX : monsterX,
-                  toX: shot.towardRight ? monsterX : heroX,
-                  size: size,
+                Positioned(
+                  left: monsterX - size / 2,
+                  bottom: 0,
+                  child: _Spawn(
+                    key: ValueKey(c.monster),
+                    child: SpriteView(
+                      slug: c.monster,
+                      state: c.monsterDisplayPose,
+                      replayKey: c.monsterPoseKey,
+                      size: size,
+                      flip: true,
+                      onOneShotEnd: c.monsterPoseEnded,
+                    ),
+                  ),
                 ),
-              if (c.popup case final p?)
-                _Popup(
-                  key: ValueKey(p.id),
-                  popup: p,
-                  x: p.onMonster ? monsterX : heroX,
-                ),
-            ],
+                if (c.shot case final shot?)
+                  _Flight(
+                    key: ValueKey(shot.id),
+                    shot: shot,
+                    fromX: shot.towardRight ? heroX : monsterX,
+                    toX: shot.towardRight ? monsterX : heroX,
+                    size: size,
+                  ),
+                if (c.popup case final p?)
+                  _Popup(
+                    key: ValueKey(p.id),
+                    popup: p,
+                    x: p.onMonster ? monsterX : heroX,
+                  ),
+              ],
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
 /// A shot crossing from thrower to target (ProjectileShot.tsx).
 class _Flight extends StatelessWidget {
-  const _Flight({super.key, required this.shot, required this.fromX, required this.toX, required this.size});
+  const _Flight({
+    super.key,
+    required this.shot,
+    required this.fromX,
+    required this.toX,
+    required this.size,
+  });
   final Shot shot;
   final double fromX;
   final double toX;
@@ -390,8 +454,8 @@ class _Popup extends StatelessWidget {
     final color = !popup.onMonster
         ? const Color(0xFFEF4444)
         : popup.crit
-            ? const Color(0xFFFBBF24)
-            : const Color(0xFF34D399);
+        ? const Color(0xFFFBBF24)
+        : const Color(0xFF34D399);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 850),
@@ -436,8 +500,10 @@ class _Shake extends StatelessWidget {
       key: ValueKey(shakeId),
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 320),
-      builder: (context, t, child) =>
-          Transform.translate(offset: Offset(sin(t * pi * 6) * 7 * (1 - t), 0), child: child),
+      builder: (context, t, child) => Transform.translate(
+        offset: Offset(sin(t * pi * 6) * 7 * (1 - t), 0),
+        child: child,
+      ),
       child: child,
     );
   }
@@ -484,7 +550,10 @@ class _QuestionCard extends StatelessWidget {
     final card = c.card;
     if (quiz == null || card == null) {
       return Center(
-        child: Text(T.loadingQuiz, style: TextStyle(color: _paper.withValues(alpha: 0.5))),
+        child: Text(
+          T.loadingQuiz,
+          style: TextStyle(color: _paper.withValues(alpha: 0.5)),
+        ),
       );
     }
     final pct = c.remainingMs / questionTimeLimitMs;
@@ -495,14 +564,26 @@ class _QuestionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: HankoColors.parchment,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 16, offset: Offset(0, 6))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(card.term,
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: ink)),
+            child: Text(
+              card.term,
+              style: const TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.w800,
+                color: ink,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -514,7 +595,9 @@ class _QuestionCard extends StatelessWidget {
                     value: pct,
                     minHeight: 9,
                     backgroundColor: Colors.black.withValues(alpha: 0.08),
-                    color: low ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                    color: low
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFFF59E0B),
                   ),
                 ),
               ),
@@ -525,7 +608,9 @@ class _QuestionCard extends StatelessWidget {
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: low ? const Color(0xFFDC2626) : const Color(0xFF666053),
+                    color: low
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF666053),
                   ),
                 ),
               ),
@@ -565,7 +650,12 @@ class _QuestionCard extends StatelessWidget {
 }
 
 class _Option extends StatelessWidget {
-  const _Option({required this.letter, required this.color, required this.text, required this.onTap});
+  const _Option({
+    required this.letter,
+    required this.color,
+    required this.text,
+    required this.onTap,
+  });
   final String letter;
   final Color color;
   final String text;
@@ -589,22 +679,72 @@ class _Option extends StatelessWidget {
                 height: 22,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Text(letter,
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
                 child: Text(
-                  text,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, height: 1.25, color: Color(0xFF1F2933)),
+                  letter,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(child: _FitText(text)),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// An answer's text at the largest size (14 down to 9) where every word fits
+/// whole on a line and the lot fits in the tile — a long Mongolian word is
+/// shrunk rather than broken across two lines mid-word.
+class _FitText extends StatelessWidget {
+  const _FitText(this.text);
+  final String text;
+
+  static const _ink = Color(0xFF1F2933);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final scaler = MediaQuery.textScalerOf(context);
+        final dir = Directionality.of(context);
+        TextStyle styleAt(double size) =>
+            TextStyle(fontSize: size, height: 1.25, color: _ink);
+        bool fits(double size) {
+          final style = styleAt(size);
+          for (final word in text.split(RegExp(r'\s+'))) {
+            final w = TextPainter(
+              text: TextSpan(text: word, style: style),
+              textDirection: dir,
+              textScaler: scaler,
+              maxLines: 1,
+            )..layout();
+            if (w.width > box.maxWidth) return false;
+          }
+          final all = TextPainter(
+            text: TextSpan(text: text, style: style),
+            textDirection: dir,
+            textScaler: scaler,
+          )..layout(maxWidth: box.maxWidth);
+          return all.height <= box.maxHeight;
+        }
+
+        var size = 14.0;
+        while (size > 9 && !fits(size)) {
+          size -= 1;
+        }
+        return Text(
+          text,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 4,
+          style: styleAt(size),
+        );
+      },
     );
   }
 }
@@ -626,14 +766,26 @@ class _PauseOverlay extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.pause, size: 34, color: _paper.withValues(alpha: 0.7)),
+                Icon(
+                  Icons.pause,
+                  size: 34,
+                  color: _paper.withValues(alpha: 0.7),
+                ),
                 const SizedBox(height: 10),
-                const Text(T.pausedTitle,
-                    style: TextStyle(color: _paper, fontSize: 24, fontWeight: FontWeight.w800)),
+                const Text(
+                  T.pausedTitle,
+                  style: TextStyle(
+                    color: _paper,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text(T.pausedDesc,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: _paper.withValues(alpha: 0.6))),
+                Text(
+                  T.pausedDesc,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _paper.withValues(alpha: 0.6)),
+                ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: c.togglePause,
@@ -645,7 +797,9 @@ class _PauseOverlay extends StatelessWidget {
                   onPressed: () => context.pop(),
                   icon: const Icon(Icons.arrow_back),
                   label: const Text(T.exitBattle),
-                  style: TextButton.styleFrom(foregroundColor: _paper.withValues(alpha: 0.75)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _paper.withValues(alpha: 0.75),
+                  ),
                 ),
               ],
             ),
@@ -657,7 +811,11 @@ class _PauseOverlay extends StatelessWidget {
 }
 
 class _BarButton extends StatelessWidget {
-  const _BarButton({required this.icon, required this.label, required this.onTap});
+  const _BarButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -691,7 +849,14 @@ class _Chip extends StatelessWidget {
         color: c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(text, style: TextStyle(color: c.withValues(alpha: 0.85), fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: c.withValues(alpha: 0.85),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -712,15 +877,22 @@ class _Banner extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(text,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: color.withValues(alpha: 0.9), fontSize: 12)),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: color.withValues(alpha: 0.9), fontSize: 12),
+      ),
     );
   }
 }
 
 class _Message extends StatelessWidget {
-  const _Message({required this.text, this.detail, required this.onBack, this.action});
+  const _Message({
+    required this.text,
+    this.detail,
+    required this.onBack,
+    this.action,
+  });
   final String text;
   final String? detail;
   final VoidCallback onBack;
@@ -734,20 +906,33 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: _paper, fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _paper,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (detail != null) ...[
               const SizedBox(height: 8),
-              Text(detail!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _paper.withValues(alpha: 0.6), fontSize: 13)),
+              Text(
+                detail!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _paper.withValues(alpha: 0.6),
+                  fontSize: 13,
+                ),
+              ),
             ],
             const SizedBox(height: 20),
             ?action,
             TextButton(
               onPressed: onBack,
-              style: TextButton.styleFrom(foregroundColor: _paper.withValues(alpha: 0.75)),
+              style: TextButton.styleFrom(
+                foregroundColor: _paper.withValues(alpha: 0.75),
+              ),
               child: const Text(T.back),
             ),
           ],

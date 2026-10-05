@@ -62,12 +62,18 @@ class Repository {
     return rows.map((r) => Folder.fromJson(r)).toList();
   }
 
-  Future<void> createFolder(String name, {String? parentId}) async {
-    await _db.from('folders').insert({
-      'user_id': _uid,
-      'name': name,
-      'parent_id': ?parentId,
-    });
+  /// Returns the new folder's id.
+  Future<String> createFolder(String name, {String? parentId}) async {
+    final row = await _db
+        .from('folders')
+        .insert({
+          'user_id': _uid,
+          'name': name,
+          'parent_id': ?parentId,
+        })
+        .select('id')
+        .single();
+    return row['id'] as String;
   }
 
   Future<void> renameFolder(String folderId, String name) async {
@@ -98,12 +104,18 @@ class Repository {
     return rows.map((r) => Deck.fromJson(r)).toList();
   }
 
-  Future<void> createDeck(String name, {String? folderId}) async {
-    await _db.from('decks').insert({
-      'user_id': _uid,
-      'name': name,
-      'folder_id': ?folderId,
-    });
+  /// Returns the new deck's id.
+  Future<String> createDeck(String name, {String? folderId}) async {
+    final row = await _db
+        .from('decks')
+        .insert({
+          'user_id': _uid,
+          'name': name,
+          'folder_id': ?folderId,
+        })
+        .select('id')
+        .single();
+    return row['id'] as String;
   }
 
   Future<void> moveDeck(String deckId, String? folderId) async {

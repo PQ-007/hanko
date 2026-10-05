@@ -148,5 +148,6 @@ void main() {
     expect(pending.single.source, 'review', reason: 'pre-v2 answers were classic review');
     await upgraded.cacheQuizWords([CachedQuizWordsCompanion.insert(id: 'w', term: 't')]);
     expect(await upgraded.cachedQuizWordList(), hasLength(1), reason: 'new table exists');
+    expect(await upgraded.pendingWordList(), isEmpty, reason: 'v3 word outbox exists too');
   });
 }
