@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Layers, Swords } from "lucide-react";
+import { LayoutDashboard, Layers, Swords, Users } from "lucide-react";
 import { T } from "../_lib/strings";
 
 const LINKS = [
   { href: "/decks/stats", label: T.dashboardNav, icon: LayoutDashboard },
   { href: "/decks", label: T.decksNav, icon: Layers },
   { href: "/decks/review", label: T.practiceNav, icon: Swords },
+  { href: "/decks/friends", label: T.friendsNav, icon: Users },
 ];
 
 export default function HeaderNav() {

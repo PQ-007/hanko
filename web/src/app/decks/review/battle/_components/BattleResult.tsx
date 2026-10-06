@@ -60,6 +60,7 @@ export default function BattleResult({
   monster,
   monsterDown,
   onRetry,
+  action,
 }: {
   outcome: Exclude<BattleOutcome, "ongoing">;
   reviewedCount: number;
@@ -77,6 +78,8 @@ export default function BattleResult({
   // the arena, and the defeat screen just sat there. In-place reset also
   // keeps ?mode=free, which that link silently dropped.
   onRetry?: () => void;
+  /** Replaces the stats link (the share page's trial has no stats). */
+  action?: React.ReactNode;
 }) {
   const defeated = outcome === "defeat";
   // The monster on screen when the run ended counts too, if the run ended on
@@ -200,13 +203,15 @@ export default function BattleResult({
           )}
           {/* hk-btn-quiet is a white button — glaring beside the seal one on a
               dark stage. The secondary action is an outline here instead. */}
-          <Link
-            href="/decks/stats"
-            className="hk-btn flex-1 border border-white/15 bg-white/5 px-4 py-3 text-sm text-paper hover:bg-white/10"
-          >
-            <X size={15} />
-            {T.stopBattle}
-          </Link>
+          {action ?? (
+            <Link
+              href="/decks/stats"
+              className="hk-btn flex-1 border border-white/15 bg-white/5 px-4 py-3 text-sm text-paper hover:bg-white/10"
+            >
+              <X size={15} />
+              {T.stopBattle}
+            </Link>
+          )}
         </div>
       </div>
     </div>

@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FolderClosed, GraduationCap, LayoutGrid, LayoutList, Plus, RefreshCw } from "lucide-react";
+import { FolderClosed, GraduationCap, LayoutGrid, LayoutList, Plus, RefreshCw, Share2 } from "lucide-react";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { buildLibraryTree, flattenTree } from "../_lib/folderTree";
 import { T } from "../_lib/strings";
 import type { WordView } from "../_lib/types";
+import DeckShareModal from "./DeckShareModal";
 
 export default function DeckHeader({
   deck,
@@ -30,6 +31,7 @@ export default function DeckHeader({
   const [name, setName] = useState(deck.name);
   const [exporting, setExporting] = useState<"apkg" | "txt" | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   function refresh() {
     setRefreshing(true);
@@ -177,6 +179,12 @@ export default function DeckHeader({
           )}
         </button>
         <button
+          onClick={() => setSharing(true)}
+          className="flex items-center gap-1 rounded-control border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-dim"
+        >
+          <Share2 size={15} /> {T.shareDeck}
+        </button>
+        <button
           onClick={() => download("apkg")}
           disabled={exporting !== null}
           className="hk-btn hk-btn-primary px-3 py-1.5 text-sm disabled:opacity-60"
@@ -197,6 +205,7 @@ export default function DeckHeader({
           {T.delete}
         </button>
       </div>
+      {sharing && <DeckShareModal deck={deck} onClose={() => setSharing(false)} />}
     </div>
   );
 }

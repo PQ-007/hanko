@@ -127,7 +127,11 @@ export default function DuelLobby() {
 
   async function cancelMatch() {
     if (!match) return;
-    await supabase.rpc("forfeit_match", { p_match_id: match.id });
+    // concede, not forfeit: if a guest joined in the same instant, they win.
+    // forfeit_match would hand the win to whoever calls it. Without 0026 the
+    // fallback is only reached for a lobby, which has no winner anyway.
+    const { error: err } = await supabase.rpc("concede_match", { p_match_id: match.id });
+    if (err) await supabase.rpc("forfeit_match", { p_match_id: match.id });
     setMatch(null);
   }
 

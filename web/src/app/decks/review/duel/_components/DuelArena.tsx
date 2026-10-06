@@ -116,7 +116,8 @@ export default function DuelArena({
   }, [deckId]);
 
   const state = useMemo(() => deriveDuelState(rounds), [rounds]);
-  const outcome = duelOutcome(state, roundCount);
+  // An opponent who stopped answering for several rounds has left: you win.
+  const outcome = opponent.left?.() ? "won" : duelOutcome(state, roundCount);
   const durationMs = roundDurationMs(roundNo);
 
   // Wraps rather than running out: practice_cards returns up to 60 random
@@ -355,6 +356,7 @@ export default function DuelArena({
         hero={hero}
         onRematch={onRematch}
         exitHref={exitHref}
+        opponentLeft={opponent.left?.() ?? false}
       />
     );
   }
@@ -368,6 +370,15 @@ export default function DuelArena({
         <div className="flex items-center justify-between gap-2 text-xs">
           <Link
             href={exitHref}
+            onClick={(e) => {
+              // Leaving a live match against a person concedes it — after asking.
+              if (!opponent.concede) return;
+              if (!window.confirm(`${T.duelLeaveTitle}\n${T.duelLeaveDesc}`)) {
+                e.preventDefault();
+                return;
+              }
+              void opponent.concede().catch(() => {});
+            }}
             className="flex items-center gap-1 rounded-control px-2 py-1 font-medium text-paper/60 transition hover:bg-white/10 hover:text-paper"
           >
             <ArrowLeft size={13} /> {T.exitBattle}

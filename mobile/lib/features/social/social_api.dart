@@ -15,6 +15,12 @@ final myProfileProvider = FutureProvider<MyProfile>(
 final friendOverviewProvider = FutureProvider<List<FriendRow>>(
   (ref) => ref.watch(socialApiProvider).overview(),
 );
+
+/// The everyone board (0027), by 'week' | 'total' | 'elo'.
+final globalBoardProvider = FutureProvider.family<List<GlobalRow>, String>(
+  (ref, by) => ref.watch(socialApiProvider).globalBoard(by),
+);
+
 final friendRequestsProvider = FutureProvider<List<FriendRequest>>(
   (ref) => ref.watch(socialApiProvider).requests(),
 );
@@ -100,6 +106,34 @@ class FriendRow {
       for (final k in (j['recent_kanji'] as List?) ?? const []) k as String,
     ],
     activeDaysWeek: _i(j['active_days_week']),
+  );
+}
+
+/// One row of global_leaderboard() (0027): a handle and scores only — a
+/// stranger's name, picture and activity are never sent.
+class GlobalRow {
+  const GlobalRow({
+    required this.rank,
+    required this.handle,
+    required this.isMe,
+    required this.isFriend,
+    required this.xpTotal,
+    required this.xpWeek,
+    required this.elo,
+  });
+  final int rank;
+  final String handle;
+  final bool isMe, isFriend;
+  final int xpTotal, xpWeek, elo;
+
+  factory GlobalRow.fromJson(Map<String, dynamic> j) => GlobalRow(
+    rank: (j['rank'] as num).toInt(),
+    handle: j['handle'] as String,
+    isMe: j['is_me'] as bool? ?? false,
+    isFriend: j['is_friend'] as bool? ?? false,
+    xpTotal: (j['xp_total'] as num?)?.toInt() ?? 0,
+    xpWeek: (j['xp_week'] as num?)?.toInt() ?? 0,
+    elo: (j['elo'] as num?)?.toInt() ?? 1000,
   );
 }
 
@@ -192,6 +226,15 @@ class SocialApi {
     final rows = await db.rpc('friend_overview') as List;
     return [
       for (final r in rows.cast<Map<String, dynamic>>()) FriendRow.fromJson(r),
+    ];
+  }
+
+  Future<List<GlobalRow>> globalBoard(String by) async {
+    final rows =
+        await db.rpc('global_leaderboard', params: {'p_by': by, 'p_limit': 50})
+            as List;
+    return [
+      for (final r in rows.cast<Map<String, dynamic>>()) GlobalRow.fromJson(r),
     ];
   }
 

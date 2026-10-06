@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Dumbbell, GraduationCap, Settings2, Swords, Users, X } from "lucide-react";
+import { Dumbbell, GraduationCap, PenLine, Settings2, Swords, Users, X } from "lucide-react";
 import { T } from "../_lib/strings";
 import { useModalChrome } from "../_lib/useModal";
 import { MIN_WORDS_FOR_BATTLE } from "../review/battle/_lib/quiz";
@@ -113,6 +113,16 @@ export default function ReviewModeModal({
             iconClass="bg-paper-dim text-ink ring-1 ring-line-soft"
             title={T.classicModeTitle}
             desc={T.classicModeDesc}
+          />
+
+          {/* Kanji writing lessons (mobile parity). Practice only — 'drill'. */}
+          <ModeRow
+            href="/decks/writing"
+            onNavigate={onClose}
+            icon={<PenLine size={19} />}
+            iconClass="bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+            title={T.writingTitle}
+            desc={T.writingDesc}
           />
 
           {/* 4 — PvP. Built now (PVP.md): a bot opponent needs no second

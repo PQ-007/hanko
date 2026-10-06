@@ -402,7 +402,7 @@ Do not confuse it with 3.2 below — different mode, different `source` value:
 | Classic review | `review` | yes |
 | **Monster Hunt (scored)** | **`quiz`** | **yes** |
 | Free practice / speed round | `drill` | no |
-| Kanji writing (mobile, ML Kit handwriting) | `drill` | no |
+| Kanji writing lessons (mobile + web) | `drill` | no |
 | PvP duel (3.2, unbuilt) | `battle` | no |
 
 **`quiz` is not a downgrade of `review`.** Monster Hunt is real recall practice
@@ -433,19 +433,33 @@ by `generate-battle-fixture.ts`, read by `battle-fixture.test.ts` and
 intended behaviour change, and change both sides. Offline answers keep their
 `quiz` label through the outbox (`PendingAnswers.source`, Drift schema v2).
 
-**Mobile's hunt also asks the learner to write the word; the web's doesn't.**
-Each mobile question is either the word → its meaning (the web's only kind,
-still built by the fixture-pinned `buildQuiz`) or reading + meaning → write
-the kanji (`question_kinds.dart`, 3:2), one kanji per box, checked by the same
-`KanjiChecker` as the writing lessons. A missed kanji's correction is drawn on
-the pad and the clock holds (`holdForCorrection`) until the learner continues;
-only then does the miss land. Writing gets 12 s per kanji, its speed tier is
-judged against that limit (`speedFor`), and a correct written answer does
-×1.5 damage — applied to the event *after* `rollEvent`, so the shared rules
-and battle.fixture.json are untouched. Both kinds answer as `quiz` and
-schedule. "Pick the word" and "listen" kinds were tried and dropped as
-clutter. If the web adopts writing, port `question_kinds.dart` and pin it with
-a fixture the same way.
+**Both hunts also ask the learner to write the word.**
+Each question is either the word → its meaning (built by the fixture-pinned
+`buildQuiz`) or reading + meaning → write the kanji, 3:2, one kanji per box
+(mobile `question_kinds.dart`, web `battle/_lib/questionKinds.ts`, same cases
+in both tests). A missed kanji's correction is drawn on the pad and the clock
+holds until the learner continues; only then does the miss land. Writing gets
+12 s per kanji, its speed tier is judged against that limit (`speedFor`), and
+a correct written answer does ×1.5 damage — applied to the event *after*
+`rollEvent`, so the shared rules and battle.fixture.json are untouched. Both
+kinds answer as `quiz` and schedule. "Pick the word" and "listen" kinds were
+tried and dropped as clutter.
+
+How the two check a kanji differs, on purpose: mobile runs ML Kit digital ink
+and then the stroke grader (`KanjiChecker`); the web has no recogniser, so it
+uses the grader alone (`writing/_lib/strokes.ts`) and only offers a word for
+writing once KanjiVG stroke data for every kanji in it has loaded (the arena
+prefetches the queue's kanji). The two graders are pinned against each other
+by `writing/_lib/fixtures/strokes.fixture.json`, generated from Dart by
+`mobile/test/stroke_fixture_test.dart` (`GEN_STROKE_FIXTURE=1`) and read by
+`strokes.test.ts`. The same rule as the other fixtures applies: regenerate only
+for an intended change, and change both graders.
+
+**Kanji writing lessons exist on both clients** (mobile `features/writing/`,
+web `/decks/writing`): pick words or kanji, then trace → some strokes → from
+memory per new kanji, then the whole word (`lesson.ts` ports `lesson.dart`,
+same cases). Answers log as `drill` and learned kanji go to `learned_kanji`
+(0026). On the web, a kanji with no stroke data falls back to self-judging.
 
 Mobile's review sheet is three modes — Monster Hunt, classic cards, kanji
 writing — plus a leech-rescue link shown only when leeches exist. Speed round
@@ -483,7 +497,9 @@ gone", called by the one still there. Leaving a match must call
 `concede_match` (0026, caller loses) instead; mobile did call forfeit on
 leave at first, which with ELO would have been a free win for walking out.
 A remote opponent with no answer row for 3 rounds in a row (timeouts still
-write one) is treated as gone, and that client calls `forfeit_match`.
+write one) is treated as gone, and that client calls `forfeit_match`. Both
+clients do this now (web: `remoteOpponent.ts` `left()` / `concede()`,
+mobile: `opponent.dart`).
 
 Two things a future session must not "tidy up":
 
@@ -546,9 +562,11 @@ scheduling anything, with nothing erroring — see 3.1b.
 
 ---
 
-## Friends, XP and ELO (mobile, `0026_social.sql`)
+## Friends, XP and ELO (`0026_social.sql`) — mobile and web
 
-The **Найзууд** tab: friends by handle (`profiles.handle`, never by email),
+Mobile's **Найзууд** tab and the web's `/decks/friends` page (nav tab
+**Найзууд**; `web/src/app/decks/friends/`, helpers in `_lib/social.ts` with
+the same level curve as mobile, pinned by matching tests): friends by handle (`profiles.handle`, never by email),
 requests through `send_friend_request` / `respond_friend_request` /
 `remove_friend`, a friends-only leaderboard (7-day XP, total XP, ELO) and
 each friend's activity — all from one `friend_overview()` that decides on
@@ -563,9 +581,39 @@ hides a user's numbers even from friends.
   (K=32, guarded by `matches.rating_applied`). Verified as the
   `authenticated` role: forged rating/friendship writes, direct `user_xp` /
   `are_friends` calls and cross-user kanji writes are all refused.
+- **Global board** (`0027_global_leaderboard.sql`, the **Бүгд** switch on
+  both leaderboards): every user with a handle who shares, top 50 plus your
+  own row at its real rank. Strangers get **handle and scores only** — no
+  name, picture, activity or user id. Because a public board is worth
+  farming, `user_xp` caps non-scheduling XP (drill + battle answers) at 100 a
+  day; scheduling answers stay uncapped since `review_queue()` already limits
+  them. `global_leaderboard()` computes XP for every eligible user per call —
+  fine at this size, materialise it if the user count grows.
 - **Learned kanji** (writing lessons) sync to `learned_kanji`; the phone keeps
   a local copy for offline lessons and merges on each lesson start
   (`syncLearnedKanji`).
+
+## Public deck links and story images (`0028_deck_share.sql`) — web only
+
+- **`/share/<token>`** (`web/src/app/share/`) is outside `/decks`, so the
+  proxy never sends a visitor to /login. Anyone with the link sees the deck's
+  words and can play Monster Hunt or flip cards with **no account and nothing
+  saved**: `_lib/trial.ts` is a local stand-in for `usePracticeSession`
+  (pinned by `trial.test.ts`), and the real arena runs on it — `BattleArena.tsx`
+  exports `Arena`, which takes any `ArenaSession`. A signed-in visitor can copy
+  the deck (`copy_shared_deck`; the copy gets fresh `new` cards, never the
+  owner's history).
+- What a link exposes is decided in one place, `shared_deck()`: deck name +
+  term/reading/meaning/meaning_mn, max 500 words. No owner, no ids, no SRS
+  state. Tokens are 128 random bits; turning a link off clears it and turning
+  it on again issues a new one. Owners toggle it from the deck header (Share).
+- Story images (1080×1920) are drawn on a canvas in the browser
+  (`decks/_lib/storyCard.ts`), shared through the Web Share API where it can
+  share files, downloaded otherwise. "Today's words" on the stats page reads
+  `share_today()` — the caller's recalls since the SRS-day start, excluding
+  misses, undone answers and PvP (`battle`). Link previews come from
+  `share/[token]/opengraph-image.tsx`, which pulls a Noto Sans JP subset from
+  Google Fonts at render time (falls back to the default face offline).
 
 ## Stack
 

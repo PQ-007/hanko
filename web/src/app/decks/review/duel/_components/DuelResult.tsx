@@ -45,6 +45,7 @@ export default function DuelResult({
   hero,
   onRematch,
   exitHref,
+  opponentLeft = false,
 }: {
   outcome: DuelOutcome;
   rounds: ResolvedRound[];
@@ -54,6 +55,8 @@ export default function DuelResult({
   hero: string;
   onRematch?: () => void;
   exitHref: string;
+  /** The win came from the other player leaving, not from the fight. */
+  opponentLeft?: boolean;
 }) {
   const { correct, damage, bestStreak } = summarise(rounds);
 
@@ -61,7 +64,9 @@ export default function DuelResult({
     outcome === "won" ? T.duelWon : outcome === "lost" ? T.duelLost : T.duelDraw;
   const desc =
     outcome === "won"
-      ? T.duelWonDesc
+      ? opponentLeft
+        ? T.duelOpponentLeft
+        : T.duelWonDesc
       : outcome === "lost"
         ? T.duelLostDesc
         : T.duelDrawDesc;

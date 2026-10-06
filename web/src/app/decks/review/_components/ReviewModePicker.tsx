@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, Swords, Users } from "lucide-react";
+import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, PenLine, Swords, Users } from "lucide-react";
 import { supabase } from "../../_lib/db";
 import { T } from "../../_lib/strings";
 import { MIN_WORDS_FOR_BATTLE } from "../battle/_lib/quiz";
@@ -304,6 +304,15 @@ export default function ReviewModePicker() {
             iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
+          />
+
+          {/* Kanji writing lessons (mobile parity). Practice only — 'drill'. */}
+          <ModeRow
+            href="/decks/writing"
+            icon={<PenLine size={19} />}
+            iconClass="bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+            title={T.writingTitle}
+            desc={T.writingDesc}
           />
 
           {/* 4 — Classic. */}

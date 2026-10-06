@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, GraduationCap, Pencil, Plus, Snowflake } from "lucide-react";
+import { Flame, GraduationCap, Pencil, Plus, Share2, Snowflake } from "lucide-react";
 import { T } from "../_lib/strings";
 import { useCountUp, useInView } from "../_lib/useAnim";
 import { RING_ADDED, RING_GOAL } from "../_lib/chartColors";
@@ -20,6 +20,7 @@ export default function StreakHero({
   onPractice,
   onAddWord,
   onEditGoal,
+  onShareToday,
 }: {
   streak: number;
   bestStreak: number;
@@ -39,6 +40,8 @@ export default function StreakHero({
   onAddWord: () => void;
   /** Opens GoalModal to edit newGoal. */
   onEditGoal: () => void;
+  /** Opens the "today's words" story image. */
+  onShareToday?: () => void;
 }) {
   const [ref, inView] = useInView<HTMLDivElement>();
   const shown = useCountUp(streak, 1000, inView);
@@ -104,7 +107,16 @@ export default function StreakHero({
         {/* The line above is about words added today, so the way to add one
             belongs next to it — the dashboard otherwise reports on the
             collection without offering any way to change it. */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+          {onShareToday && (
+            <button
+              onClick={onShareToday}
+              title={T.shareToday}
+              className="flex items-center gap-1.5 hk-btn hk-btn-quiet px-4 py-2.5 text-sm"
+            >
+              <Share2 size={16} /> {T.shareToday}
+            </button>
+          )}
           <button
             onClick={onAddWord}
             className="flex items-center gap-1.5 hk-btn hk-btn-quiet px-4 py-2.5 text-sm"

@@ -18,6 +18,7 @@ import WordSpotlight from "../_components/WordSpotlight";
 import ReviewModeModal from "../_components/ReviewModeModal";
 import QuickAddWordModal from "../_components/QuickAddWordModal";
 import GoalModal from "../_components/GoalModal";
+import TodayShareModal from "../_components/TodayShareModal";
 import LoadingScene from "../review/battle/_components/LoadingScene";
 
 // One SRS day's review count, from the review_activity() RPC (migration 0013).
@@ -60,7 +61,7 @@ export default function StatsDashboard() {
   const [loading, setLoading] = useState(true);
   // Which dialog, if any, is open. Both are mounted below the page rather
   // than inside the hero so a reload triggered by one can't unmount it.
-  const [modal, setModal] = useState<"review" | "add" | "goal" | null>(null);
+  const [modal, setModal] = useState<"review" | "add" | "goal" | "share" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +186,7 @@ export default function StatsDashboard() {
         onPractice={() => setModal("review")}
         onAddWord={() => setModal("add")}
         onEditGoal={() => setModal("goal")}
+        onShareToday={() => setModal("share")}
       />
 
       {logMissing && (
@@ -242,6 +244,7 @@ export default function StatsDashboard() {
           }}
         />
       )}
+      {modal === "share" && <TodayShareModal streak={streak} onClose={() => setModal(null)} />}
       {modal === "goal" && (
         <GoalModal
           currentGoal={newGoal}

@@ -559,6 +559,9 @@ class _BoardView extends ConsumerStatefulWidget {
 class _BoardViewState extends ConsumerState<_BoardView> {
   _Rank _by = _Rank.week;
 
+  /// Everyone (0027) instead of just you and your friends.
+  bool _all = false;
+
   int _score(FriendRow r) => switch (_by) {
     _Rank.week => r.xpWeek ?? 0,
     _Rank.total => r.xpTotal ?? 0,
@@ -571,6 +574,7 @@ class _BoardViewState extends ConsumerState<_BoardView> {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(friendOverviewProvider);
+        ref.invalidate(globalBoardProvider(_by.name));
         await ref
             .read(friendOverviewProvider.future)
             .catchError((_) => <FriendRow>[]);
@@ -578,6 +582,24 @@ class _BoardViewState extends ConsumerState<_BoardView> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
+          SegmentedButton<bool>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: false,
+                icon: Icon(Icons.group_outlined),
+                label: Text(T.socialScopeFriends),
+              ),
+              ButtonSegment(
+                value: true,
+                icon: Icon(Icons.public),
+                label: Text(T.socialScopeAll),
+              ),
+            ],
+            selected: {_all},
+            onSelectionChanged: (s) => setState(() => _all = s.single),
+          ),
+          const SizedBox(height: 8),
           SegmentedButton<_Rank>(
             showSelectedIcon: false,
             segments: const [
@@ -593,80 +615,182 @@ class _BoardViewState extends ConsumerState<_BoardView> {
           ),
           const SizedBox(height: 6),
           Text(
-            _by == _Rank.elo ? T.socialBoardEloNote : T.socialXpNote,
+            _all
+                ? T.socialGlobalNote
+                : (_by == _Rank.elo ? T.socialBoardEloNote : T.socialXpNote),
             style: TextStyle(fontSize: 11, color: context.hk.inkMute),
           ),
           const SizedBox(height: 10),
-          overview.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, _) => Text(
-              T.socialUnavailable,
-              style: TextStyle(color: context.hk.inkMute),
-            ),
-            data: (rows) {
-              // Only people whose numbers are shared can be ranked.
-              final ranked = rows.where((r) => r.shares).toList()
-                ..sort((a, b) => _score(b).compareTo(_score(a)));
-              if (ranked.length < 2) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: Text(
-                    T.socialBoardEmpty,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: context.hk.inkMute),
-                  ),
-                );
-              }
-              return Column(
-                children: [
-                  for (var i = 0; i < ranked.length; i++)
-                    Card(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      color: ranked[i].isMe ? context.hk.sealTint : null,
-                      child: ListTile(
-                        leading: SizedBox(
-                          width: 36,
-                          child: Center(
-                            child: Text(
-                              i < 3 ? ['🥇', '🥈', '🥉'][i] : '${i + 1}',
-                              style: TextStyle(
-                                fontSize: i < 3 ? 24 : 16,
-                                fontWeight: FontWeight.w800,
+          if (_all)
+            _GlobalBoard(by: _by)
+          else
+            overview.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, _) => Text(
+                T.socialUnavailable,
+                style: TextStyle(color: context.hk.inkMute),
+              ),
+              data: (rows) {
+                // Only people whose numbers are shared can be ranked.
+                final ranked = rows.where((r) => r.shares).toList()
+                  ..sort((a, b) => _score(b).compareTo(_score(a)));
+                if (ranked.length < 2) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Text(
+                      T.socialBoardEmpty,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: context.hk.inkMute),
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (var i = 0; i < ranked.length; i++)
+                      Card(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        color: ranked[i].isMe ? context.hk.sealTint : null,
+                        child: ListTile(
+                          leading: SizedBox(
+                            width: 36,
+                            child: Center(
+                              child: Text(
+                                i < 3 ? ['🥇', '🥈', '🥉'][i] : '${i + 1}',
+                                style: TextStyle(
+                                  fontSize: i < 3 ? 24 : 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        title: Text(
-                          ranked[i].isMe
-                              ? '${ranked[i].displayName} (${T.socialYou})'
-                              : ranked[i].displayName,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          [
-                            if (ranked[i].handle != null)
-                              '@${ranked[i].handle}',
-                            T.socialLevel(levelFor(ranked[i].xpTotal ?? 0)),
-                          ].join(' · '),
-                        ),
-                        trailing: Text(
-                          _by == _Rank.elo
-                              ? '${_score(ranked[i])}'
-                              : T.socialXp(_score(ranked[i])),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
+                          title: Text(
+                            ranked[i].isMe
+                                ? '${ranked[i].displayName} (${T.socialYou})'
+                                : ranked[i].displayName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: Text(
+                            [
+                              if (ranked[i].handle != null)
+                                '@${ranked[i].handle}',
+                              T.socialLevel(levelFor(ranked[i].xpTotal ?? 0)),
+                            ].join(' · '),
+                          ),
+                          trailing: Text(
+                            _by == _Rank.elo
+                                ? '${_score(ranked[i])}'
+                                : T.socialXp(_score(ranked[i])),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The everyone board: handle and score only. Your own row always shows,
+/// with your real rank, even below the top 50.
+class _GlobalBoard extends ConsumerWidget {
+  const _GlobalBoard({required this.by});
+  final _Rank by;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final board = ref.watch(globalBoardProvider(by.name));
+    final hasHandle = ref.watch(myProfileProvider).value?.handle != null;
+    return board.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => Text(
+        T.socialUnavailable,
+        style: TextStyle(color: context.hk.inkMute),
+      ),
+      data: (rows) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!hasHandle)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                T.socialGlobalNeedHandle,
+                style: TextStyle(fontSize: 12, color: context.hk.inkSoft),
+              ),
+            ),
+          for (final r in rows) ...[
+            // A gap before your row when it sits below the shown top.
+            if (r.isMe &&
+                rows.indexOf(r) > 0 &&
+                r.rank > rows[rows.indexOf(r) - 1].rank + 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Center(child: Text('⋯')),
+              ),
+            Card(
+              margin: const EdgeInsets.only(bottom: 6),
+              color: r.isMe ? context.hk.sealTint : null,
+              child: ListTile(
+                leading: SizedBox(
+                  width: 40,
+                  child: Center(
+                    child: Text(
+                      r.rank <= 3
+                          ? ['🥇', '🥈', '🥉'][r.rank - 1]
+                          : '${r.rank}',
+                      style: TextStyle(
+                        fontSize: r.rank <= 3 ? 24 : 15,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                ],
-              );
-            },
-          ),
+                  ),
+                ),
+                title: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '@${r.handle}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      if (r.isMe) const TextSpan(text: '  (${T.socialYou})'),
+                      if (r.isFriend)
+                        TextSpan(
+                          text: '  · ${T.socialFriendTag}',
+                          style: TextStyle(
+                            color: context.hk.inkMute,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                subtitle: Text(T.socialLevel(levelFor(r.xpTotal))),
+                trailing: Text(
+                  switch (by) {
+                    _Rank.week => T.socialXp(r.xpWeek),
+                    _Rank.total => T.socialXp(r.xpTotal),
+                    _Rank.elo => '${r.elo}',
+                  },
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -295,6 +295,11 @@ class T {
   static const socialBoardWeek = '7 хоног';
   static const socialBoardTotal = 'Нийт XP';
   static const socialBoardElo = 'ELO';
+  static const socialScopeFriends = 'Найзууд';
+  static const socialScopeAll = 'Бүгд';
+  static const socialGlobalNote = 'Бүх хэрэглэгч — зөвхөн хэрэглэгчийн нэр, оноо харагдана. Тохиргооноос идэвхээ нуувал энд гарахгүй.';
+  static const socialGlobalNeedHandle = 'Энд гарахын тулд Найзууд хэсэгт хэрэглэгчийн нэрээ сонгоорой.';
+  static const socialFriendTag = 'найз';
   static const socialBoardEmpty = 'Найзуудаа нэмээд хамт өрсөлдөөрэй.';
   static const socialBoardEloNote = 'ELO зөвхөн найзтайгаа хийсэн онлайн тулаанаар өөрчлөгдөнө.';
   static const socialXpNote = 'XP: давталт, Монстр агнах, ханз бичих, шинэ үг, тулаан.';
