@@ -1,5 +1,6 @@
 "use client";
 
+import { useImmersive } from "../_lib/useImmersive";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Eye, Grid3x3, List, PenLine, RotateCcw, Trash2, Undo2 } from "lucide-react";
@@ -277,6 +278,7 @@ function Lesson({
   onLearned: (k: string) => void;
   onPick: () => void;
 }) {
+  useImmersive();
   const [offset, setOffset] = useState(0);
   const [words, setWords] = useState<Word[]>([]);
   const [steps, setSteps] = useState<LessonStep[] | null>(null);

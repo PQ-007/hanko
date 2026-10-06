@@ -1,4 +1,4 @@
-// A full-screen story image (Instagram / Facebook stories) drawn on a canvas
+// A full-screen, unbranded story image (Instagram / Facebook stories) drawn on a canvas
 // in the browser — no server, no package. Sized to the phone it's made on
 // (storySize), so it fills that screen edge to edge instead of the old fixed
 // 16:9 frame, which left bars on today's 19.5:9–20:9 phones. Two uses: "today's words" from the
@@ -22,7 +22,7 @@ export interface StoryCard {
   total?: number;
   moreLabel?: (n: number) => string;
   /** Where to go, printed at the bottom (a link sticker can't be drawn). */
-  footer: string;
+  footer?: string;
 }
 
 export const STORY_W = 1080;
@@ -91,26 +91,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-/** The hanko seal: a rounded seal-blue square with 判 — the app's mark. */
-function seal(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  ctx.save();
-  ctx.translate(x + size / 2, y + size / 2);
-  ctx.rotate(-0.06);
-  ctx.fillStyle = SEAL;
-  roundRect(ctx, -size / 2, -size / 2, size, size, size * 0.18);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.85)";
-  ctx.lineWidth = size * 0.04;
-  roundRect(ctx, -size / 2 + size * 0.09, -size / 2 + size * 0.09, size * 0.82, size * 0.82, size * 0.12);
-  ctx.stroke();
-  ctx.fillStyle = "#fff";
-  ctx.font = font(800, size * 0.55);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("判", 0, size * 0.03);
-  ctx.restore();
-}
-
 export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   const W = ctx.canvas.width, H = ctx.canvas.height, M = 88;
   ctx.textBaseline = "alphabetic";
@@ -124,21 +104,8 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   wash.addColorStop(1, "rgba(37,106,191,0)");
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, W, 760);
-  // A large faint 判 behind everything.
-  ctx.fillStyle = "rgba(37,106,191,0.05)";
-  ctx.font = font(900, 900);
-  ctx.textAlign = "right";
-  ctx.fillText("判", W + 120, 900);
-  ctx.textAlign = "left";
-
-  // Brand row.
-  seal(ctx, M, 150, 96);
-  ctx.fillStyle = INK;
-  ctx.font = font(800, 52);
-  ctx.fillText("Hanko", M + 124, 212);
-
-  // Kicker, heading, stats.
-  let y = 380;
+  // Kicker, heading, stats. Unbranded on purpose: no logo, no app name.
+  let y = 260;
   ctx.fillStyle = SEAL;
   ctx.font = font(700, 34);
   ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
@@ -166,7 +133,7 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   // The words, one card each — as many as the screen fits, rows growing to
   // fill a tall screen rather than leaving its bottom half empty.
   const listTop = y + 70;
-  const footerTop = H - 230;
+  const footerTop = card.footer ? H - 230 : H - 120;
   const gap = 22;
   const MIN_ROW = 128, MAX_ROW = 180, MORE_H = 80;
   const space = footerTop - listTop - MORE_H;
@@ -222,7 +189,8 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
     ctx.textAlign = "left";
   }
 
-  // Footer: where to go.
+  // Footer: where to go (the deck link). Nothing at all without one.
+  if (!card.footer) return;
   ctx.fillStyle = PAPER_DIM;
   ctx.fillRect(0, footerTop + 40, W, H - footerTop - 40);
   ctx.fillStyle = SEAL_DARK;

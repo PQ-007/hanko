@@ -47,7 +47,7 @@ export default function TodayShareModal({ streak, onClose }: { streak: number; o
       })),
       total: today.recalled,
       moreLabel: T.storyMore,
-      footer: `${window.location.host} · Hanko`,
+      footer: "",
     };
   }
 
@@ -77,7 +77,7 @@ export default function TodayShareModal({ streak, onClose }: { streak: number; o
           ) : today === "failed" ? (
             <p className="py-6 text-center text-sm text-red-700">{T.shareFailed}</p>
           ) : card ? (
-            <StoryImagePanel card={card} fileName={`hanko-${today.day}`} />
+            <StoryImagePanel card={card} fileName={`words-${today.day}`} />
           ) : (
             <p className="py-6 text-center text-sm text-ink-soft">{T.shareTodayEmpty}</p>
           )}

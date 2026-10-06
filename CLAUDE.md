@@ -605,8 +605,12 @@ hides a user's numbers even from friends.
   owner's history).
 - What a link exposes is decided in one place, `shared_deck()`: deck name +
   term/reading/meaning/meaning_mn, max 500 words. No owner, no ids, no SRS
-  state. Tokens are 128 random bits; turning a link off clears it and turning
-  it on again issues a new one. Owners toggle it from the deck header (Share).
+  state. Tokens are 128 random bits and **expire 24 hours after issue**
+  (`decks.share_expires_at`, checked by `shared_deck` and `copy_shared_deck`);
+  re-enabling a live link keeps it, an expired one gets a new token. Owners
+  toggle it from the deck header (Share), which shows the time left.
+- **Share surfaces are deliberately unbranded** (owner's call): no logo, app
+  name or 判 on the share page, its preview image or the story images.
 - Story images (1080×1920) are drawn on a canvas in the browser
   (`decks/_lib/storyCard.ts`), shared through the Web Share API where it can
   share files, downloaded otherwise. "Today's words" on the stats page reads
@@ -614,6 +618,25 @@ hides a user's numbers even from friends.
   misses, undone answers and PvP (`battle`). Link previews come from
   `share/[token]/opengraph-image.tsx`, which pulls a Noto Sans JP subset from
   Google Fonts at render time (falls back to the default face offline).
+
+## Web app shell (phones and tablets)
+
+`decks/layout.tsx` is a fixed shell, not a scrolling page: `h-dvh`, header and
+bottom bar stay put, only `<main id="hk-main">` scrolls. Below `lg` the header
+shows the screen's title (`PageTitle`) and navigation is a bottom tab bar
+(`TabBar`, raised Review button in the middle, safe-area padded); from `lg`
+up the header nav is unchanged. Sessions — practice, Monster Hunt, duel arena,
+writing lesson — call `useImmersive()`, which hides both bars below `lg` so
+the session owns the screen and is laid out to fit it without scrolling
+(verified down to 360×740). The decks page is list → deck on phones/tablets,
+with the open deck in `?deck=` so the back gesture returns to the list.
+`app/manifest.ts` makes "Add to Home Screen" open standalone.
+
+Two traps found doing this:
+- Anything that scrolls "the page" must scroll `#hk-main`, not `window`.
+- `.hk-btn` lives in `@layer components` on purpose. Unlayered, its
+  `display` beat every Tailwind utility, so `max-sm:hidden` on a button
+  silently did nothing.
 
 ## Stack
 

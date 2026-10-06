@@ -51,7 +51,7 @@ export default function TrialCards({
   const meaning = card ? [card.meaning_mn, card.meaning].filter(Boolean) : [];
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
+    <div className="mx-auto flex min-h-full w-full max-w-xl flex-col gap-4 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:py-6">
       <div className="flex items-center gap-3">
         <Link href={exitHref} aria-label={T.sharedBack} className="text-ink-soft hover:text-ink">
           <ArrowLeft size={18} />
@@ -85,7 +85,7 @@ export default function TrialCards({
         <>
           <button
             onClick={() => setFlip({ key: cardKey, shown: true })}
-            className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-card border border-line bg-white p-8 text-center shadow-sm"
+            className="flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 rounded-card border border-line bg-white p-8 text-center shadow-sm sm:flex-none sm:min-h-[340px]"
           >
             <span className="text-5xl font-extrabold tracking-tight text-ink">{card.term}</span>
             {shown ? (
@@ -98,7 +98,10 @@ export default function TrialCards({
                 </span>
               </>
             ) : (
-              <span className="text-xs text-ink-mute">{T.sharedCardsShow} (space)</span>
+              <span className="text-xs text-ink-mute">
+                {T.sharedCardsShow}
+                <span className="hidden lg:inline"> (space)</span>
+              </span>
             )}
           </button>
           {shown ? (

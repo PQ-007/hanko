@@ -43,7 +43,7 @@ export default function PracticeCard({
   }
 
   return (
-    <div className="relative w-full overflow-hidden hk-card">
+    <div className="relative flex w-full flex-1 flex-col overflow-hidden hk-card lg:flex-none">
       {/* Mastery grade — a small dot in the same ramp the dashboard uses. */}
       <span className="absolute right-4 top-4 flex items-center gap-1.5 text-[11px] font-medium text-ink-mute">
         <span
@@ -53,7 +53,7 @@ export default function PracticeCard({
         {grade === "new" ? T.gradeNew : grade}
       </span>
 
-      <div className="flex min-h-[15rem] flex-col items-center justify-center px-6 py-10 text-center sm:min-h-[17rem]">
+      <div className="flex min-h-[15rem] flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:min-h-[17rem]">
         <div className="text-5xl font-bold leading-tight tracking-tight text-ink sm:text-6xl">
           {card.term}
         </div>

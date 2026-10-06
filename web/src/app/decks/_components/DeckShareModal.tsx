@@ -13,8 +13,15 @@ import StoryImagePanel from "./StoryImagePanel";
  * make a story image that points at it. Anyone with the link can see the
  * words and play a trial on /share/<token>; nothing about the owner shows.
  */
+function toShare(row: { share_token: string | null; share_expires_at: string | null } | null) {
+  if (!row?.share_token || !row.share_expires_at) return null;
+  return { token: row.share_token, expiresAt: new Date(row.share_expires_at).getTime() };
+}
+
 export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount; onClose: () => void }) {
-  const [token, setToken] = useState<string | null | undefined>(undefined);
+  // undefined while loading; null when there's no live link.
+  const [share, setShare] = useState<{ token: string; expiresAt: number } | null | undefined>(undefined);
+  const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -24,14 +31,23 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
   useEffect(() => {
     supabase
       .from("decks")
-      .select("share_token")
+      .select("share_token, share_expires_at")
       .eq("id", deck.id)
       .single()
       .then(({ data, error }) => {
         if (error) setError(true);
-        setToken((data as { share_token: string | null } | null)?.share_token ?? null);
+        setShare(toShare(data as { share_token: string | null; share_expires_at: string | null } | null));
       });
   }, [deck.id]);
+
+  // The countdown, and the link going dead on screen when it expires.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(id);
+  }, []);
+  const live = share && share.expiresAt > now ? share : null;
+  const token = share === undefined ? undefined : (live?.token ?? null);
+  const minutesLeft = live ? Math.max(1, Math.ceil((live.expiresAt - now) / 60_000)) : 0;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -50,7 +66,9 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
       setError(true);
       return;
     }
-    setToken((data as string | null) ?? null);
+    const r = data as { token: string | null; expires_at: string | null } | null;
+    setShare(toShare(r && { share_token: r.token, share_expires_at: r.expires_at }));
+    setNow(Date.now());
     if (!on) setShowStory(false);
   }
 
@@ -110,6 +128,7 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
           <>
             <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
               <Link2 size={14} /> {T.shareLinkOn}
+              <span className="ml-auto font-medium text-ink-mute">{T.shareExpiresIn(minutesLeft)}</span>
             </p>
             <div className="mt-1.5 flex gap-2">
               <input
@@ -126,7 +145,7 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
               <div className="mt-4">
                 {story && (
                   <StoryImagePanel
-                    fileName={`hanko-${deck.name.replace(/[^\p{L}\p{N}_-]+/gu, "_") || "deck"}`}
+                    fileName={`${deck.name.replace(/[^\p{L}\p{N}_-]+/gu, "_") || "deck"}`}
                     card={{
                       kicker: T.sharedBy,
                       heading: deck.name,

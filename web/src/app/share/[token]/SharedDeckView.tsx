@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Layers, LogIn, Plus, Swords } from "lucide-react";
@@ -32,17 +32,19 @@ export default function SharedDeckView({
   const canHunt = deck.words.length >= MIN_WORDS_FOR_BATTLE;
 
   const cta = <JoinButton token={token} signedIn={signedIn} />;
+  // The trial deals with Math.random (word order, options, the monster), so
+  // it renders on the client only — a server render would never match it.
+  const onClient = useSyncExternalStore(noop, () => true, () => false);
 
-  if (play === "hunt" && canHunt) return <TrialHunt deck={deck} exitHref={here} cta={cta} />;
+  if (play === "hunt" && canHunt) return onClient ? <TrialHunt deck={deck} exitHref={here} cta={cta} /> : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-paper to-paper-dim text-ink">
-      <header className="border-b border-line/70 bg-white/80 backdrop-blur-md">
+    // App shell, like /decks: the bar stays, only the content scrolls.
+    <div className="flex h-dvh flex-col overflow-hidden bg-gradient-to-b from-paper to-paper-dim text-ink">
+      <header className="shrink-0 border-b border-line/70 bg-white/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5">
-          <Link href={here} className="flex items-center gap-2 font-semibold">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hanko.svg" alt="" className="h-7 w-7" />
-            Hanko
+          <Link href={here} className="min-w-0 truncate text-sm font-semibold text-ink-soft">
+            {T.sharedBy}
           </Link>
           {signedIn ? (
             <Link href="/decks" className="text-sm font-medium text-ink-soft hover:text-ink">
@@ -56,10 +58,11 @@ export default function SharedDeckView({
         </div>
       </header>
 
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {play === "cards" ? (
-        <TrialCards words={deck.words} exitHref={here} cta={cta} />
+        onClient && <TrialCards words={deck.words} exitHref={here} cta={cta} />
       ) : (
-        <main className="mx-auto w-full max-w-3xl px-4 py-8">
+        <main className="mx-auto w-full max-w-3xl px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:py-8">
           <p className="text-xs font-bold uppercase tracking-wider text-seal">{T.sharedBy}</p>
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">{deck.name}</h1>
           <p className="mt-1 text-sm text-ink-soft">{T.sharedWords(deck.words.length)}</p>
@@ -100,9 +103,12 @@ export default function SharedDeckView({
           </ul>
         </main>
       )}
+      </div>
     </div>
   );
 }
+
+const noop = () => () => {};
 
 function PlayCard({
   href,
@@ -189,7 +195,7 @@ function TrialHunt({ deck, exitHref, cta }: { deck: SharedDeck; exitHref: string
   const { session } = useTrialSession(deck.words);
   const pool = useMemo(() => trialPool(deck.words), [deck.words]);
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-paper to-paper-dim text-ink">
+    <div className="h-dvh overflow-y-auto overscroll-contain bg-gradient-to-b from-paper to-paper-dim text-ink">
       <Arena
         session={session}
         allWords={pool}

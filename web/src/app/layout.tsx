@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Hanko - Verba non Acta",
   description: "Manage your vocabulary decks, sync across devices, and export to Anki.",
+  appleWebApp: { capable: true, title: "Hanko", statusBarStyle: "default" },
+};
+
+// Phone/tablet: fill the screen edge to edge (safe-area insets are padded by
+// the shell), tint the browser bar to the header, and don't zoom the page
+// when an input is focused (inputs are ≥16px where it matters).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#faf7f0",
 };
 
 export default function RootLayout({

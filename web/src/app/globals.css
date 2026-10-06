@@ -84,18 +84,23 @@ body {
   box-shadow: var(--shadow-lift);
 }
 
-.hk-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: var(--radius-control);
-  font-weight: 500;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
+/* In the components layer so utilities on the same element win — `max-sm:hidden`
+   on a button was silently losing to this rule's display (unlayered CSS beats
+   every Tailwind layer), and so were `gap-*` / `rounded-*` tweaks. */
+@layer components {
+  .hk-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-control);
+    font-weight: 500;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
 }
 
 .hk-btn-primary {
@@ -323,6 +328,16 @@ textarea:focus-visible {
   --hanko-fighter-scale: 2;
   width: 136px;
   height: 144px;
+}
+
+/* Tablets: the arena fills a tall screen (app shell), so the fighters can be
+   half again as big as a phone's without crowding the card. */
+@media (min-width: 768px) {
+  .hanko-fighter-slot {
+    --hanko-fighter-scale: 3.6;
+    width: 245px;
+    height: 259px;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -667,4 +682,30 @@ textarea:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---- App shell (phones and tablets) -----------------------------------------
+   The /decks layout is a fixed shell: header and bottom tabs stay put, only
+   <main> scrolls. A session (useImmersive) hides both below lg so it owns the
+   whole screen, like a pushed screen in the mobile app. */
+@media (max-width: 1023.98px) {
+  html[data-immersive] .hk-chrome {
+    display: none;
+  }
+}
+/* Feels like an app, not a page: no rubber-band of the whole document, no
+   grey flash on tap, no accidental text selection on controls. */
+html,
+body {
+  overscroll-behavior: none;
+}
+a,
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+[role="button"] {
+  user-select: none;
+  -webkit-user-select: none;
 }

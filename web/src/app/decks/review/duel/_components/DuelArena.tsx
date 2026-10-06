@@ -1,5 +1,6 @@
 "use client";
 
+import { useImmersive } from "../../../_lib/useImmersive";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Flame } from "lucide-react";
@@ -59,6 +60,7 @@ export default function DuelArena({
   onRematch?: () => void;
   exitHref?: string;
 }) {
+  useImmersive();
   const hero = usePlayerCharacter();
 
   const [cards, setCards] = useState<QueueCard[] | null>(null);
@@ -365,8 +367,8 @@ export default function DuelArena({
   const foeDisplayPose = state.theirDefeated ? "death" : foePose;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl flex-col justify-center px-4 py-6 sm:py-8 xl:max-w-7xl">
-      <div className="hk-arena relative flex flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex min-h-full max-w-5xl flex-col lg:justify-center px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 sm:py-6 xl:max-w-7xl">
+      <div className="hk-arena relative flex flex-1 flex-col gap-2 p-3 sm:gap-4 sm:p-6 lg:flex-none">
         <div className="flex items-center justify-between gap-2 text-xs">
           <Link
             href={exitHref}
@@ -439,7 +441,7 @@ export default function DuelArena({
           )}
         </div>
 
-        <div className="relative flex flex-wrap items-center justify-center gap-3 lg:h-[420px] lg:flex-nowrap lg:gap-4 xl:h-[460px]">
+        <div className="relative flex flex-1 flex-wrap content-around items-center justify-center gap-3 lg:h-[420px] lg:flex-none lg:flex-nowrap lg:gap-4 xl:h-[460px]">
           <div className="hanko-fighter-slot relative order-1 flex shrink-0 items-center justify-center">
             <FighterSprite
               slug={hero}

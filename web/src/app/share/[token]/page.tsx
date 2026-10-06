@@ -12,8 +12,8 @@ import SharedDeckView from "./SharedDeckView";
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
   const deck = await fetchSharedDeck(token);
-  if (!deck) return { title: "Hanko", robots: { index: false } };
-  const title = `${deck.name} — Hanko`;
+  if (!deck) return { title: T.sharedBy, robots: { index: false } };
+  const title = deck.name;
   const description = `${T.sharedWords(deck.words.length)} · ${T.sharedPitch}`;
   return {
     title,

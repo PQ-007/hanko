@@ -78,7 +78,7 @@ export default function DuelResult({
         : "text-amber-300";
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl flex-col justify-center px-4 py-8">
+    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-4 py-8">
       <div className="hk-arena flex flex-col gap-6 p-6 sm:p-8">
         <div className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-paper/40">

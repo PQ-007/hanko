@@ -98,7 +98,7 @@ export default function BattleResult({
   const crits = events.filter((e) => e.crit).length;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl flex-col justify-center px-4 py-6 sm:py-8">
+    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-4 py-6 sm:py-8">
       <div className="hk-arena flex flex-col items-center gap-6 px-5 py-8 text-center sm:px-10 sm:py-12">
         <span
           className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ring-1 ${

@@ -10,8 +10,10 @@
 --   * no owner (no user id, name, email or handle), no word ids, no SRS
 --     state, no audio paths, no other deck.
 -- RLS on decks/words is unchanged: signed-out visitors still cannot read any
--- table directly. The token is 128 random bits; turning the link off clears
--- it, and turning it on again issues a new one, so old links die.
+-- table directly. The token is 128 random bits and **expires 24 hours after
+-- it's issued** (share_expires_at); an expired link reads as not found.
+-- Turning the link off clears it; turning it on while a live link exists
+-- keeps that link (same token, same expiry), otherwise a new one is issued.
 --
 -- Also share_today(): the caller's own words recalled today (by the SRS day,
 -- so a 1am session still counts as "today"), for the story-card image.
@@ -19,35 +21,50 @@
 -- Safe to re-run.
 
 alter table public.decks add column if not exists share_token text;
+alter table public.decks add column if not exists share_expires_at timestamptz;
 create unique index if not exists decks_share_token_idx
   on public.decks (share_token) where share_token is not null;
 
 -- ---------------------------------------------------------------------------
--- 1. Owner: turn the link on (returns the token) or off (returns null)
+-- 1. Owner: turn the link on or off
 -- ---------------------------------------------------------------------------
+-- Returns {token, expires_at}; both null when off.
 
 drop function if exists public.set_deck_share(uuid, boolean);
 create function public.set_deck_share(p_deck_id uuid, p_on boolean)
-returns text
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_token text;
+  v_token   text;
+  v_expires timestamptz;
+  v_live    boolean;
 begin
   if auth.uid() is null then raise exception 'not signed in'; end if;
+
+  select share_token is not null and share_expires_at > now()
+    into v_live
+  from public.decks
+  where id = p_deck_id and user_id = auth.uid() and not deleted;
+  if not found then raise exception 'deck not found'; end if;
 
   update public.decks
   set share_token = case
         when not p_on then null
-        else coalesce(share_token, replace(gen_random_uuid()::text, '-', ''))
+        when v_live then share_token
+        else replace(gen_random_uuid()::text, '-', '')
+      end,
+      share_expires_at = case
+        when not p_on then null
+        when v_live then share_expires_at
+        else now() + interval '24 hours'
       end
-  where id = p_deck_id and user_id = auth.uid() and not deleted
-  returning share_token into v_token;
+  where id = p_deck_id and user_id = auth.uid()
+  returning share_token, share_expires_at into v_token, v_expires;
 
-  if not found then raise exception 'deck not found'; end if;
-  return v_token;
+  return jsonb_build_object('token', v_token, 'expires_at', v_expires);
 end;
 $$;
 
@@ -85,6 +102,7 @@ as $$
   where p_token is not null
     and length(p_token) = 32
     and d.share_token = p_token
+    and d.share_expires_at > now()
     and not d.deleted;
 $$;
 
@@ -107,12 +125,14 @@ begin
   if v_me is null then raise exception 'not signed in'; end if;
 
   select * into v_source from public.decks
-  where p_token is not null and share_token = p_token and not deleted;
+  where p_token is not null and share_token = p_token
+    and share_expires_at > now() and not deleted;
   if not found then raise exception 'link not found'; end if;
 
   -- A fresh deck of the caller's, unfiled. The words trigger
   -- (words_create_default_card) gives every copied word a new card, so the
   -- copy starts unscheduled — the owner's review history never travels.
+  -- Only the columns named here: the copy never inherits the share link.
   insert into public.decks (user_id, name)
   values (v_me, v_source.name)
   returning id into v_new;
