@@ -80,7 +80,8 @@ class DuelController extends ChangeNotifier {
   bool _disposed = false;
 
   DuelState get state => deriveDuelState(rounds);
-  DuelOutcome get outcome => duelOutcome(state);
+  /// An opponent who left (stopped answering for several rounds) loses.
+  DuelOutcome get outcome => opponent.left ? DuelOutcome.won : duelOutcome(state);
   int get durationMs => roundDurationMs(roundNo);
   QueueCard? get card => (cards?.isNotEmpty ?? false) ? cards![(roundNo - 1) % cards!.length] : null;
   bool get notEnoughWords => words != null && words!.length < minWordsForBattle;

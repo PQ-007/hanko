@@ -95,8 +95,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
             tooltip: T.navActions,
           ),
           NavigationDestination(
-            icon: Icon(Icons.sports_kabaddi_outlined),
-            selectedIcon: Icon(Icons.sports_kabaddi),
+            icon: Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups),
             label: T.navPvp,
           ),
           NavigationDestination(

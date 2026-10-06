@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../social/social_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -31,12 +33,17 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.flag_outlined),
             title: const Text(T.goalModalTitle),
             subtitle: Text(T.goalModalLabel),
-            trailing: Text('${due?.newGoal ?? '—'}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            trailing: Text(
+              '${due?.newGoal ?? '—'}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
             onTap: () => showGoalDialog(context, ref, due?.newGoal ?? 20),
           ),
           ListTile(
-            leading: SizedBox.square(dimension: 48, child: SpriteView(slug: hero, size: 48)),
+            leading: SizedBox.square(
+              dimension: 48,
+              child: SpriteView(slug: hero, size: 48),
+            ),
             title: const Text(T.heroPickerTitle),
             subtitle: const Text(T.heroPickerHint),
             onTap: () => showHeroPicker(context),
@@ -49,25 +56,57 @@ class SettingsScreen extends ConsumerWidget {
               child: SegmentedButton<ThemeMode>(
                 showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: ThemeMode.system, label: Text(T.themeSystem)),
-                  ButtonSegment(value: ThemeMode.light, label: Text(T.themeLight)),
-                  ButtonSegment(value: ThemeMode.dark, label: Text(T.themeDark)),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    label: Text(T.themeSystem),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    label: Text(T.themeLight),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    label: Text(T.themeDark),
+                  ),
                 ],
                 selected: {ref.watch(themeModeProvider)},
-                onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
+                onSelectionChanged: (s) =>
+                    ref.read(themeModeProvider.notifier).set(s.first),
               ),
             ),
           ),
           const Divider(),
           const ReminderTile(),
           const Divider(),
+          // Friends see your daily numbers unless this is off (0026).
+          ref
+              .watch(myProfileProvider)
+              .maybeWhen(
+                data: (p) => SwitchListTile(
+                  secondary: const Icon(Icons.visibility_outlined),
+                  title: const Text(T.socialShareSetting),
+                  subtitle: const Text(T.socialShareSettingDesc),
+                  value: p.shareActivity,
+                  onChanged: (v) async {
+                    try {
+                      await ref.read(socialApiProvider).setShare(v);
+                    } catch (_) {}
+                    ref.invalidate(myProfileProvider);
+                    ref.invalidate(friendOverviewProvider);
+                  },
+                ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+          const Divider(),
           if (Config.privacyUrl.isNotEmpty)
             ListTile(
               leading: const Icon(Icons.privacy_tip_outlined),
               title: const Text(T.privacy),
               trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => launchUrl(Uri.parse(Config.privacyUrl),
-                  mode: LaunchMode.externalApplication),
+              onTap: () => launchUrl(
+                Uri.parse(Config.privacyUrl),
+                mode: LaunchMode.externalApplication,
+              ),
             ),
           ListTile(
             leading: Icon(Icons.logout, color: context.hk.inkSoft),

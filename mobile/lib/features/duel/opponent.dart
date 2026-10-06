@@ -29,6 +29,9 @@ abstract class OpponentDriver {
 
   Future<DuelAnswer?> answerFor(int roundNo, int durationMs, RoundCancel cancel);
 
+  /// True once the opponent has gone (a real player who stopped answering).
+  bool get left => false;
+
   /// Publishes the local player's answer. A bot has nobody to tell.
   Future<void> submit(int roundNo, DuelAnswer? answer, String? cardId) async {}
 
@@ -93,6 +96,16 @@ class RemoteOpponent extends OpponentDriver {
 
   RealtimeChannel? _channel;
 
+  /// Rounds in a row with no answer row from the opponent. A timeout still
+  /// writes a row (submit sends it as wrong), so a missing one means their
+  /// app isn't there: three in a row and they've left (PVP.md 3.4).
+  int _missing = 0;
+  bool _left = false;
+  static const _absentRounds = 3;
+
+  @override
+  bool get left => _left;
+
   @override
   Future<DuelAnswer?> answerFor(int roundNo, int durationMs, RoundCancel cancel) async {
     Map<String, dynamic>? round;
@@ -140,6 +153,14 @@ class RemoteOpponent extends OpponentDriver {
     } catch (_) {}
     try {
       final row = await api.answer(matchId, roundNo, opponentId);
+      _missing = row == null ? _missing + 1 : 0;
+      if (_missing >= _absentRounds && !_left) {
+        _left = true;
+        // The one still here claims the match (forfeit_match's meaning).
+        try {
+          await api.forfeit(matchId);
+        } catch (_) {}
+      }
       return row == null ? null : DuelAnswer(correct: row.correct, elapsedMs: row.effectiveMs);
     } catch (_) {
       return null;

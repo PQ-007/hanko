@@ -251,8 +251,56 @@ class T {
   // ---- Mobile only -------------------------------------------------------
   static const navHome = 'Нүүр';
   static const navStats = 'Статистик';
-  static const navPvp = 'Тулаан';
+  static const navPvp = 'Найзууд';
   static const navLibrary = 'Сан';
+
+  // Friends, leaderboard, XP/ELO (0026)
+  static const socialTitle = 'Найзууд';
+  static const socialTabFriends = 'Найзууд';
+  static const socialTabBoard = 'Тэргүүлэгчид';
+  static const socialTabDuel = 'Тулаан';
+  static const socialPickHandle = 'Хэрэглэгчийн нэрээ сонгоно уу';
+  static const socialPickHandleDesc = 'Найзууд тань энэ нэрээр л таныг хайж олно. И-мэйл хэзээ ч харагдахгүй.';
+  static const socialHandleLabel = 'Хэрэглэгчийн нэр';
+  static const socialSave = 'Хадгалах';
+  static const socialHandleFormat = '3–20 тэмдэгт: a–z, 0–9, _';
+  static const socialHandleTaken = 'Энэ нэрийг өөр хүн авсан байна.';
+  static const socialHandleFailed = 'Хадгалж чадсангүй.';
+  static String socialShareInvite(String h) => 'Hanko дээр намайг @$h гэж нэмээрэй!';
+  static const socialAddFriend = 'Найз нэмэх';
+  static const socialAddHint = '@хэрэглэгчийн нэр';
+  static const socialAdd = 'Нэмэх';
+  static const socialSent = 'Хүсэлт илгээлээ.';
+  static const socialAccepted = 'Найз боллоо!';
+  static const socialAlready = 'Аль хэдийн найз эсвэл хүсэлт илгээсэн байна.';
+  static const socialNotFound = 'Ийм хэрэглэгч олдсонгүй.';
+  static const socialSelf = 'Өөрийгөө нэмэх боломжгүй.';
+  static const socialRequests = 'Найзын хүсэлт';
+  static const socialOutgoing = 'Хариу хүлээж байна';
+  static const socialAccept = 'Зөвшөөрөх';
+  static const socialDecline = 'Татгалзах';
+  static const socialCancelRequest = 'Цуцлах';
+  static const socialRemove = 'Найзаас хасах';
+  static const socialNoFriends = 'Одоохондоо найз алга. Хэрэглэгчийн нэрээр нь нэмээрэй.';
+  static const socialHidden = 'Идэвхээ нуусан';
+  static const socialYou = 'Та';
+  static String socialLevel(int lv) => 'Түвшин $lv';
+  static String socialXp(int xp) => '$xp XP';
+  static String socialAddedToday(int n) => '+$n үг нэмсэн';
+  static String socialReviewedToday(int n) => '$n давталт';
+  static String socialWordsLearned(int n) => '$n үг сурсан';
+  static String socialKanjiLearned(int n) => '$n ханз';
+  static String socialElo(int e) => 'ELO $e';
+  static const socialToday = 'Өнөөдөр';
+  static const socialBoardWeek = '7 хоног';
+  static const socialBoardTotal = 'Нийт XP';
+  static const socialBoardElo = 'ELO';
+  static const socialBoardEmpty = 'Найзуудаа нэмээд хамт өрсөлдөөрэй.';
+  static const socialBoardEloNote = 'ELO зөвхөн найзтайгаа хийсэн онлайн тулаанаар өөрчлөгдөнө.';
+  static const socialXpNote = 'XP: давталт, Монстр агнах, ханз бичих, шинэ үг, тулаан.';
+  static const socialUnavailable = 'Найзын функц одоогоор боломжгүй (серверт 0026 шилжилт хийгдээгүй эсвэл интернэт алга).';
+  static const socialShareSetting = 'Идэвхээ найзуудад харуулах';
+  static const socialShareSettingDesc = 'Унтраавал найзууд тань зөвхөн нэрийг тань харна.';
   static const navActions = 'Үйлдэл';
 
   static const actionStartReview = 'Давталт эхлүүлэх';

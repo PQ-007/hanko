@@ -78,7 +78,14 @@ class DuelApi {
     return row == null ? null : MatchRow.fromJson(row);
   }
 
+  /// "My opponent has gone": the caller — the one still here — wins (0020).
+  /// Never call this to leave; that's [concede].
   Future<void> forfeit(String matchId) => db.rpc('forfeit_match', params: {'p_match_id': matchId});
+
+  /// Leaving a match: the caller loses (0026). Falls back to cancelling the
+  /// lobby with forfeit_match only when nobody has joined, where there's no
+  /// winner to name either way.
+  Future<void> concede(String matchId) => db.rpc('concede_match', params: {'p_match_id': matchId});
 
   /// Idempotent; whichever client calls first fixes the round's server start.
   Future<Map<String, dynamic>?> beginRound(String matchId, int roundNo) async {

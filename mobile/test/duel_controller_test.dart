@@ -55,6 +55,20 @@ class FixedBot extends OpponentDriver {
       Future.delayed(Duration(milliseconds: never ? durationMs : ms), () => never ? null : DuelAnswer(correct: correct, elapsedMs: ms));
 }
 
+/// A real opponent whose app went away: no answers, and after three rounds
+/// the driver reports them gone (RemoteOpponent's rule).
+class VanishingOpponent extends FixedBot {
+  VanishingOpponent() : super(never: true);
+  int rounds = 0;
+  @override
+  bool get left => rounds >= 3;
+  @override
+  Future<DuelAnswer?> answerFor(int roundNo, int durationMs, RoundCancel cancel) {
+    rounds++;
+    return super.answerFor(roundNo, durationMs, cancel);
+  }
+}
+
 DuelController make(FakeAsync async, FakeRepo repo, OpponentDriver bot) {
   final clock = async.getClock(DateTime(2026));
   final c = DuelController(
@@ -154,6 +168,21 @@ void main() {
       c.dispose();
       async.elapse(const Duration(seconds: 30));
       // No exception, no notifications after dispose.
+    });
+  });
+
+  test('an opponent who has gone hands you the win, ending the match there', () {
+    fakeAsync((async) {
+      final repo = FakeRepo();
+      final c = make(async, repo, VanishingOpponent());
+      for (var r = 0; r < 3; r++) {
+        async.elapse(Duration(milliseconds: roundDurationMs(c.roundNo) + resolveHoldMs + 50));
+      }
+      expect(c.outcome, DuelOutcome.won);
+      final round = c.roundNo;
+      async.elapse(const Duration(seconds: 30));
+      expect(c.roundNo, round, reason: 'no more rounds after they left');
+      c.dispose();
     });
   });
 }

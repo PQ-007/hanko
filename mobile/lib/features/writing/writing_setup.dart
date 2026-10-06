@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../models/library.dart';
 import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
+import '../social/social_api.dart';
 import 'kanji_progress.dart';
 import 'lesson.dart';
 import 'writing_rules.dart';
@@ -38,7 +39,7 @@ class _WritingSetupState extends ConsumerState<WritingSetup> {
   @override
   void initState() {
     super.initState();
-    loadLearnedKanji().then((l) {
+    syncLearnedKanji(ref.read(socialApiProvider)).then((l) {
       if (mounted) setState(() => _learned = l);
     });
   }

@@ -81,7 +81,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     );
     if (ok == true) {
       try {
-        await ref.read(duelApiProvider).forfeit(widget.matchId!);
+        // concede, not forfeit: forfeit_match makes its caller the winner.
+        await ref.read(duelApiProvider).concede(widget.matchId!);
       } catch (_) {}
     }
     return ok == true;
@@ -403,7 +404,7 @@ class _Result extends StatelessWidget {
     }
     final dealt = c.rounds.fold<int>(0, (s, r) => s + r.yourDamage);
     final (title, desc, color) = switch (o) {
-      DuelOutcome.won => (T.duelWon, T.duelWonDesc, const Color(0xFF34D399)),
+      DuelOutcome.won => (T.duelWon, c.opponent.left ? T.duelOpponentLeft : T.duelWonDesc, const Color(0xFF34D399)),
       DuelOutcome.lost => (T.duelLost, T.duelLostDesc, const Color(0xFFF87171)),
       _ => (T.duelDraw, T.duelDrawDesc, const Color(0xFFFBBF24)),
     };

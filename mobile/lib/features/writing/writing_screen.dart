@@ -16,6 +16,7 @@ import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
 import '../battle/sprite_view.dart';
 import 'kanji_checker.dart';
+import '../social/social_api.dart';
 import 'kanji_progress.dart';
 import 'kanji_strokes.dart';
 import 'lesson.dart';
@@ -116,7 +117,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
           throw const _Failure(T.writingModelFailed);
         }
       }
-      _learned = await loadLearnedKanji();
+      _learned = await syncLearnedKanji(ref.read(socialApiProvider));
       try {
         _cardIds = await ref.read(repositoryProvider).recognitionCardIds([
           for (final w in words) w.id,
@@ -263,6 +264,9 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
       _learned.add(target);
       _newKanji++;
       await saveLearnedKanji(_learned);
+      // To the server too (XP, friends, other phones); offline it catches up
+      // at the next sync.
+      unawaited(ref.read(socialApiProvider).addLearnedKanji([target]).then((_) {}, onError: (_) {}));
     }
   }
 

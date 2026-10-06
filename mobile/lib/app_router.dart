@@ -14,7 +14,7 @@ import 'features/home/home_screen.dart';
 import 'features/home/settings_screen.dart';
 import 'features/library/deck_detail_screen.dart';
 import 'features/library/library_screen.dart';
-import 'features/pvp/pvp_screen.dart';
+import 'features/social/social_screen.dart';
 import 'features/review/leech_rescue_screen.dart';
 import 'features/review/review_screen.dart';
 import 'features/shell/app_shell.dart';
@@ -109,7 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(path: Routes.stats, builder: (_, _) => const StatsScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: Routes.pvp, builder: (_, _) => const PvpScreen()),
+            GoRoute(path: Routes.pvp, builder: (_, _) => const SocialScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(

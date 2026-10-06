@@ -476,8 +476,14 @@ bot duels offline at three levels and invite-code PvP against the same
 `duel.fixture.json` (all 484 cases), and `duel_rules_test.dart` also checks
 the newest SQL `duel_round_duration_ms` against the client curve — it had
 drifted (clients 10 s→6 s, server still 5 s→3 s, so the server closed PvP
-rounds early); `0025_duel_timing.sql` fixes it. Leaving a live PvP match on
-mobile forfeits it (`forfeit_match`), after a confirmation.
+rounds early); `0025_duel_timing.sql` fixes it.
+
+**`forfeit_match` makes its CALLER the winner** — it means "my opponent has
+gone", called by the one still there. Leaving a match must call
+`concede_match` (0026, caller loses) instead; mobile did call forfeit on
+leave at first, which with ELO would have been a free win for walking out.
+A remote opponent with no answer row for 3 rounds in a row (timeouts still
+write one) is treated as gone, and that client calls `forfeit_match`.
 
 Two things a future session must not "tidy up":
 
@@ -539,6 +545,27 @@ collapsing the two would silently stop the app's main practice mode from
 scheduling anything, with nothing erroring — see 3.1b.
 
 ---
+
+## Friends, XP and ELO (mobile, `0026_social.sql`)
+
+The **Найзууд** tab: friends by handle (`profiles.handle`, never by email),
+requests through `send_friend_request` / `respond_friend_request` /
+`remove_friend`, a friends-only leaderboard (7-day XP, total XP, ELO) and
+each friend's activity — all from one `friend_overview()` that decides on
+the server whose numbers a caller may see. `profiles.share_activity = false`
+hides a user's numbers even from friends.
+
+- **XP is derived, never stored** (`user_xp()`, not callable by clients):
+  scheduling answers 10 (2 for "again"), drills/duel answers 2, words added 5,
+  learned kanji 20, PvP win/draw/loss 50/25/10. Change weights there only.
+- **ELO** lives in `player_ratings`, which clients can read (own row) but
+  never write; the `matches_apply_rating` trigger updates it once per match
+  (K=32, guarded by `matches.rating_applied`). Verified as the
+  `authenticated` role: forged rating/friendship writes, direct `user_xp` /
+  `are_friends` calls and cross-user kanji writes are all refused.
+- **Learned kanji** (writing lessons) sync to `learned_kanji`; the phone keeps
+  a local copy for offline lessons and merges on each lesson start
+  (`syncLearnedKanji`).
 
 ## Stack
 
