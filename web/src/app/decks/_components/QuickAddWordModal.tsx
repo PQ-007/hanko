@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, X } from "@/ui/icons";
 import type { Deck } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
@@ -187,7 +187,7 @@ export default function QuickAddWordModal({
   }
 
   const inputCls =
-    "w-full rounded-control border border-line bg-white px-3 py-2 text-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint";
+    "w-full rounded-control border border-line bg-surface px-3 py-2 text-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint";
 
   return (
     <div
@@ -315,7 +315,7 @@ export default function QuickAddWordModal({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-card bg-white p-5 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-surface p-5 shadow-2xl"
           >
             <h3 className="text-base font-semibold text-ink">{T.duplicateWord}</h3>
             <p className="mt-2 text-sm text-ink-soft">{T.duplicateWordConfirm(dupTerm)}</p>

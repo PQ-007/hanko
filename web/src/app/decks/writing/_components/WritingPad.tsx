@@ -181,7 +181,7 @@ export default function WritingPad({
   return (
     <div ref={wrap} className="mx-auto w-full max-w-[440px]">
       <div
-        className="relative overflow-hidden rounded-2xl border-2 bg-white"
+        className="relative overflow-hidden rounded-2xl border-2 bg-surface"
         style={{ width: size, height: size, borderColor: borderColor ?? "var(--color-line)" }}
       >
         <canvas

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "@/ui/icons";
 import { T } from "../../../_lib/strings";
 import FighterSprite from "../../battle/_components/FighterSprite";
 import type { DuelOutcome, DuelState, ResolvedRound } from "../_lib/duel";

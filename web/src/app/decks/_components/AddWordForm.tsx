@@ -106,7 +106,7 @@ export default function AddWordForm({
   const inputCls = "rounded-control border border-line px-2 py-1.5 text-sm";
 
   return (
-    <div className="rounded-control border border-line-soft bg-white p-4">
+    <div className="rounded-control border border-line-soft bg-surface p-4">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
         <input value={term} onChange={(e) => setTerm(e.target.value)} onBlur={lookup} placeholder={T.term} className={inputCls} />
         <input value={reading} onChange={(e) => setReading(e.target.value)} placeholder={looking ? T.lookingUp : T.reading} className={inputCls} />
@@ -128,7 +128,7 @@ export default function AddWordForm({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-card bg-white p-5 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-surface p-5 shadow-2xl"
           >
             <h3 className="text-base font-semibold text-ink">{T.duplicateWord}</h3>
             <p className="mt-2 text-sm text-ink-soft">{T.duplicateWordConfirm(dupTerm)}</p>

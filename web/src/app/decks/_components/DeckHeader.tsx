@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Download, FolderClosed, GraduationCap, LayoutGrid, LayoutList, MoreHorizontal, Plus, RefreshCw, Share2, Trash2 } from "lucide-react";
+import { Download, FolderClosed, GraduationCap, LayoutGrid, LayoutList, MoreHorizontal, Plus, RefreshCw, Share2, Trash2 } from "@/ui/icons";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { buildLibraryTree, flattenTree } from "../_lib/folderTree";
@@ -30,15 +30,18 @@ export default function DeckHeader({
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(deck.name);
   const [exporting, setExporting] = useState<"apkg" | "txt" | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState(false);
   // Phones: the less-used actions live behind "⋯" so the toolbar is one row.
   const [menu, setMenu] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
 
   function refresh() {
-    setRefreshing(true);
     onChanged(); // reloads this deck's words + deck counts
-    setTimeout(() => setRefreshing(false), 600);
   }
 
   async function rename() {
@@ -112,13 +115,6 @@ export default function DeckHeader({
         </h2>
       )}
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-        <button
-          onClick={refresh}
-          title={T.refresh}
-          className="shrink-0 rounded-control border border-line p-1.5 text-ink-soft transition hover:bg-paper-dim max-sm:hidden"
-        >
-          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-        </button>
         {/* View toggle: list / card grid */}
         <div className="flex shrink-0 overflow-hidden rounded-control border border-line">
           <button
@@ -139,24 +135,6 @@ export default function DeckHeader({
           >
             <LayoutList size={16} />
           </button>
-        </div>
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-control border border-line px-2 py-1 max-sm:hidden sm:flex-none">
-          <FolderClosed size={15} className="shrink-0 text-ink-soft" />
-          <select
-            // A folder that's been deleted reads as "no folder", matching
-            // where the sidebar now files the deck.
-            value={folders.some((f) => f.id === deck.folder_id) ? deck.folder_id! : ""}
-            onChange={(e) => moveToFolder(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-sm text-ink focus:outline-none"
-          >
-            <option value="">{T.noFolderOption}</option>
-            {flattenTree(buildLibraryTree(folders, []).roots).map(({ folder, depth }) => (
-              <option key={folder.id} value={folder.id}>
-                {"  ".repeat(depth)}
-                {folder.name}
-              </option>
-            ))}
-          </select>
         </div>
         <Link
           href={`/decks/practice?deck=${deck.id}`}
@@ -180,80 +158,62 @@ export default function DeckHeader({
             </>
           )}
         </button>
-        <button
-          onClick={() => setSharing(true)}
-          className="flex items-center gap-1 rounded-control border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-dim max-sm:hidden"
-        >
-          <Share2 size={15} /> {T.shareDeck}
-        </button>
-        <button
-          onClick={() => download("apkg")}
-          disabled={exporting !== null}
-          className="hk-btn hk-btn-primary px-3 py-1.5 text-sm disabled:opacity-60 max-sm:hidden"
-        >
-          {exporting === "apkg" ? T.building : T.exportApkg}
-        </button>
-        <button
-          onClick={() => download("txt")}
-          disabled={exporting !== null}
-          className="rounded-control border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-dim disabled:opacity-60 max-sm:hidden"
-        >
-          .txt
-        </button>
-        <button
-          onClick={remove}
-          className="rounded-control border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-dim max-sm:hidden"
-        >
-          {T.delete}
-        </button>
-        <button
-          onClick={() => setMenu((m) => !m)}
-          aria-expanded={menu}
-          aria-label={T.moreActions}
-          className={`rounded-control border border-line p-1.5 text-ink-soft transition sm:hidden ${menu ? "bg-paper-dim" : ""}`}
-        >
-          <MoreHorizontal size={18} />
-        </button>
-      </div>
-      {menu && (
-        <div className="flex flex-col divide-y divide-line-soft overflow-hidden rounded-control border border-line bg-white text-sm sm:hidden">
-          <label className="flex items-center gap-2.5 px-3 py-2.5">
-            <FolderClosed size={16} className="shrink-0 text-ink-soft" />
-            <select
-              value={folders.some((f) => f.id === deck.folder_id) ? deck.folder_id! : ""}
-              onChange={(e) => moveToFolder(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-ink focus:outline-none"
-            >
-              <option value="">{T.noFolderOption}</option>
-              {flattenTree(buildLibraryTree(folders, []).roots).map(({ folder, depth }) => (
-                <option key={folder.id} value={folder.id}>
-                  {"  ".repeat(depth)}
-                  {folder.name}
-                </option>
+        <div className="relative">
+          <button
+            onClick={() => setMenu((m) => !m)}
+            aria-expanded={menu}
+            aria-haspopup="menu"
+            aria-label={T.moreActions}
+            title={T.moreActions}
+            className={`rounded-control border border-line p-1.5 text-ink-soft transition hover:bg-paper-dim ${menu ? "bg-paper-dim" : ""}`}
+          >
+            <MoreHorizontal size={18} />
+          </button>
+          {menu && (
+            <>
+              {/* Click anywhere else (or Escape) closes it. */}
+              <div className="fixed inset-0 z-20" onClick={() => setMenu(false)} />
+            <div className="absolute right-0 top-full z-30 mt-1.5 flex w-64 flex-col divide-y divide-line-soft overflow-hidden rounded-control border border-line bg-surface text-sm shadow-lg">
+              <label className="flex items-center gap-2.5 px-3 py-2.5">
+                <FolderClosed size={16} className="shrink-0 text-ink-soft" />
+                <select
+                  value={folders.some((f) => f.id === deck.folder_id) ? deck.folder_id! : ""}
+                  onChange={(e) => moveToFolder(e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-ink focus:outline-none"
+                >
+                  <option value="">{T.noFolderOption}</option>
+                  {flattenTree(buildLibraryTree(folders, []).roots).map(({ folder, depth }) => (
+                    <option key={folder.id} value={folder.id}>
+                      {"  ".repeat(depth)}
+                      {folder.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {[
+                { icon: Share2, label: T.shareDeck, run: () => setSharing(true) },
+                { icon: Download, label: exporting === "apkg" ? T.building : T.exportApkg, run: () => download("apkg") },
+                { icon: Download, label: ".txt", run: () => download("txt") },
+                { icon: RefreshCw, label: T.refresh, run: refresh },
+                { icon: Trash2, label: T.delete, run: remove, danger: true },
+              ].map(({ icon: Icon, label, run, danger }) => (
+                <button
+                  key={label}
+                  disabled={exporting !== null}
+                  onClick={() => {
+                    setMenu(false);
+                    run();
+                  }}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-paper-dim disabled:opacity-50 ${danger ? "text-red-700" : "text-ink"}`}
+                >
+                  <Icon size={16} className="shrink-0" /> {label}
+                </button>
               ))}
-            </select>
-          </label>
-          {[
-            { icon: Share2, label: T.shareDeck, run: () => setSharing(true) },
-            { icon: Download, label: exporting === "apkg" ? T.building : T.exportApkg, run: () => download("apkg") },
-            { icon: Download, label: ".txt", run: () => download("txt") },
-            { icon: RefreshCw, label: T.refresh, run: refresh },
-            { icon: Trash2, label: T.delete, run: remove, danger: true },
-          ].map(({ icon: Icon, label, run, danger }) => (
-            <button
-              key={label}
-              disabled={exporting !== null}
-              onClick={() => {
-                setMenu(false);
-                run();
-              }}
-              className={`flex items-center gap-2.5 px-3 py-2.5 text-left active:bg-paper-dim disabled:opacity-50 ${danger ? "text-red-700" : "text-ink"}`}
-            >
-              <Icon size={16} className="shrink-0" /> {label}
-            </button>
-          ))}
+            </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
       {sharing && <DeckShareModal deck={deck} onClose={() => setSharing(false)} />}
     </div>
   );

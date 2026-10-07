@@ -4,7 +4,7 @@ import { useImmersive } from "../../../_lib/useImmersive";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pause, Play, Skull, Undo2 } from "lucide-react";
+import { ArrowLeft, Pause, Play, Skull, Undo2 } from "@/ui/icons";
 import type { Rating } from "@/lib/srs";
 import { usePracticeSession, type UsePracticeSessionResult } from "../../../_lib/usePracticeSession";
 import { supabase } from "../../../_lib/db";
@@ -708,7 +708,7 @@ export function Arena({
   if (allWords.length < MIN_WORDS_FOR_BATTLE) {
     return (
       <div className="mx-auto max-w-md p-8 text-center">
-        <div className="rounded-control border border-dashed border-line bg-white p-10 text-ink-soft">
+        <div className="rounded-control border border-dashed border-line bg-surface p-10 text-ink-soft">
           {T.notEnoughWordsBattle}
         </div>
       </div>
@@ -728,7 +728,7 @@ export function Arena({
           </div>
         ) : (
           <>
-            <div className="w-full rounded-control border border-dashed border-line bg-white p-10 text-ink-soft">
+            <div className="w-full rounded-control border border-dashed border-line bg-surface p-10 text-ink-soft">
               <p>{T.noWordsDueBattle}</p>
               <p className="mt-2 text-xs text-ink-mute">{T.noWordsDueBattleHint}</p>
             </div>

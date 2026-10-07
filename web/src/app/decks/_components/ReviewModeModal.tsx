@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Dumbbell, GraduationCap, PenLine, Settings2, Swords, Users, X } from "lucide-react";
+import { Dumbbell, GraduationCap, PenLine, Settings2, Swords, Users, X } from "@/ui/icons";
 import { T } from "../_lib/strings";
 import { useModalChrome } from "../_lib/useModal";
 import { MIN_WORDS_FOR_BATTLE } from "../review/battle/_lib/quiz";

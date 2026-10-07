@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Volume2 } from "lucide-react";
+import { Volume2 } from "@/ui/icons";
 import { gradeFor } from "@/lib/srs";
 import type { QueueCard } from "../../_lib/types";
 import { supabase } from "../../_lib/db";

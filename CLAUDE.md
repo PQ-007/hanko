@@ -651,6 +651,39 @@ Two traps found doing this:
 
 ## Standing notes
 
+- **The web leaderboard is friends only** (owner's call): podium + rows,
+  metric switch (7 хоног / Нийт XP / ELO), and tapping a friend opens your
+  online duel log with them — `headToHead()` in `decks/_lib/social.ts`
+  (tested) tallies your own finished/abandoned `matches` rows, which RLS
+  already scopes to you. `global_leaderboard()` (0027) is no longer called by
+  the web; mobile still has its Бүгд switch.
+- **Web themes**: light / dark / system, per device (`decks/_lib/theme.ts`,
+  applied as `html[data-theme]` by an inline script in `app/layout.tsx`
+  before first paint). Dark works by re-mapping the colour tokens in
+  `globals.css`, so **use tokens, never hard-coded light colours**: cards are
+  `bg-surface` (not `bg-white`), and colours inside SVG must go through
+  `style={{…}}` (CSS variables don't work in SVG attributes). Blue *text* in
+  dark mode has its own lighter shade (the seal blue behind white button
+  text is too dark to read as text).
+- **Settings** (`/decks/settings`): photo, name, username, theme, daily
+  limits + day cutoff, activity sharing, sign out. Profile pictures go to the
+  public `avatars` bucket (`0029_avatars.sql`), resized client-side to 256px
+  WebP; `profiles.image` may only be a Google photo or that bucket (a free
+  URL would let someone track who views their profile).
+- The web phone tab bar uses the **mobile app's Material icons**, extracted
+  from the Flutter SDK font into `web/src/ui/MaterialIcon.tsx`.
+- **Web icons are Hanko's own, not lucide-react** (uninstalled; ESLint's
+  `no-restricted-imports` rejects it and other icon packs). Drawings live in
+  `web/src/ui/Icon.tsx`; `web/src/ui/icons.tsx` exports them under the old
+  Lucide names (`Swords`, `Flame`, `X`…) so components import from
+  `@/ui/icons` and still pass icons around as values. A new icon means a new
+  drawing in Icon.tsx, in the same style (1.6 stroke, square caps, mitred
+  joins).
+- A "UI v2" redesign (Today page, sidebar-free header, mincho, sheets) was
+  built and **reverted at the owner's request** — the earlier design was
+  preferred. Kept from it: the icons above, and rarely used deck actions
+  behind the ⋯ menu at every screen size (`DeckHeader.tsx`).
+
 - **`PVP.md` is the worked plan for Phase 3.2**, the only phase big enough
   to need its own file. Read it before touching anything duel-shaped.
 

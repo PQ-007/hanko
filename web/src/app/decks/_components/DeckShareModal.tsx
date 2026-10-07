@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Image as ImageIcon, Link2, X } from "lucide-react";
+import { Check, Copy, Image as ImageIcon, Link2, X } from "@/ui/icons";
 import type { DeckWithCount } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
@@ -135,7 +135,7 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
                 readOnly
                 value={link}
                 onFocus={(e) => e.currentTarget.select()}
-                className="min-w-0 flex-1 rounded-control border border-line bg-white px-3 py-2 text-xs text-ink"
+                className="min-w-0 flex-1 rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink"
               />
               <button onClick={copy} className="hk-btn hk-btn-primary shrink-0 px-3 py-2 text-sm">
                 {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? T.shareCopied : T.shareCopy}

@@ -3,7 +3,7 @@
 import { useImmersive } from "../../../_lib/useImmersive";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame } from "@/ui/icons";
 import { supabase } from "../../../_lib/db";
 import { T } from "../../../_lib/strings";
 import type { QueueCard } from "../../../_lib/types";

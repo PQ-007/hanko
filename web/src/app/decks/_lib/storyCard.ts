@@ -53,13 +53,19 @@ const SEAL = "#256abf";
 const SEAL_DARK = "#184f95";
 const LINE = "#e3dccb";
 
-// Japanese first: the canvas has no page fonts of its own, and a Latin-only
-// face would draw tofu for every kanji.
-const FONT =
+// Japanese system gothics after the text face: the canvas has no page fonts
+// of its own, and a Latin-only face would draw tofu for every kanji.
+const JP_FALLBACK =
   '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", "Meiryo", system-ui, sans-serif';
 
+// The face for Latin and Cyrillic, set by renderStoryCard. It has to be a
+// font with the full Mongolian Cyrillic set (Ө ө Ү ү): with a Japanese font
+// first, those two letters were filled in from a different font and stood
+// out mid-word.
+let textFamily: string | null = null;
+
 function font(weight: number, size: number) {
-  return `${weight} ${size}px ${FONT}`;
+  return `${weight} ${size}px ${textFamily ? `${textFamily}, ` : ""}${JP_FALLBACK}`;
 }
 
 /** The largest size ≤ max at which text fits in width (never below min). */
@@ -204,9 +210,17 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
 /** The card as a PNG. Waits for fonts so the first render isn't in a fallback face. */
 export async function renderStoryCard(
   card: StoryCard,
-  size: { width: number; height: number } = storySize()
+  size: { width: number; height: number } = storySize(),
+  /** A loaded web font with Mongolian Cyrillic (e.g. next/font's fontFamily). */
+  family?: string
 ): Promise<Blob> {
+  textFamily = family ?? null;
   try {
+    // A canvas doesn't trigger web-font loading on its own: ask for every
+    // weight the card draws, with the letters that matter, before drawing.
+    if (family) {
+      await Promise.all([500, 600, 700, 800, 900].map((w) => document.fonts.load(`${w} 40px ${family}`, "Өө Үү Aa")));
+    }
     await document.fonts?.ready;
   } catch {
     // Font loading API missing — draw with whatever is there.

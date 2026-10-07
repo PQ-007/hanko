@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RotateCcw, X } from "lucide-react";
+import { RotateCcw, X } from "@/ui/icons";
 import type { BattleEvent, BattleOutcome } from "../_lib/damage";
 import { PLAYER_CHARACTER } from "../_lib/monsters";
 import { T } from "../../../_lib/strings";

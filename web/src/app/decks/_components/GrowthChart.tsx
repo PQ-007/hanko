@@ -63,7 +63,7 @@ export default function GrowthChart({ words, days = 90 }: { words: Word[]; days?
   const active = hover ? points[hover.i] : points[points.length - 1];
 
   return (
-    <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
+    <div ref={ref} className="rounded-control border border-line-soft bg-surface p-4 shadow-sm">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink-soft">{T.growthTitle(days)}</h3>
         <p className="text-xs text-ink-soft">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, RotateCcw, Undo2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, Undo2 } from "@/ui/icons";
 import { T } from "../../decks/_lib/strings";
 import type { SharedWord } from "../_lib/trial";
 import { useTrialSession } from "../_lib/useTrialSession";
@@ -71,7 +71,7 @@ export default function TrialCards({
       <p className="rounded-control bg-seal-tint px-3 py-2 text-center text-xs text-seal-dark">{T.sharedTrialBanner}</p>
 
       {done ? (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-line bg-white p-8 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-card border border-line bg-surface p-8 text-center">
           <p className="text-2xl font-extrabold text-ink">{T.sharedCardsDone}</p>
           <p className="text-sm text-ink-soft">{T.sharedCardsDoneDesc(session.reviewedCount)}</p>
           <div className="mt-2 flex w-full flex-col gap-2">
@@ -85,7 +85,7 @@ export default function TrialCards({
         <>
           <button
             onClick={() => setFlip({ key: cardKey, shown: true })}
-            className="flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 rounded-card border border-line bg-white p-8 text-center shadow-sm sm:flex-none sm:min-h-[340px]"
+            className="flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 rounded-card border border-line bg-surface p-8 text-center shadow-sm sm:flex-none sm:min-h-[340px]"
           >
             <span className="text-5xl font-extrabold tracking-tight text-ink">{card.term}</span>
             {shown ? (

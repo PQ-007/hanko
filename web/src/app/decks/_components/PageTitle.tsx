@@ -11,6 +11,7 @@ const TITLES: [string, string][] = [
   ["/decks/friends", T.friendsNav],
   ["/decks/writing", T.writingTitle],
   ["/decks/practice", T.practiceNav],
+  ["/decks/settings", T.settingsTitle],
   ["/decks", T.decksNav],
 ];
 

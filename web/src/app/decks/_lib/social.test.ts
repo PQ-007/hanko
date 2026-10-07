@@ -39,3 +39,29 @@ test("the leaderboard ranks shared rows only, by the chosen measure", () => {
   assert.deepEqual(rankFriends(rows, "total").map((r) => r.user_id), ["a", "b"]);
   assert.deepEqual(rankFriends(rows, "elo").map((r) => r.user_id), ["a", "b"]);
 });
+
+test("head-to-head: results, perspective, ordering and what doesn't count", async () => {
+  const { headToHead, totalRecord } = await import("./social.ts");
+  const me = "me", a = "a", b = "b";
+  const m = (id: string, host: string, guest: string | null, winner: string | null, status: string, at: string, hostHp = 50, guestHp = 0) => ({
+    id, host_id: host, guest_id: guest, host_hp: hostHp, guest_hp: guestHp, winner_id: winner, status, finished_at: at, created_at: at,
+  });
+  const h = headToHead(
+    [
+      m("1", me, a, me, "finished", "2026-10-01T10:00:00Z", 64, 0),
+      m("2", a, me, a, "finished", "2026-10-03T10:00:00Z", 30, 0), // I was the guest and lost
+      m("3", me, a, null, "finished", "2026-10-02T10:00:00Z", 0, 0), // draw
+      m("4", b, me, me, "abandoned", "2026-10-04T10:00:00Z", 100, 80), // b left; I won
+      m("5", me, a, null, "active", "2026-10-05T10:00:00Z"), // live — ignored
+      m("6", me, null, null, "lobby", "2026-10-05T10:00:00Z"), // nobody joined — ignored
+    ],
+    me
+  );
+  const ra = h.get(a)!;
+  assert.deepEqual([ra.wins, ra.losses, ra.draws], [1, 1, 1]);
+  assert.deepEqual(ra.matches.map((x) => x.id), ["2", "3", "1"], "newest first");
+  assert.deepEqual([ra.matches[0].myHp, ra.matches[0].theirHp], [0, 30], "HP from my side as guest");
+  const rb = h.get(b)!;
+  assert.deepEqual([rb.wins, rb.matches[0].abandoned], [1, true]);
+  assert.deepEqual(totalRecord(h), { wins: 2, losses: 1, draws: 1 });
+});

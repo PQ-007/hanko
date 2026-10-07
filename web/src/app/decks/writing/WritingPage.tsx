@@ -3,7 +3,7 @@
 import { useImmersive } from "../_lib/useImmersive";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Eye, Grid3x3, List, PenLine, RotateCcw, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, Grid3x3, List, PenLine, RotateCcw, Trash2, Undo2 } from "@/ui/icons";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
 import LoadingScene from "../review/battle/_components/LoadingScene";
@@ -139,7 +139,7 @@ function Setup({
             clear();
           }}
           aria-label={T.writingSetupDeck}
-          className="rounded-control border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-control border border-line bg-surface px-3 py-2 text-sm"
         >
           <option value="">{T.writingAllDecks}</option>
           {decks.map((d) => (
@@ -157,7 +157,7 @@ function Setup({
                 clear();
               }}
               className={`flex items-center gap-1.5 rounded-control px-3 py-1 font-medium ${
-                view === v ? "bg-white text-ink shadow-sm" : "text-ink-soft"
+                view === v ? "bg-surface text-ink shadow-sm" : "text-ink-soft"
               }`}
             >
               {v === "words" ? <List size={14} /> : <Grid3x3 size={14} />}
@@ -183,7 +183,7 @@ function Setup({
       {candidates.length === 0 ? (
         <p className="py-12 text-center text-sm text-ink-mute">{T.writingNoKanji}</p>
       ) : view === "words" ? (
-        <ul className="mt-3 divide-y divide-line-soft rounded-card border border-line-soft bg-white">
+        <ul className="mt-3 divide-y divide-line-soft rounded-card border border-line-soft bg-surface">
           {candidates.map((w) => (
             <li key={w.id}>
               <label className="flex cursor-pointer items-center gap-3 px-4 py-2.5">
@@ -222,7 +222,7 @@ function Setup({
                 key={k}
                 onClick={() => setPickedKanji((s) => (on ? s.filter((x) => x !== k) : [...s, k]))}
                 className={`relative aspect-square rounded-control border text-2xl font-bold transition ${
-                  on ? "border-seal bg-seal-tint ring-2 ring-seal" : "border-line-soft bg-white hover:border-seal"
+                  on ? "border-seal bg-seal-tint ring-2 ring-seal" : "border-line-soft bg-surface hover:border-seal"
                 }`}
               >
                 {k}

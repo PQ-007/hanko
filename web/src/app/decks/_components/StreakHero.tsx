@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, GraduationCap, Pencil, Plus, Share2, Snowflake } from "lucide-react";
+import { Flame, GraduationCap, Pencil, Plus, Share2, Snowflake } from "@/ui/icons";
 import { T } from "../_lib/strings";
 import { useCountUp, useInView } from "../_lib/useAnim";
 import { RING_ADDED, RING_GOAL } from "../_lib/chartColors";
@@ -49,7 +49,7 @@ export default function StreakHero({
   return (
     <div
       ref={ref}
-      className="flex flex-col items-center justify-between gap-6 rounded-control border border-line-soft bg-white p-6 shadow-sm sm:flex-row sm:gap-8"
+      className="flex flex-col items-center justify-between gap-6 rounded-control border border-line-soft bg-surface p-6 shadow-sm sm:flex-row sm:gap-8"
     >
       <div className="flex items-center gap-5">
         <div className="rounded-full bg-seal p-4 text-white">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle } from "@/ui/icons";
 import type { Deck, DeckWithCount, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { supabase } from "../_lib/db";

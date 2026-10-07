@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, GraduationCap, Search } from "lucide-react";
+import { ArrowLeft, GraduationCap, Search } from "@/ui/icons";
 import type { Deck, DeckWithCount, Folder, Word } from "@/lib/types";
 import { supabase } from "./_lib/db";
 import { T } from "./_lib/strings";
@@ -189,7 +189,7 @@ export default function DeckDashboard() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={T.search}
-              className="w-full rounded-control border border-line bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
+              className="w-full rounded-control border border-line bg-surface py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
             />
           </div>
           <button
@@ -217,7 +217,7 @@ export default function DeckDashboard() {
           />
           </div>
         ) : (
-          <div className="rounded-control border border-dashed border-line bg-white p-10 text-center text-ink-soft">
+          <div className="rounded-control border border-dashed border-line bg-surface p-10 text-center text-ink-soft">
             {T.createDeckToStart}
           </div>
         )}

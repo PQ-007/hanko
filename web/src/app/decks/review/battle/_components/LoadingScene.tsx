@@ -7,7 +7,8 @@ import FightScene from "./FightScene";
 // this only fixes the sizing and hangs the caption underneath.
 export default function LoadingScene({ label }: { label: string }) {
   return (
-    <div className="py-10">
+    // Centred in the visible screen (below the header), not parked at the top.
+    <div className="flex min-h-[calc(100dvh-9rem)] w-full items-center justify-center px-4 py-10 [&_p]:text-base">
       <FightScene slotClass="hanko-loading-slot" label={label} />
     </div>
   );

@@ -41,7 +41,7 @@ export default function QuizOptions({
             // lines inside a 10-second timer anyway. `line-clamp-3` plus a
             // fixed height makes every option the same size, so the card's
             // height is identical for every question in the session.
-            className="flex h-[76px] items-start gap-2 sm:h-[86px] sm:gap-2.5 overflow-hidden rounded-control border border-black/10 bg-white/70 px-3 py-2.5 text-left text-sm text-ink shadow-sm transition hover:border-black/20 hover:bg-white disabled:pointer-events-none disabled:opacity-60 xl:h-[108px] xl:gap-3 xl:px-4 xl:py-3 xl:text-base"
+            className="flex h-[76px] items-start gap-2 sm:h-[86px] sm:gap-2.5 overflow-hidden rounded-control border border-black/10 bg-white/70 px-3 py-2.5 text-left text-sm text-ink shadow-sm transition hover:border-black/20 hover:bg-surface disabled:pointer-events-none disabled:opacity-60 xl:h-[108px] xl:gap-3 xl:px-4 xl:py-3 xl:text-base"
           >
             <span
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white xl:h-6 xl:w-6 xl:text-xs ${slot.className}`}

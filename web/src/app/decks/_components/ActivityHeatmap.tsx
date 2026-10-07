@@ -86,7 +86,7 @@ export default function ActivityHeatmap({
   return (
     <div
       ref={ref}
-      className="rounded-control border border-line-soft bg-white p-4 shadow-sm"
+      className="rounded-control border border-line-soft bg-surface p-4 shadow-sm"
     >
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink-soft">{title}</h3>

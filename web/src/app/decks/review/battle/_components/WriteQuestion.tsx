@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { PenLine, Trash2, Undo2 } from "lucide-react";
+import { PenLine, Trash2, Undo2 } from "@/ui/icons";
 import { T } from "../../../_lib/strings";
 import type { QueueCard } from "../../../_lib/types";
 import WritingPad from "../../../writing/_components/WritingPad";

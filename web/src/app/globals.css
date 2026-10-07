@@ -31,6 +31,8 @@
   --color-seal: #256abf;
   --color-seal-dark: #184f95;
   --color-seal-tint: #dbe7f7;
+  /* Cards and raised controls (was a hard-coded #fff / bg-white). */
+  --color-surface: #ffffff;
 
   /* One radius scale instead of the previous free-for-all. */
   --radius-card: 0.875rem;
@@ -47,11 +49,37 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Deliberately no prefers-color-scheme override. The previous one flipped the
-   body to near-black while every card, border and text colour stayed light,
-   so dark-mode users got an unreadable half-inverted page. A real dark theme
-   needs the whole token set re-mapped; until that exists, one coherent light
-   theme is the honest choice. */
+/* Dark theme: the whole token set re-mapped, chosen in Тохиргоо (light / dark
+   / follow the system) and applied as html[data-theme] before first paint by
+   the script in app/layout.tsx. (An earlier prefers-color-scheme rule only
+   flipped the body, leaving cards light — an unreadable half-inverted page;
+   that's why this remaps every token rather than one colour.) Contrast, dark:
+   ink 13:1, ink-soft 7.6:1, ink-mute 5.2:1 on surface; white on seal 5.4:1. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: #14171c;
+  --color-paper-dim: #1c2027;
+  --color-paper-deep: #262b33;
+  --color-line: #363d48;
+  --color-line-soft: #2b313a;
+  --color-ink: #ece9e2;
+  --color-ink-soft: #b9b3a8;
+  --color-ink-mute: #9a9488;
+  --color-seal: #2f6bb8;
+  --color-seal-dark: #3a78c9;
+  --color-seal-tint: #1d2d44;
+  --color-surface: #1e232b;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+/* The seal blue that works behind white button text is too dark to read as
+   text on dark paper, so blue text gets its own lighter shade. */
+html[data-theme="dark"] .text-seal {
+  color: #6fa3e6;
+}
+html[data-theme="dark"] .text-seal-dark {
+  color: #8db6ec;
+}
 body {
   background: var(--color-paper);
   color: var(--color-ink);
@@ -65,7 +93,7 @@ body {
    how the five-radius/three-shadow inconsistency crept in.
    --------------------------------------------------------------------------- */
 .hk-card {
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid var(--color-line-soft);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
@@ -120,7 +148,7 @@ body {
 }
 
 .hk-btn-quiet {
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-ink);
   border: 1px solid var(--color-line);
 }
@@ -541,16 +569,24 @@ textarea:focus-visible {
    flight (LoadingScene.tsx). Sized between the hero chips and the arena — big
    enough to read as a scene, small enough to sit where a line of text was. */
 .hanko-loading-slot {
-  --hanko-fighter-scale: 1.8;
-  width: 122px;
-  height: 130px;
+  --hanko-fighter-scale: 2.6;
+  width: 150px;
+  height: 188px;
 }
 
 @media (min-width: 640px) {
   .hanko-loading-slot {
-    --hanko-fighter-scale: 2.4;
-    width: 163px;
-    height: 173px;
+    --hanko-fighter-scale: 3.4;
+    width: 231px;
+    height: 245px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hanko-loading-slot {
+    --hanko-fighter-scale: 4;
+    width: 272px;
+    height: 288px;
   }
 }
 

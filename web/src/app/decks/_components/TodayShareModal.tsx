@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X } from "@/ui/icons";
 import { supabase } from "../_lib/db";
 import { formatDateMn } from "../_lib/dates";
 import { T } from "../_lib/strings";

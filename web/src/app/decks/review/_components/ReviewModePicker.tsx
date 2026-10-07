@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, PenLine, Swords, Users } from "lucide-react";
+import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, PenLine, Swords, Versus } from "@/ui/icons";
 import { supabase } from "../../_lib/db";
 import { T } from "../../_lib/strings";
 import { MIN_WORDS_FOR_BATTLE } from "../battle/_lib/quiz";
@@ -168,7 +168,7 @@ export default function ReviewModePicker() {
                 className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   active
                     ? "bg-seal text-paper"
-                    : "border border-line bg-white text-ink-soft hover:bg-paper-dim"
+                    : "border border-line bg-surface text-ink-soft hover:bg-paper-dim"
                 }`}
               >
                 {d.name}
@@ -300,7 +300,7 @@ export default function ReviewModePicker() {
               other side. */}
           <ModeRow
             href="/decks/review/duel"
-            icon={<Users size={19} />}
+            icon={<Versus size={19} />}
             iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}

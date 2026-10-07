@@ -3,7 +3,7 @@
 import { useImmersive } from "../../_lib/useImmersive";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Undo2, X } from "lucide-react";
+import { Undo2, X } from "@/ui/icons";
 import { T } from "../../_lib/strings";
 import { usePracticeSession } from "../../_lib/usePracticeSession";
 import PracticeCard from "./PracticeCard";
@@ -48,7 +48,7 @@ export default function PracticeSession() {
             <p className="mt-2 text-xs opacity-80">{loadError}</p>
           </div>
         ) : (
-          <div className="rounded-control border border-dashed border-line bg-white p-10 text-ink-soft">
+          <div className="rounded-control border border-dashed border-line bg-surface p-10 text-ink-soft">
             {T.noWordsDue}
           </div>
         )}

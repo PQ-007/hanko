@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Share2 } from "lucide-react";
+import { Noto_Sans } from "next/font/google";
+import { Download, Share2 } from "@/ui/icons";
 import { T } from "../_lib/strings";
 import { renderStoryCard, storySize, type StoryCard } from "../_lib/storyCard";
+
+// The story image's text face: full Mongolian Cyrillic (Ө ө Ү ү are in the
+// cyrillic-ext subset), variable weight, self-hosted by next/font.
+const storyFont = Noto_Sans({ subsets: ["latin", "cyrillic", "cyrillic-ext"], display: "swap" });
 
 /**
  * A story card's preview with Share (the phone's share sheet — Instagram,
@@ -20,7 +25,7 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
   useEffect(() => {
     let url: string | null = null;
     let cancelled = false;
-    renderStoryCard(JSON.parse(key), size)
+    renderStoryCard(JSON.parse(key), size, storyFont.style.fontFamily)
       .then((blob) => {
         if (cancelled) return;
         url = URL.createObjectURL(blob);

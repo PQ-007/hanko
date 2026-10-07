@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Layers, Swords, Users } from "lucide-react";
+import { LayoutDashboard, Layers, Swords, Users } from "@/ui/icons";
 import { T } from "../_lib/strings";
 
 const LINKS = [

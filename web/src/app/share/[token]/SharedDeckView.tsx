@@ -3,7 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Layers, LogIn, Plus, Swords } from "lucide-react";
+import { Layers, LogIn, Plus, Swords } from "@/ui/icons";
 import { supabase } from "../../decks/_lib/db";
 import { T } from "../../decks/_lib/strings";
 import { Arena } from "../../decks/review/battle/_components/BattleArena";
@@ -41,7 +41,7 @@ export default function SharedDeckView({
   return (
     // App shell, like /decks: the bar stays, only the content scrolls.
     <div className="flex h-dvh flex-col overflow-hidden bg-gradient-to-b from-paper to-paper-dim text-ink">
-      <header className="shrink-0 border-b border-line/70 bg-white/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <header className="shrink-0 border-b border-line/70 bg-surface/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5">
           <Link href={here} className="min-w-0 truncate text-sm font-semibold text-ink-soft">
             {T.sharedBy}
@@ -85,12 +85,12 @@ export default function SharedDeckView({
             />
           </div>
 
-          <div className="mt-6 rounded-card border border-line bg-white p-4">
+          <div className="mt-6 rounded-card border border-line bg-surface p-4">
             <p className="text-sm text-ink-soft">{T.sharedPitch}</p>
             <div className="mt-3">{cta}</div>
           </div>
 
-          <ul className="mt-6 divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-white">
+          <ul className="mt-6 divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-surface">
             {deck.words.map((w, i) => (
               <li key={i} className="flex items-baseline gap-3 px-4 py-2.5">
                 <span className="text-lg font-bold">{w.term}</span>
@@ -137,7 +137,7 @@ function PlayCard({
     </>
   );
   const cls = `flex items-center gap-3 rounded-card p-4 text-left transition ${
-    primary ? "bg-seal text-paper hover:bg-seal-dark" : "border border-line bg-white hover:bg-paper-dim"
+    primary ? "bg-seal text-paper hover:bg-seal-dark" : "border border-line bg-surface hover:bg-paper-dim"
   }`;
   if (disabled) return <div className={`${cls} cursor-not-allowed opacity-50`}>{body}</div>;
   return (

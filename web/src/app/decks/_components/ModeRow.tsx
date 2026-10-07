@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/ui/icons";
 
 // One shape for every play option: same height, same anatomy, so a list of
 // them reads as a list. Without an `href` it renders as inert markup rather
@@ -71,7 +71,7 @@ export default function ModeRow({
     return (
       <div
         aria-disabled
-        className="flex items-center gap-4 rounded-card border border-dashed border-line bg-white/40 px-5 py-4"
+        className="flex items-center gap-4 rounded-card border border-dashed border-line bg-surface/40 px-5 py-4"
       >
         {body}
       </div>

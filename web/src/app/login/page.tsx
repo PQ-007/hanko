@@ -44,7 +44,7 @@ function LoginInner() {
       <button
         onClick={signIn}
         disabled={loading}
-        className="flex items-center gap-3 rounded-control border border-line bg-white px-6 py-3 font-medium text-ink shadow-sm transition hover:bg-paper-dim disabled:opacity-60"
+        className="flex items-center gap-3 rounded-control border border-line bg-surface px-6 py-3 font-medium text-ink shadow-sm transition hover:bg-paper-dim disabled:opacity-60"
       >
         <GoogleIcon />
         {loading ? "Шилжүүлж байна…" : "Google-ээр нэвтрэх"}

@@ -40,7 +40,8 @@ export default function ProgressRing({
             cy={size / 2}
             r={r}
             fill="none"
-            stroke="#dbe7f7"
+            // Track colour via style: CSS variables don't work in SVG attributes.
+            style={{ stroke: "var(--color-seal-tint)" }}
             strokeWidth={stroke}
           />
           <circle
