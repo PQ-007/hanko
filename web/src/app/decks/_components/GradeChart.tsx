@@ -41,7 +41,7 @@ export default function GradeChart({
   const total = words.length;
 
   return (
-    <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
+    <div ref={ref} className="rounded-control border border-line-soft bg-surface p-4 shadow-sm">
       <h3 className="mb-5 text-sm font-semibold text-ink-soft">{title ?? T.gradeTitle}</h3>
       <div className="flex items-end gap-3">
         {GRADE_ORDER.map((g, i) => {

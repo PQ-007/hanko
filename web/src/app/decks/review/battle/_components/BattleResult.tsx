@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RotateCcw, X } from "lucide-react";
+import { RotateCcw, X } from "@/ui/icons";
 import type { BattleEvent, BattleOutcome } from "../_lib/damage";
 import { PLAYER_CHARACTER } from "../_lib/monsters";
 import { T } from "../../../_lib/strings";
@@ -60,6 +60,7 @@ export default function BattleResult({
   monster,
   monsterDown,
   onRetry,
+  action,
 }: {
   outcome: Exclude<BattleOutcome, "ongoing">;
   reviewedCount: number;
@@ -77,6 +78,8 @@ export default function BattleResult({
   // the arena, and the defeat screen just sat there. In-place reset also
   // keeps ?mode=free, which that link silently dropped.
   onRetry?: () => void;
+  /** Replaces the stats link (the share page's trial has no stats). */
+  action?: React.ReactNode;
 }) {
   const defeated = outcome === "defeat";
   // The monster on screen when the run ended counts too, if the run ended on
@@ -95,7 +98,7 @@ export default function BattleResult({
   const crits = events.filter((e) => e.crit).length;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl flex-col justify-center px-4 py-6 sm:py-8">
+    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-4 py-6 sm:py-8">
       <div className="hk-arena flex flex-col items-center gap-6 px-5 py-8 text-center sm:px-10 sm:py-12">
         <span
           className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ring-1 ${
@@ -200,13 +203,15 @@ export default function BattleResult({
           )}
           {/* hk-btn-quiet is a white button — glaring beside the seal one on a
               dark stage. The secondary action is an outline here instead. */}
-          <Link
-            href="/decks/stats"
-            className="hk-btn flex-1 border border-white/15 bg-white/5 px-4 py-3 text-sm text-paper hover:bg-white/10"
-          >
-            <X size={15} />
-            {T.stopBattle}
-          </Link>
+          {action ?? (
+            <Link
+              href="/decks/stats"
+              className="hk-btn flex-1 border border-white/15 bg-white/5 px-4 py-3 text-sm text-paper hover:bg-white/10"
+            >
+              <X size={15} />
+              {T.stopBattle}
+            </Link>
+          )}
         </div>
       </div>
     </div>

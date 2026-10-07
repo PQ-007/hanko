@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle } from "@/ui/icons";
 import type { Deck, DeckWithCount, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { supabase } from "../_lib/db";
@@ -18,6 +18,7 @@ import WordSpotlight from "../_components/WordSpotlight";
 import ReviewModeModal from "../_components/ReviewModeModal";
 import QuickAddWordModal from "../_components/QuickAddWordModal";
 import GoalModal from "../_components/GoalModal";
+import TodayShareModal from "../_components/TodayShareModal";
 import LoadingScene from "../review/battle/_components/LoadingScene";
 
 // One SRS day's review count, from the review_activity() RPC (migration 0013).
@@ -60,13 +61,16 @@ export default function StatsDashboard() {
   const [loading, setLoading] = useState(true);
   // Which dialog, if any, is open. Both are mounted below the page rather
   // than inside the hero so a reload triggered by one can't unmount it.
-  const [modal, setModal] = useState<"review" | "add" | "goal" | null>(null);
+  const [modal, setModal] = useState<"review" | "add" | "goal" | "share" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const [decksRes, wordsRes, logRes, dueRes, todayRes, freezeRes] = await Promise.all([
       supabase.from("decks").select("*").eq("deleted", false).order("name"),
-      supabase.from("words").select("*").eq("deleted", false),
+      // Ordered by id so WordSpotlight's day-seeded index lands on the same
+      // word here and on mobile (which runs the same query) — Postgres row
+      // order is otherwise unspecified.
+      supabase.from("words").select("*").eq("deleted", false).order("id"),
       // Bucketed server-side by SRS day. The RPC also excludes undone answers
       // and battle/drill sources, so activity can't be inflated by answers the
       // user took back or by gamified modes.
@@ -182,6 +186,7 @@ export default function StatsDashboard() {
         onPractice={() => setModal("review")}
         onAddWord={() => setModal("add")}
         onEditGoal={() => setModal("goal")}
+        onShareToday={() => setModal("share")}
       />
 
       {logMissing && (
@@ -239,6 +244,7 @@ export default function StatsDashboard() {
           }}
         />
       )}
+      {modal === "share" && <TodayShareModal streak={streak} onClose={() => setModal(null)} />}
       {modal === "goal" && (
         <GoalModal
           currentGoal={newGoal}

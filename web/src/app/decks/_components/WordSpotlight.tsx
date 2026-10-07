@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, Shuffle, Sparkle } from "lucide-react";
+import { ArrowRight, Play, Shuffle, Sparkle } from "@/ui/icons";
 import type { Deck, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { T } from "../_lib/strings";
@@ -123,7 +123,7 @@ export default function WordSpotlight({
             disabled={playing}
             title={T.playAudio}
             aria-label={T.playAudio}
-            className="shrink-0 rounded-full border border-line-soft bg-white p-2 text-ink-soft transition hover:bg-paper-dim disabled:opacity-50"
+            className="shrink-0 rounded-full border border-line-soft bg-surface p-2 text-ink-soft transition hover:bg-paper-dim disabled:opacity-50"
           >
             <Play size={14} className={playing ? "animate-pulse" : ""} />
           </button>

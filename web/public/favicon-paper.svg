@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Hanko's ensō, in the paper theme's colours (see decks/_lib/theme.ts). -->
+  
+  <circle cx="64" cy="64" r="64" fill="#c8442f"/>
+  <g transform="translate(64 64) scale(3.4) translate(-12 -12)">
+    <path d="M17.6 5.6A8 8 0 1 0 20 11.2" fill="none" stroke="#fffaf2" stroke-width="2.7" stroke-linecap="square" stroke-linejoin="miter"/>
+  </g>
+</svg>

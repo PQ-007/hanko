@@ -63,7 +63,7 @@ export default function GrowthChart({ words, days = 90 }: { words: Word[]; days?
   const active = hover ? points[hover.i] : points[points.length - 1];
 
   return (
-    <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
+    <div ref={ref} className="rounded-control border border-line-soft bg-surface p-4 shadow-sm">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink-soft">{T.growthTitle(days)}</h3>
         <p className="text-xs text-ink-soft">
@@ -86,8 +86,8 @@ export default function GrowthChart({ words, days = 90 }: { words: Word[]; days?
       >
         <defs>
           <linearGradient id="growthFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={ACCENT} stopOpacity="0.22" />
-            <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
+            <stop offset="0%" stopOpacity="0.22" style={{ stopColor: ACCENT }} />
+            <stop offset="100%" stopOpacity="0" style={{ stopColor: ACCENT }} />
           </linearGradient>
         </defs>
 
@@ -95,15 +95,15 @@ export default function GrowthChart({ words, days = 90 }: { words: Word[]; days?
         <path
           d={linePath}
           fill="none"
-          stroke={ACCENT}
           strokeWidth="2"
           strokeLinejoin="round"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
           style={
             reduced
-              ? undefined
+              ? { stroke: ACCENT }
               : {
+                  stroke: ACCENT,
                   strokeDasharray: 2000,
                   strokeDashoffset: inView ? 0 : 2000,
                   transition: "stroke-dashoffset 1400ms ease-out",
@@ -127,7 +127,7 @@ export default function GrowthChart({ words, days = 90 }: { words: Word[]; days?
               cx={x(hover.i)}
               cy={y(points[hover.i].total)}
               r="4"
-              fill={ACCENT}
+              style={{ fill: ACCENT }}
               stroke="#fff"
               strokeWidth="2"
               vectorEffect="non-scaling-stroke"

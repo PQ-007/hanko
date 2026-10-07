@@ -1,10 +1,26 @@
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
+import '../models/library.dart';
 import '../models/queue_card.dart';
 import 'reminders.dart';
 
-final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
+const _uuid = Uuid();
+
+/// A word's quiz fields — what Monster Hunt builds its options from.
+typedef QuizWordRow = ({
+  String id,
+  String term,
+  String? reading,
+  String? meaning,
+  String? meaningMn,
+});
+
+final supabaseProvider = Provider<SupabaseClient>(
+  (ref) => Supabase.instance.client,
+);
 
 /// Emits on every sign-in / sign-out so the UI can follow the session.
 final authStateProvider = StreamProvider<AuthState>(
@@ -24,37 +40,221 @@ final remindersProvider = FutureProvider<Reminders>(
 /// Everything this app knows how to ask the backend.
 ///
 /// Scheduling is deliberately absent: `review_card()` on the server is the only
-/// implementation of SM-2, so there is nothing here to drift out of step with
-/// the web app. This class just calls it.
+/// scheduler (FSRS-5 since 0021_fsrs.sql), so there is nothing here to drift
+/// out of step with the web app. This class just calls it.
 class Repository {
   const Repository(this._db);
 
   final SupabaseClient _db;
 
-  Future<List<Map<String, dynamic>>> decks() async {
+  String get _uid {
+    final user = _db.auth.currentUser;
+    if (user == null) throw StateError('not signed in');
+    return user.id;
+  }
+
+  // ---- Folders -------------------------------------------------------------
+
+  /// Oldest first, matching the web sidebar's order.
+  Future<List<Folder>> folders() async {
+    final rows = await _db
+        .from('folders')
+        .select()
+        .eq('deleted', false)
+        .order('created_at');
+    return rows.map((r) => Folder.fromJson(r)).toList();
+  }
+
+  /// Returns the new folder's id.
+  Future<String> createFolder(String name, {String? parentId}) async {
+    final row = await _db
+        .from('folders')
+        .insert({'user_id': _uid, 'name': name, 'parent_id': ?parentId})
+        .select('id')
+        .single();
+    return row['id'] as String;
+  }
+
+  Future<void> renameFolder(String folderId, String name) async {
+    await _db.from('folders').update({'name': name}).eq('id', folderId);
+  }
+
+  /// Cycles are rejected server-side by the `folders_check_parent` trigger
+  /// (0024), so a bad move surfaces as an error rather than corrupting the tree.
+  Future<void> moveFolder(String folderId, String? parentId) async {
+    await _db
+        .from('folders')
+        .update({'parent_id': parentId})
+        .eq('id', folderId);
+  }
+
+  /// Tombstone only, like the web sidebar. Its decks and sub-folders keep
+  /// pointing at it; every client treats a parent it can't see as root, so
+  /// nothing is lost and nothing needs a cascade of writes.
+  Future<void> deleteFolder(String folderId) async {
+    await _db.from('folders').update({'deleted': true}).eq('id', folderId);
+  }
+
+  // ---- Decks ---------------------------------------------------------------
+
+  Future<List<Deck>> decks() async {
     final rows = await _db
         .from('decks')
         .select()
         .eq('deleted', false)
         .order('name');
-    return List<Map<String, dynamic>>.from(rows);
+    return rows.map((r) => Deck.fromJson(r)).toList();
   }
 
+  /// Returns the new deck's id.
+  Future<String> createDeck(String name, {String? folderId}) async {
+    final row = await _db
+        .from('decks')
+        .insert({'user_id': _uid, 'name': name, 'folder_id': ?folderId})
+        .select('id')
+        .single();
+    return row['id'] as String;
+  }
+
+  Future<void> moveDeck(String deckId, String? folderId) async {
+    await _db.from('decks').update({'folder_id': folderId}).eq('id', deckId);
+  }
+
+  // ---- Words ---------------------------------------------------------------
+
   /// Non-deleted words in a deck, newest first.
-  Future<List<Map<String, dynamic>>> words(String deckId) async {
+  Future<List<Word>> words(String deckId) async {
     final rows = await _db
         .from('words')
         .select()
         .eq('deck_id', deckId)
         .eq('deleted', false)
         .order('date_added', ascending: false);
-    return List<Map<String, dynamic>>.from(rows);
+    return rows.map((r) => Word.fromJson(r)).toList();
   }
 
-  Future<void> createDeck(String name) async {
-    final user = _db.auth.currentUser;
-    if (user == null) throw StateError('not signed in');
-    await _db.from('decks').insert({'user_id': user.id, 'name': name});
+  /// Every live word. The stats page and the per-deck counts both derive from
+  /// this one read, the same way the web dashboard does.
+  ///
+  /// Ordered by id, as on the web dashboard: the word spotlight indexes into
+  /// this list by a day seed, so both clients need the same order to show the
+  /// same "word of the day".
+  Future<List<Word>> allWords() async {
+    final rows = await _db
+        .from('words')
+        .select()
+        .eq('deleted', false)
+        .order('id');
+    return rows.map((r) => Word.fromJson(r)).toList();
+  }
+
+  /// Search across every deck — same query and the same character stripping
+  /// as web/src/app/decks/DeckDashboard.tsx, so the two find the same words.
+  Future<List<Word>> searchWords(String query) async {
+    final q = query.replaceAll(RegExp(r'[,()%*]'), '').trim();
+    if (q.isEmpty) return const [];
+    final like = '%$q%';
+    final rows = await _db
+        .from('words')
+        .select('*, deck:decks(name)')
+        .eq('deleted', false)
+        .or(
+          'term.ilike.$like,reading.ilike.$like,meaning.ilike.$like,meaning_mn.ilike.$like',
+        )
+        .order('date_added', ascending: false)
+        .limit(100);
+    return rows.map((r) => Word.fromJson(r)).toList();
+  }
+
+  /// Terms from [terms] that already exist (live) in [deckId]. One query for
+  /// any number of candidates — the camera's batch add asks about a whole page
+  /// of words at once.
+  Future<Set<String>> existingTerms(
+    String deckId,
+    Iterable<String> terms,
+  ) async {
+    final out = <String>{};
+    for (final chunk in _chunks(terms.toSet().toList())) {
+      final rows = await _db
+          .from('words')
+          .select('term')
+          .eq('deck_id', deckId)
+          .eq('deleted', false)
+          .inFilter('term', chunk);
+      out.addAll(rows.map((r) => r['term'] as String));
+    }
+    return out;
+  }
+
+  /// `in.(…)` filters go in the URL. Japanese terms percent-encode to ~9
+  /// bytes a character and UUIDs are 36, so a long list overruns the URL
+  /// length a proxy accepts (414) and the whole request fails. Batches of
+  /// [_inBatch] stay well inside it.
+  static const _inBatch = 100;
+
+  static Iterable<List<String>> _chunks(List<String> items) sync* {
+    for (var i = 0; i < items.length; i += _inBatch) {
+      yield items.sublist(i, min(i + _inBatch, items.length));
+    }
+  }
+
+  /// The one way words get created on mobile — manual add, quick add and the
+  /// camera's batch add all come through here.
+  ///
+  /// Ids are generated on the device and the insert ignores a conflicting id,
+  /// so replaying a save after a dropped connection can't create a word twice.
+  /// Cards are never written here: the `words_create_default_card` trigger
+  /// (0006_cards.sql) gives each new word a `state='new'` recognition card,
+  /// exactly as it does for words from the extension and the web.
+  Future<List<String>> addWords(
+    String deckId,
+    List<WordDraft> drafts, {
+    List<String>? ids,
+  }) async {
+    final uid = _uid;
+    final rowIds = ids ?? [for (final _ in drafts) _uuid.v4()];
+    final rows = [
+      for (var i = 0; i < drafts.length; i++)
+        {
+          'id': rowIds[i],
+          'deck_id': deckId,
+          'user_id': uid,
+          'term': drafts[i].term,
+          'reading': drafts[i].reading,
+          'meaning': drafts[i].meaning,
+          'meaning_mn': drafts[i].meaningMn,
+        },
+    ];
+    if (rows.isEmpty) return const [];
+    await _db
+        .from('words')
+        .upsert(rows, onConflict: 'id', ignoreDuplicates: true);
+    return rowIds;
+  }
+
+  // ---- Profile -------------------------------------------------------------
+
+  /// Bounds match `profiles_new_per_day_check` (0023): 0–999.
+  Future<void> setNewPerDay(int value) async {
+    await _db.from('profiles').update({'new_per_day': value}).eq('id', _uid);
+  }
+
+  // ---- Stats ---------------------------------------------------------------
+
+  /// Retention and accuracy over the last [days] (`review_stats`, 0024).
+  /// Returns null if the migration isn't applied, so the stats page can hide
+  /// the section instead of failing whole.
+  Future<ReviewStats?> reviewStats({int days = 30}) async {
+    try {
+      final rows = await _db.rpc<List<dynamic>>(
+        'review_stats',
+        params: {'p_days': days},
+      );
+      if (rows.isEmpty) return null;
+      return ReviewStats.fromJson(Map<String, dynamic>.from(rows.first as Map));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Renames a deck. `updated_at` is bumped by a trigger, so the extension's
@@ -82,41 +282,16 @@ class Repository {
     await _db.from('decks').update({'deleted': true}).eq('id', deckId);
   }
 
-  /// The recognition card is created server-side by a trigger on `words`
-  /// (0006_cards.sql), so nothing here has to know about the cards table —
-  /// same as the extension, which predates it entirely.
-  Future<void> addWord({
-    required String deckId,
-    required String term,
-    String? reading,
-    String? meaning,
-    String? meaningMn,
-  }) async {
-    final user = _db.auth.currentUser;
-    if (user == null) throw StateError('not signed in');
-    await _db.from('words').insert({
-      'deck_id': deckId,
-      'user_id': user.id,
-      'term': term,
-      'reading': reading,
-      'meaning': meaning,
-      'meaning_mn': meaningMn,
-    });
-  }
-
-  Future<void> updateWord({
-    required String wordId,
-    required String term,
-    String? reading,
-    String? meaning,
-    String? meaningMn,
-  }) async {
-    await _db.from('words').update({
-      'term': term,
-      'reading': reading,
-      'meaning': meaning,
-      'meaning_mn': meaningMn,
-    }).eq('id', wordId);
+  Future<void> updateWord(String wordId, WordDraft draft) async {
+    await _db
+        .from('words')
+        .update({
+          'term': draft.term,
+          'reading': draft.reading,
+          'meaning': draft.meaning,
+          'meaning_mn': draft.meaningMn,
+        })
+        .eq('id', wordId);
   }
 
   /// Tombstone rather than a hard delete: the extension syncs by last-write-wins
@@ -139,15 +314,7 @@ class Repository {
         if (at != null) 'p_at': at.toUtc().toIso8601String(),
       },
     );
-    if (rows.isEmpty) {
-      return const DueSummary(
-        dueNow: 0,
-        reviewDue: 0,
-        newDue: 0,
-        reviewRemaining: 0,
-        newRemaining: 0,
-      );
-    }
+    if (rows.isEmpty) return DueSummary.empty;
     return DueSummary.fromJson(Map<String, dynamic>.from(rows.first as Map));
   }
 
@@ -170,10 +337,10 @@ class Repository {
     required String rating,
     required String logId,
     int? durationMs,
-    // 'review' (the default) is a real scheduling answer. 'drill' logs the
-    // answer but the server returns the card completely untouched — see the
-    // `p_source <> 'review'` branch in 0009_review_card.sql — which is what
-    // makes the speed round safe to answer without disturbing SM-2 state.
+    // 'review' (the default) and 'quiz' (Monster Hunt) are real scheduling
+    // answers. 'drill' and 'battle' are logged but the server returns the card
+    // untouched (the non-scheduling branch of review_card() in 0021_fsrs.sql),
+    // which is what makes the speed round safe to answer.
     String source = 'review',
   }) async {
     final row = await _db.rpc<Map<String, dynamic>>(
@@ -189,18 +356,55 @@ class Repository {
     return row;
   }
 
-  /// Mature review cards, for the speed round drill. Unlike `review_queue()`
-  /// this ignores `due_at` and the daily caps on purpose — a drill is extra,
-  /// opt-in practice, not part of today's scheduled workload, so it must not
-  /// compete with it for the cap.
-  Future<List<QueueCard>> matureCards({String? deckId, int limit = 30}) async {
+  /// Any card regardless of due date (`practice_cards`, 0017), random order —
+  /// Monster Hunt's free mode. Answers to these go in as 'drill'.
+  Future<List<QueueCard>> practiceCards({
+    String? deckId,
+    int limit = 60,
+  }) async {
     final rows = await _db.rpc<List<dynamic>>(
-      'mature_cards',
+      'practice_cards',
       params: {'p_deck_id': deckId, 'p_limit': limit},
     );
     return rows
         .map((r) => QueueCard.fromJson(Map<String, dynamic>.from(r as Map)))
         .toList();
+  }
+
+  /// Each word's recognition card id — what a drill answer is logged
+  /// against when practice starts from words rather than from a card queue
+  /// (kanji writing lessons picked from a deck).
+  Future<Map<String, String>> recognitionCardIds(List<String> wordIds) async {
+    final out = <String, String>{};
+    for (final chunk in _chunks(wordIds.toSet().toList())) {
+      final rows = await _db
+          .from('cards')
+          .select('id, word_id')
+          .eq('template', 'recognition')
+          .inFilter('word_id', chunk);
+      for (final r in rows) {
+        out[r['word_id'] as String] = r['id'] as String;
+      }
+    }
+    return out;
+  }
+
+  /// Every live word's quiz fields, for Monster Hunt's distractors.
+  Future<List<QuizWordRow>> quizWords() async {
+    final rows = await _db
+        .from('words')
+        .select('id, term, reading, meaning, meaning_mn')
+        .eq('deleted', false);
+    return [
+      for (final r in rows)
+        (
+          id: r['id'] as String,
+          term: r['term'] as String? ?? '',
+          reading: r['reading'] as String?,
+          meaning: r['meaning'] as String?,
+          meaningMn: r['meaning_mn'] as String?,
+        ),
+    ];
   }
 
   /// Cards with a high lapse count, for a focused rescue session. Also ignores
@@ -227,8 +431,8 @@ class Repository {
     );
     return {
       for (final r in rows)
-        DateTime.parse((r as Map)['day'] as String):
-            ((r)['reviews'] as num).toInt(),
+        DateTime.parse((r as Map)['day'] as String): ((r)['reviews'] as num)
+            .toInt(),
     };
   }
 

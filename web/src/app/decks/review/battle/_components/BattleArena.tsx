@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useImmersive } from "../../../_lib/useImmersive";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pause, Play, Skull, Undo2 } from "lucide-react";
+import { ArrowLeft, Check, Pause, Play, Skull, Undo2, X } from "@/ui/icons";
 import type { Rating } from "@/lib/srs";
-import { usePracticeSession } from "../../../_lib/usePracticeSession";
+import { usePracticeSession, type UsePracticeSessionResult } from "../../../_lib/usePracticeSession";
 import { supabase } from "../../../_lib/db";
 import { T } from "../../../_lib/strings";
 import { buildQuiz, MIN_WORDS_FOR_BATTLE, type OwnWord, type QuizOption } from "../_lib/quiz";
@@ -25,12 +26,23 @@ import { buzzCrit, buzzDeflect, buzzHit, buzzHurt, buzzVictory } from "../_lib/f
 import { attackPose, MAX_ATTACK_TIER, ONE_SHOT_MS, type SpriteState } from "../_lib/sprites";
 import { projectileFor } from "../_lib/projectiles";
 import { useQuestionClock } from "../_lib/useQuestionClock";
+import {
+  eligibleKinds,
+  pickKind,
+  speedFor,
+  timeLimitFor,
+  WRITE_DAMAGE_BONUS,
+  type QuestionKind,
+} from "../_lib/questionKinds";
+import { kanjiInOrder, kanjiOf } from "../../../writing/_lib/lesson";
+import { loadKanjiStrokes, type KanjiStrokes } from "../../../writing/_lib/strokes";
 import FighterSprite from "./FighterSprite";
 import BattleHpStrip from "./BattleHpStrip";
 import CountdownBar from "./CountdownBar";
 import ProjectileShot from "./ProjectileShot";
 import LoadingScene from "./LoadingScene";
 import QuizOptions from "./QuizOptions";
+import WriteQuestion from "./WriteQuestion";
 import BattleResult from "./BattleResult";
 
 // The fighters' visual scale lives in CSS (.hanko-fighter-slot in
@@ -108,6 +120,21 @@ function scheduleRating(speed: Rating): Rating {
   return speed === "easy" ? "good" : speed;
 }
 
+/** What the arena needs from a review session — usePracticeSession's shape,
+ *  or the share page's local trial session (nothing saved). */
+export type ArenaSession = Pick<
+  UsePracticeSessionResult,
+  "queue" | "card" | "reviewedCount" | "error" | "loadError" | "rate" | "undo"
+>;
+
+/** The share page's trial: where "exit" goes, its banner, and its own call to action. */
+export interface ArenaTrial {
+  exitHref: string;
+  banner: string;
+  /** Shown on the result screen in place of the stats link. */
+  resultAction: ReactNode;
+}
+
 export default function BattleArena() {
   const params = useSearchParams();
   const deckId = params.get("deck");
@@ -122,7 +149,7 @@ export default function BattleArena() {
   // is luck. Labelling it is what makes that measurable later instead of a
   // permanent assumption — see 0018_quiz_source.sql. Free mode stays a drill
   // and changes nothing server-side.
-  const { queue, card, reviewedCount, error, loadError, rate, undo } =
+  const session =
     usePracticeSession(deckId, {
       mode: freeMode ? "free" : "due",
       source: freeMode ? "drill" : "quiz",
@@ -149,6 +176,79 @@ export default function BattleArena() {
     };
   }, []);
 
+  return <Arena session={session} allWords={allWords} freeMode={freeMode} />;
+}
+
+export function Arena({
+  session,
+  allWords,
+  freeMode = false,
+  trial,
+}: {
+  session: ArenaSession;
+  allWords: OwnWord[] | null;
+  freeMode?: boolean;
+  trial?: ArenaTrial;
+}) {
+  const { queue, card, reviewedCount, error, loadError, rate, undo } = session;
+  useImmersive();
+  const exitHref = trial?.exitHref ?? "/decks/review";
+
+  // Kanji learned in writing lessons (learned_kanji, 0026). A word is only
+  // asked as "write it" when every one of its kanji is in here — the hunt
+  // tests writing you've practised, it doesn't spring unseen kanji on you.
+  // Null until loaded; empty on the share page's trial (no account).
+  const [learned, setLearned] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("learned_kanji")
+      .select("kanji")
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLearned(error ? new Set() : new Set(((data as { kanji: string }[]) ?? []).map((r) => r.kanji)));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Stroke data for the queue's learned kanji, fetched in the background. A
+  // word is only asked as "write it" once every one of its kanji has loaded —
+  // the first questions are therefore usually by meaning, which is fine.
+  const [strokes, setStrokes] = useState<Map<string, KanjiStrokes | null>>(new Map());
+  // Each kanji is requested once per arena. The queue changes after every
+  // answer, so a download in flight is never cancelled by that — only by
+  // leaving the arena.
+  const requested = useRef(new Set<string>());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!queue || !learned) return;
+    const wanted = kanjiInOrder(queue.map((c) => c.term)).filter((k) => learned.has(k) && !requested.current.has(k));
+    if (!wanted.length) return;
+    wanted.forEach((k) => requested.current.add(k));
+    void (async () => {
+      // A few at a time: a fresh queue can name a hundred kanji.
+      for (let i = 0; i < wanted.length && mounted.current; i += 4) {
+        const batch = await Promise.all(
+          wanted.slice(i, i + 4).map(async (k) => [k, await loadKanjiStrokes(k).catch(() => null)] as const)
+        );
+        if (!mounted.current) return;
+        setStrokes((prev) => {
+          const next = new Map(prev);
+          batch.forEach(([k, v]) => next.set(k, v));
+          return next;
+        });
+      }
+    })();
+  }, [queue, learned]);
+
   const [events, setEvents] = useState<BattleEvent[]>([]);
   const [monsterStartIndex, setMonsterStartIndex] = useState(0);
   // Read before the monster is drawn: pickMonster refuses to spawn whichever
@@ -174,13 +274,17 @@ export default function BattleArena() {
   const [playerPose, setPlayerPose] = useState<SpriteState>("idle");
   const [monsterPose, setMonsterPose] = useState<SpriteState>("idle");
   const [lastFlag, setLastFlag] = useState<Flag>(null);
-  // The word just answered, shown briefly with its reading. The whole point
-  // of a vocabulary quiz is learning the word, and answering by meaning alone
-  // never surfaces how it's actually pronounced — so the yomikata is shown
-  // after the fact, when knowing it can't give the answer away.
+  // The word just answered — term, reading and meaning, big enough to read
+  // at a glance. The whole point of a vocabulary quiz is learning the word,
+  // and answering by meaning alone never surfaces how it's pronounced; after
+  // a miss it's also the only place the right answer is spelled out. Shown
+  // after the fact, when knowing it can't give the answer away. `id` re-keys
+  // it so the pop-in replays even when the same word comes back.
   const [lastAnswer, setLastAnswer] = useState<{
+    id: number;
     term: string;
     reading: string | null;
+    meaning: string;
     correct: boolean;
   } | null>(null);
 
@@ -264,15 +368,32 @@ export default function BattleArena() {
   // that alone would leave it stuck at zero when the card reappears.
   const questionKey = `${card?.card_id ?? ""}:${events.length}`;
 
+  // How this question is asked — mobile's question kinds. Chosen once per
+  // question: `strokes` is read but deliberately not a dependency, or a kanji
+  // finishing its download would re-roll the question under the player.
+  const kind = useMemo<QuestionKind>(
+    () =>
+      card ? pickKind(eligibleKinds(card.term, (k) => !!learned?.has(k) && !!strokes.get(k)), Math.random) : "meaning",
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    [questionKey]
+  );
+  const timeLimitMs = card ? timeLimitFor(kind, card.term) : QUESTION_TIME_LIMIT_MS;
+
+  // Writing: which of the word's kanji is on the pad, and whether a missed
+  // kanji's correction is on screen (the clock stops until it's dismissed).
+  const [writeState, setWriteState] = useState({ key: "", slot: 0, held: false });
+  const writeSlot = writeState.key === questionKey ? writeState.slot : 0;
+  const held = writeState.key === questionKey && writeState.held;
+
   // Gated on `outcome === "ongoing"`: without it the countdown would keep
   // running underneath the result screen, and reading that screen for ten
   // seconds would silently auto-answer the next card as a miss. It also covers
   // the reverse — a fresh monster restarts the clock even though the current
   // card never changed.
   const { remainingMs, elapsedMs } = useQuestionClock({
-    durationMs: QUESTION_TIME_LIMIT_MS,
+    durationMs: timeLimitMs,
     resetKey: questionKey,
-    running: !!card && !!quiz && outcome === "ongoing" && !paused,
+    running: !!card && !!quiz && outcome === "ongoing" && !paused && !held,
     onExpire: () => {
       if (answered.current) return; // already resolved by a pick right at the buzzer
       answered.current = true;
@@ -317,7 +438,7 @@ export default function BattleArena() {
       // Nothing else does anything while the clock is stopped or the fight is
       // over — the overlay covers the question precisely so it can't be
       // answered, and the keyboard must not be a way around that.
-      if (paused || outcome !== "ongoing" || !quiz) return;
+      if (paused || outcome !== "ongoing" || !quiz || kind !== "meaning") return;
 
       const index = "1234".indexOf(key) >= 0 ? Number(key) - 1 : "abcd".indexOf(key);
       if (index < 0 || index >= quiz.length) return;
@@ -327,7 +448,7 @@ export default function BattleArena() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handlePick/handleUndo/togglePause are redefined every render but read their state through refs and setState updaters; listing them would rebind the listener on every render for no behavioural gain.
-  }, [quiz, paused, outcome]);
+  }, [quiz, paused, outcome, kind]);
 
   useEffect(() => {
     return () => {
@@ -413,7 +534,7 @@ export default function BattleArena() {
   // `speed` grades the answer for the fight (damage, crit chance); `scheduled`
   // is what reaches review_card(). They are the same value for everything
   // except the fastest correct answer — see scheduleRating.
-  function resolveAnswer(speed: Rating, timedOut: boolean) {
+  function resolveAnswer(speed: Rating, timedOut: boolean, written = false) {
     const rating = scheduleRating(speed);
     // Read from the refs, not the `events`/`monsterStartIndex` state
     // variables — see the refs' own comment above for why this matters when
@@ -421,7 +542,12 @@ export default function BattleArena() {
     const stateBefore = deriveBattleState(eventsRef.current, monsterStartIndexRef.current);
     // `speed`, not `rating`: the fight keeps all three tiers, so a fast answer
     // still hits harder even though the scheduler only hears "good".
-    const event = rollEvent(speed, stateBefore, timedOut);
+    let event = rollEvent(speed, stateBefore, timedOut);
+    // A written hit lands harder. Applied after the shared roll, so rollEvent
+    // stays pinned by battle.fixture.json — same as mobile.
+    if (written && speed !== "again") {
+      event = { ...event, damage: Math.round(event.damage * WRITE_DAMAGE_BONUS) };
+    }
 
     eventsRef.current = [...eventsRef.current, event];
     setEvents(eventsRef.current);
@@ -438,7 +564,14 @@ export default function BattleArena() {
 
     const correct = rating !== "again";
     if (card) {
-      setLastAnswer({ term: card.term, reading: card.reading, correct });
+      setLastAnswer({
+        id: Date.now(),
+        term: card.term,
+        reading: card.reading,
+        // Same text the options use (meaning_mn, else English).
+        meaning: card.meaning_mn?.trim() || card.meaning?.trim() || "",
+        correct,
+      });
     }
     if (correct) {
       // The swing escalates with the streak, and a crit always lands the
@@ -532,12 +665,27 @@ export default function BattleArena() {
     // it's set here and reset by the per-question effect when the next card
     // arrives, so the brief window between the two is covered without
     // disabling the buttons (which would defeat the instant-advance).
-    if (!card || !quiz || answered.current) return;
+    if (!card || !quiz || answered.current || kind !== "meaning") return;
     answered.current = true;
 
     // The pause cap that used to live here is gone: scheduleRating() now caps
     // every battle answer, so a paused one needed no rule of its own.
     resolveAnswer(option.correct ? ratingForElapsed(elapsedMs()) : "again", false);
+  }
+
+  // A writing question's current kanji was checked. A hit moves to the next
+  // kanji, and the last one lands the blow; a miss (after its correction was
+  // looked at) ends the question as wrong.
+  function handleWriteResult(ok: boolean) {
+    if (!card || kind !== "write" || answered.current || outcome !== "ongoing") return;
+    if (paused && !held) return;
+    if (ok && writeSlot + 1 < kanjiOf(card.term).length) {
+      setWriteState({ key: questionKey, slot: writeSlot + 1, held: false });
+      return;
+    }
+    answered.current = true;
+    setWriteState({ key: questionKey, slot: writeSlot, held: false });
+    resolveAnswer(ok ? speedFor(elapsedMs(), timeLimitMs) : "again", false, ok);
   }
 
   function handleUndo() {
@@ -590,7 +738,7 @@ export default function BattleArena() {
   if (allWords.length < MIN_WORDS_FOR_BATTLE) {
     return (
       <div className="mx-auto max-w-md p-8 text-center">
-        <div className="rounded-control border border-dashed border-line bg-white p-10 text-ink-soft">
+        <div className="rounded-control border border-dashed border-line bg-surface p-10 text-ink-soft">
           {T.notEnoughWordsBattle}
         </div>
       </div>
@@ -610,7 +758,7 @@ export default function BattleArena() {
           </div>
         ) : (
           <>
-            <div className="w-full rounded-control border border-dashed border-line bg-white p-10 text-ink-soft">
+            <div className="w-full rounded-control border border-dashed border-line bg-surface p-10 text-ink-soft">
               <p>{T.noWordsDueBattle}</p>
               <p className="mt-2 text-xs text-ink-mute">{T.noWordsDueBattleHint}</p>
             </div>
@@ -652,6 +800,7 @@ export default function BattleArena() {
         monster={monster}
         monsterDown={battleState.monsterDefeated}
         onRetry={outcome === "defeat" ? handleRetry : undefined}
+        action={trial?.resultAction}
       />
     );
   }
@@ -666,15 +815,15 @@ export default function BattleArena() {
     battleState.monsterDefeated && !impactPending ? "death" : monsterPose;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl flex-col justify-center px-4 py-6 sm:py-8 xl:max-w-7xl 2xl:max-w-[1400px]">
-      <div className="hk-arena relative flex flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex min-h-full max-w-5xl flex-col lg:justify-center px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 sm:py-6 xl:max-w-7xl 2xl:max-w-[1400px]">
+      <div className="hk-arena relative flex flex-1 flex-col gap-2 p-3 sm:gap-4 sm:p-6 lg:flex-none">
       {/* Leaving and pausing on the left, session controls on the right. There
           was no way out of a fight but the browser's back button, and no way
           to stop the ten-second clock at all. */}
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1">
           <Link
-            href="/decks/review"
+            href={exitHref}
             className="flex items-center gap-1 rounded-control px-2 py-1 font-medium text-paper/60 transition hover:bg-white/10 hover:text-paper"
           >
             <ArrowLeft size={13} /> {T.exitBattle}
@@ -721,9 +870,9 @@ export default function BattleArena() {
           genuinely don't count toward scheduling or streaks, and a player who
           assumed otherwise would be doing work they think is "counting" when
           it isn't. */}
-      {freeMode && (
+      {(freeMode || trial) && (
         <p className="rounded-control bg-sky-400/10 px-3 py-2 text-center text-xs text-sky-200 ring-1 ring-sky-400/25">
-          {T.freePracticeBanner}
+          {trial ? trial.banner : T.freePracticeBanner}
         </p>
       )}
 
@@ -735,27 +884,50 @@ export default function BattleArena() {
 
       {/* Fixed-height, always rendered: an element that appears and vanishes
           between questions would shove everything below it up and down. */}
-      <div className="flex h-8 items-center justify-center gap-3">
+      <div className="flex h-[4.5rem] items-center justify-center gap-2 sm:h-20">
         {lastAnswer && (
-          <span
-            className={`text-base font-semibold ${
-              lastAnswer.correct ? "text-emerald-600" : "text-red-600"
+          <div
+            key={lastAnswer.id}
+            className={`hk-answer-pop flex min-w-0 max-w-full items-center gap-3 rounded-2xl px-3.5 py-2 ring-1 sm:gap-4 sm:px-5 ${
+              lastAnswer.correct
+                ? "bg-emerald-400/10 ring-emerald-400/35"
+                : "bg-red-400/10 ring-red-400/40"
             }`}
           >
-            {lastAnswer.term}
-            {/* Only when it adds something: a kana-only word's reading is
-                identical to the term, and echoing it twice reads as a bug. */}
-            {lastAnswer.reading && lastAnswer.reading !== lastAnswer.term && (
-              <span className="ml-2 font-normal opacity-80">
-                {lastAnswer.reading}
-              </span>
-            )}
-          </span>
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${
+                lastAnswer.correct ? "bg-emerald-400 text-[#10241c]" : "bg-red-400 text-[#2a1012]"
+              }`}
+            >
+              {lastAnswer.correct ? <Check size={18} strokeWidth={3} /> : <X size={18} strokeWidth={3} />}
+            </span>
+            <div className="min-w-0 text-left">
+              <div className="flex min-w-0 items-baseline gap-2.5">
+                <span className="shrink-0 text-2xl font-bold leading-tight tracking-tight text-paper sm:text-3xl">
+                  {lastAnswer.term}
+                </span>
+                {/* Only when it adds something: a kana-only word's reading is
+                    identical to the term, and echoing it twice reads as a bug. */}
+                {lastAnswer.reading && lastAnswer.reading !== lastAnswer.term && (
+                  <span className="truncate text-base font-medium text-sky-200 sm:text-lg">
+                    {lastAnswer.reading}
+                  </span>
+                )}
+              </div>
+              {lastAnswer.meaning && (
+                <div className="truncate text-sm font-medium text-paper/85 sm:text-base">
+                  {lastAnswer.meaning}
+                </div>
+              )}
+            </div>
+          </div>
         )}
         {lastFlag && (
           <span
-            className={`text-sm font-bold tracking-wide ${
-              lastFlag === "victory" ? "text-emerald-500" : "text-amber-600"
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold tracking-wide ring-1 ${
+              lastFlag === "victory"
+                ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/30"
+                : "bg-amber-400/10 text-amber-300 ring-amber-400/30"
             }`}
           >
             {lastFlag === "victory" && T.victoryFlag}
@@ -776,7 +948,11 @@ export default function BattleArena() {
           options, nothing in this arena can move between questions. */}
       <div
         key={`shake-${shakeId}`}
-        className={`relative flex flex-wrap items-center justify-center gap-3 lg:h-[420px] lg:flex-nowrap lg:gap-4 xl:h-[460px] 2xl:h-[520px] 2xl:gap-5 ${
+        className={`relative flex flex-1 flex-wrap content-around items-center justify-center gap-3 lg:flex-none lg:flex-nowrap lg:gap-4 2xl:gap-5 ${
+          // A writing question's pad needs more room than four options; the
+          // fixed height (which keeps the fighters still) only applies to picks.
+          kind === "write" && showingQuestion ? "lg:min-h-[420px]" : "lg:h-[420px] xl:h-[460px] 2xl:h-[520px]"
+        } ${
           shakeId > 0 ? "hanko-shake" : ""
         }`}
       >
@@ -844,17 +1020,38 @@ export default function BattleArena() {
             the parchment, not across the answer text. */}
         <div className="relative z-10 order-3 flex w-full shrink-0 items-center justify-center lg:order-2 lg:h-full lg:w-[430px] xl:w-[490px] 2xl:w-[540px]">
           {showingQuestion && quiz ? (
-            <div className="hanko-parchment flex w-full flex-col gap-4 px-6 py-8 text-center sm:px-8 xl:gap-5 xl:px-10 xl:py-10">
-              <div className="text-4xl font-bold tracking-tight text-ink xl:text-5xl 2xl:text-6xl">
-                {card?.term}
+            kind === "write" && card ? (
+              <div className="hanko-parchment flex w-full flex-col px-5 py-5 sm:px-6 xl:px-8 xl:py-6">
+                <WriteQuestion
+                  key={questionKey}
+                  card={card}
+                  slot={writeSlot}
+                  strokes={strokes}
+                  disabled={paused}
+                  timer={
+                    <CountdownBar
+                      durationMs={timeLimitMs}
+                      remainingMs={remainingMs}
+                      paused={paused || held}
+                    />
+                  }
+                  onHold={() => setWriteState({ key: questionKey, slot: writeSlot, held: true })}
+                  onResult={handleWriteResult}
+                />
               </div>
-              <CountdownBar
-                durationMs={QUESTION_TIME_LIMIT_MS}
-                remainingMs={remainingMs}
-                paused={paused}
-              />
-              <QuizOptions options={quiz} disabled={paused} onPick={handlePick} />
-            </div>
+            ) : (
+              <div className="hanko-parchment flex w-full flex-col gap-4 px-6 py-8 text-center sm:px-8 xl:gap-5 xl:px-10 xl:py-10">
+                <div className="text-4xl font-bold tracking-tight text-ink xl:text-5xl 2xl:text-6xl">
+                  {card?.term}
+                </div>
+                <CountdownBar
+                  durationMs={QUESTION_TIME_LIMIT_MS}
+                  remainingMs={remainingMs}
+                  paused={paused}
+                />
+                <QuizOptions options={quiz} disabled={paused} onPick={handlePick} />
+              </div>
+            )
           ) : (
             <div className="flex min-h-[340px] w-full items-center justify-center rounded-card bg-white/5 px-8 py-10 text-sm text-paper/50">
               {T.loadingQuiz}
@@ -885,7 +1082,7 @@ export default function BattleArena() {
               {T.resumeBattle}
             </button>
             <Link
-              href="/decks/review"
+              href={exitHref}
               className="hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10"
             >
               <ArrowLeft size={15} />

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { GraduationCap, Search } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, GraduationCap, Search } from "@/ui/icons";
 import type { Deck, DeckWithCount, Folder, Word } from "@/lib/types";
 import { supabase } from "./_lib/db";
 import { T } from "./_lib/strings";
@@ -14,7 +14,12 @@ import ReviewModeModal from "./_components/ReviewModeModal";
 
 export default function DeckDashboard() {
   // Deep link support (e.g. from the stats dashboard's deck breakdown table).
-  const initialDeckParam = useSearchParams().get("deck");
+  // `?deck=` is also the phone/tablet "a deck is open" state: below lg the
+  // library and the deck are two screens, like the mobile app, and putting
+  // the open deck in the URL makes the back button/gesture return to the list.
+  const router = useRouter();
+  const deckParam = useSearchParams().get("deck");
+  const [initialDeckParam] = useState(deckParam);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [decks, setDecks] = useState<DeckWithCount[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -126,25 +131,55 @@ export default function DeckDashboard() {
     return () => clearTimeout(handle);
   }, [query]);
 
+  // Follow the URL when it changes under us (back/forward).
+  const [seenParam, setSeenParam] = useState(deckParam);
+  if (deckParam !== seenParam) {
+    setSeenParam(deckParam);
+    if (deckParam) setSelectedId(deckParam);
+  }
+
+  // Whether the open deck was pushed from this list (then "back" pops it);
+  // a deck reached by a direct link has no list under it to pop back to.
+  const [pushedHere, setPushedHere] = useState(false);
+
+  function openDeck(id: string) {
+    setSelectedId(id);
+    setQuery("");
+    if (id !== deckParam) {
+      router.push(`/decks?deck=${id}`, { scroll: false });
+      setPushedHere(true);
+    }
+    document.getElementById("hk-main")?.scrollTo(0, 0);
+  }
+
   const selectedDeck = decks.find((d) => d.id === selectedId) ?? null;
   const searching = results !== null;
+  // Phones/tablets: the list until a deck is opened, then only the deck.
+  const deckOpen = !!deckParam && !searching;
 
   return (
     <div className="mx-auto flex max-w-[1700px] flex-col gap-4 p-4 sm:px-8 sm:py-6 lg:flex-row lg:gap-6">
-      <Sidebar
-        folders={folders}
-        decks={decks}
-        loading={loadingDecks}
-        selectedId={selectedId}
-        onSelect={(id) => {
-          setSelectedId(id);
-          setQuery("");
-        }}
-        onFoldersChanged={loadFolders}
-        onDecksChanged={loadDecks}
-      />
-      <section className="min-w-0 flex-1">
-        <div className="mb-4 flex gap-2">
+      <div className={`${deckOpen ? "max-lg:hidden" : ""} max-lg:order-2 lg:contents`}>
+        <Sidebar
+          folders={folders}
+          decks={decks}
+          loading={loadingDecks}
+          selectedId={selectedId}
+          onSelect={openDeck}
+          onFoldersChanged={loadFolders}
+          onDecksChanged={loadDecks}
+        />
+      </div>
+      <section className="min-w-0 flex-1 max-lg:order-1">
+        {deckOpen && (
+          <button
+            onClick={() => (pushedHere ? router.back() : router.replace("/decks", { scroll: false }))}
+            className="-ml-1 mb-3 flex items-center gap-1.5 rounded-control px-1 py-1 text-sm font-semibold text-seal lg:hidden"
+          >
+            <ArrowLeft size={18} /> {T.decksNav}
+          </button>
+        )}
+        <div className={`mb-4 flex gap-2 ${deckOpen ? "max-lg:hidden" : ""}`}>
           <div className="relative flex-1">
             <Search
               size={16}
@@ -154,7 +189,7 @@ export default function DeckDashboard() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={T.search}
-              className="w-full rounded-control border border-line bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
+              className="w-full rounded-control border border-line bg-surface py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none hk-input focus:ring-2 focus:ring-seal-tint"
             />
           </div>
           <button
@@ -168,14 +203,9 @@ export default function DeckDashboard() {
           <p className="mb-4 rounded-control border border-line bg-paper-dim px-4 py-2 text-sm text-ink">{error}</p>
         )}
         {searching ? (
-          <SearchResults
-            hits={results!}
-            onOpenDeck={(id) => {
-              setSelectedId(id);
-              setQuery("");
-            }}
-          />
+          <SearchResults hits={results!} onOpenDeck={openDeck} />
         ) : selectedDeck ? (
+          <div className={deckOpen ? "" : "max-lg:hidden"}>
           <DeckDetail
             deck={selectedDeck}
             folders={folders}
@@ -185,8 +215,9 @@ export default function DeckDashboard() {
               loadDecks();
             }}
           />
+          </div>
         ) : (
-          <div className="rounded-control border border-dashed border-line bg-white p-10 text-center text-ink-soft">
+          <div className="rounded-control border border-dashed border-line bg-surface p-10 text-center text-ink-soft">
             {T.createDeckToStart}
           </div>
         )}

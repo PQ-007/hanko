@@ -32,6 +32,17 @@ class Config {
   /// in the Supabase dashboard (Authentication → URL Configuration).
   static const authRedirect = 'com.hanko.mobile://login-callback';
 
+  /// Public privacy-policy page, linked from Settings. Both app stores require
+  /// one for an app with sign-in. Optional here: left empty, the link is
+  /// hidden. Nothing else depends on any web server — the app talks only to
+  /// Supabase plus public dictionary/translate endpoints (core/dictionary.dart).
+  static const privacyUrl = String.fromEnvironment('PRIVACY_URL');
+
+  /// The web app's address — only for building public deck links
+  /// (`/share/<token>`, 0028), which open in any browser without an account.
+  /// The phone itself never calls this server.
+  static const webUrl = String.fromEnvironment('WEB_URL', defaultValue: 'https://hanko-amber.vercel.app');
+
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 }

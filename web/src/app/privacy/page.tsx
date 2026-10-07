@@ -237,7 +237,7 @@ function Table({ rows }: { rows: [string, string][] }) {
         <div
           key={term}
           className={`grid gap-1 px-5 py-4 sm:grid-cols-[11rem_1fr] sm:gap-5 ${
-            i % 2 ? "bg-paper-dim/50" : "bg-white/40"
+            i % 2 ? "bg-paper-dim/50" : "bg-surface/40"
           }`}
         >
           <dt className="text-[0.9375rem] font-medium text-ink">{term}</dt>

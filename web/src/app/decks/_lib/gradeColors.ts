@@ -7,11 +7,15 @@ import type { Grade } from "@/lib/srs";
 // neutral, since it's "not graded yet" rather than the worst grade.
 export const GRADE_ORDER: Grade[] = ["new", "F", "D", "C", "B", "A"];
 
+// Fills are CSS variables with the blue ramp as fallback, so the Цайвар theme
+// (globals.css, html[data-scheme="paper"]) can swap in the same five steps in
+// vermilion. Only ever use them through style={{…}} — CSS variables don't
+// work in SVG presentation attributes.
 export const GRADE_COLOR: Record<Grade, { fill: string; text: string }> = {
   new: { fill: "#898781", text: "#0b0b0b" },
-  F: { fill: "#86b6ef", text: "#0b0b0b" },
-  D: { fill: "#3987e5", text: "#0b0b0b" },
-  C: { fill: "#256abf", text: "#ffffff" },
-  B: { fill: "#184f95", text: "#ffffff" },
-  A: { fill: "#0d366b", text: "#ffffff" },
+  F: { fill: "var(--hk-grade-f, #86b6ef)", text: "#0b0b0b" },
+  D: { fill: "var(--hk-grade-d, #3987e5)", text: "#0b0b0b" },
+  C: { fill: "var(--hk-grade-c, #256abf)", text: "#ffffff" },
+  B: { fill: "var(--hk-grade-b, #184f95)", text: "#ffffff" },
+  A: { fill: "var(--hk-grade-a, #0d366b)", text: "#ffffff" },
 };

@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config.dart';
+import '../../core/theme.dart';
 
 /// Google sign-in, matching the web app — it is the only provider configured on
 /// this Supabase project.
@@ -133,7 +134,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 'Verba non Acta',
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontStyle: FontStyle.italic,
-                  color: Colors.grey,
+                  color: context.hk.inkMute,
                 ),
               ),
               const SizedBox(height: 32),

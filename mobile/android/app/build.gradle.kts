@@ -34,6 +34,7 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
@@ -46,6 +47,9 @@ kotlin {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    // Japanese script model for camera capture (bundled, works offline); the
+    // ML Kit plugin only declares it compileOnly.
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
 }
 
 flutter {

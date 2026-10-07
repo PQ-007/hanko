@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { clientForRequest } from "@/lib/supabase/bearer";
 import { loadDeckWithWords, sanitizeFilename, sanitizeTag, frontText, backText } from "@/lib/decks";
 import { buildApkg, type ApkgNote } from "@/lib/anki/apkg";
 
@@ -7,12 +7,14 @@ import { buildApkg, type ApkgNote } from "@/lib/anki/apkg";
 export const runtime = "nodejs";
 
 // POST /api/decks/[id]/apkg -> a real Anki .apkg package (binary download).
+// Accepts the web's cookie session or the mobile app's Bearer token.
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: RouteContext<"/api/decks/[id]/apkg">
 ) {
   const { id } = await ctx.params;
-  const result = await loadDeckWithWords(id);
+  const supabase = await clientForRequest(req);
+  const result = await loadDeckWithWords(supabase, id);
   if (!result) {
     return NextResponse.json({ error: "Deck not found" }, { status: 404 });
   }
@@ -21,7 +23,6 @@ export async function POST(
     return NextResponse.json({ error: "Deck has no words" }, { status: 400 });
   }
 
-  const supabase = await createClient();
   const tag = sanitizeTag(deck.name);
 
   try {

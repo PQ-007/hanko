@@ -213,10 +213,23 @@ async function lookupWord(term) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
   const data = await res.json();
-  const entry = data && data.data && data.data[0];
+  const entries = (data && data.data) || [];
+  let entry = entries[0];
   if (!entry) return { word: '', reading: '', meaning: '', mongolian: '' };
 
-  const jp = (entry.japanese && entry.japanese[0]) || {};
+  // Keep the kanji as captured when Jisho knows it: an entry is listed under
+  // its most common spelling, so its first writing would swap a rarer kanji
+  // (附属, 籠る) for the common one (付属, 篭る). Same rule as parseJisho in
+  // web/src/lib/jisho.ts and mobile/lib/core/dictionary.dart.
+  let jp = (entry.japanese && entry.japanese[0]) || {};
+  for (const e of entries) {
+    const exact = (e.japanese || []).find((w) => w.word === term);
+    if (exact) {
+      entry = e;
+      jp = exact;
+      break;
+    }
+  }
   const reading = jp.reading || '';
   // Dictionary / base form (普通形): Jisho deinflects, so 担っています -> 担う.
   const word = jp.word || entry.slug || reading || '';

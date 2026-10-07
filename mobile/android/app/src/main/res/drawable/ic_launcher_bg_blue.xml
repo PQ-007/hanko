@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Цэнхэр launcher background: the story image's seal-blue gradient. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:angle="270" android:startColor="#2C72CC" android:endColor="#0F3672" />
+</shape>

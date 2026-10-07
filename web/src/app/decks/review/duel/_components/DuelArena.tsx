@@ -1,8 +1,11 @@
 "use client";
 
+import { useImmersive } from "../../../_lib/useImmersive";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Flame } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { askConfirm } from "@/ui/Dialog";
+import { ArrowLeft, Flame } from "@/ui/icons";
 import { supabase } from "../../../_lib/db";
 import { T } from "../../../_lib/strings";
 import type { QueueCard } from "../../../_lib/types";
@@ -59,7 +62,9 @@ export default function DuelArena({
   onRematch?: () => void;
   exitHref?: string;
 }) {
+  useImmersive();
   const hero = usePlayerCharacter();
+  const router = useRouter();
 
   const [cards, setCards] = useState<QueueCard[] | null>(null);
   const [allWords, setAllWords] = useState<OwnWord[] | null>(null);
@@ -116,7 +121,8 @@ export default function DuelArena({
   }, [deckId]);
 
   const state = useMemo(() => deriveDuelState(rounds), [rounds]);
-  const outcome = duelOutcome(state, roundCount);
+  // An opponent who stopped answering for several rounds has left: you win.
+  const outcome = opponent.left?.() ? "won" : duelOutcome(state, roundCount);
   const durationMs = roundDurationMs(roundNo);
 
   // Wraps rather than running out: practice_cards returns up to 60 random
@@ -355,6 +361,7 @@ export default function DuelArena({
         hero={hero}
         onRematch={onRematch}
         exitHref={exitHref}
+        opponentLeft={opponent.left?.() ?? false}
       />
     );
   }
@@ -363,11 +370,28 @@ export default function DuelArena({
   const foeDisplayPose = state.theirDefeated ? "death" : foePose;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl flex-col justify-center px-4 py-6 sm:py-8 xl:max-w-7xl">
-      <div className="hk-arena relative flex flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex min-h-full max-w-5xl flex-col lg:justify-center px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 sm:py-6 xl:max-w-7xl">
+      <div className="hk-arena relative flex flex-1 flex-col gap-2 p-3 sm:gap-4 sm:p-6 lg:flex-none">
         <div className="flex items-center justify-between gap-2 text-xs">
           <Link
             href={exitHref}
+            onClick={(e) => {
+              // Leaving a live match against a person concedes it — after asking.
+              const concede = opponent.concede;
+              if (!concede) return;
+              e.preventDefault();
+              void askConfirm({
+                title: T.duelLeaveTitle,
+                body: T.duelLeaveDesc,
+                confirmLabel: T.exitBattle,
+                danger: true,
+                icon: "alert",
+              }).then((ok) => {
+                if (!ok) return;
+                void concede().catch(() => {});
+                router.push(exitHref);
+              });
+            }}
             className="flex items-center gap-1 rounded-control px-2 py-1 font-medium text-paper/60 transition hover:bg-white/10 hover:text-paper"
           >
             <ArrowLeft size={13} /> {T.exitBattle}
@@ -428,7 +452,7 @@ export default function DuelArena({
           )}
         </div>
 
-        <div className="relative flex flex-wrap items-center justify-center gap-3 lg:h-[420px] lg:flex-nowrap lg:gap-4 xl:h-[460px]">
+        <div className="relative flex flex-1 flex-wrap content-around items-center justify-center gap-3 lg:h-[420px] lg:flex-none lg:flex-nowrap lg:gap-4 xl:h-[460px]">
           <div className="hanko-fighter-slot relative order-1 flex shrink-0 items-center justify-center">
             <FighterSprite
               slug={hero}

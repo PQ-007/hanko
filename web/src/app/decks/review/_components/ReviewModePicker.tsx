@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, Swords, Users } from "lucide-react";
+import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, PenLine, Swords, Versus } from "@/ui/icons";
 import { supabase } from "../../_lib/db";
 import { T } from "../../_lib/strings";
 import { MIN_WORDS_FOR_BATTLE } from "../battle/_lib/quiz";
@@ -168,7 +168,7 @@ export default function ReviewModePicker() {
                 className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   active
                     ? "bg-seal text-paper"
-                    : "border border-line bg-white text-ink-soft hover:bg-paper-dim"
+                    : "border border-line bg-surface text-ink-soft hover:bg-paper-dim"
                 }`}
               >
                 {d.name}
@@ -287,7 +287,7 @@ export default function ReviewModePicker() {
           <ModeRow
             href={withDeck("/decks/review/battle?mode=free")}
             icon={<Dumbbell size={19} />}
-            iconClass="bg-sky-50 text-sky-700 ring-1 ring-sky-100"
+            iconClass="bg-sky-50 text-sky-700 ring-1 ring-sky-100 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/20"
             title={T.freeModeTitle}
             desc={T.freeModeDesc}
             highlight={nothingDue}
@@ -300,10 +300,19 @@ export default function ReviewModePicker() {
               other side. */}
           <ModeRow
             href="/decks/review/duel"
-            icon={<Users size={19} />}
-            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
+            icon={<Versus size={19} />}
+            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100 dark:bg-violet-400/10 dark:text-violet-300 dark:ring-violet-400/20"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
+          />
+
+          {/* Kanji writing lessons (mobile parity). Practice only — 'drill'. */}
+          <ModeRow
+            href="/decks/writing"
+            icon={<PenLine size={19} />}
+            iconClass="bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
+            title={T.writingTitle}
+            desc={T.writingDesc}
           />
 
           {/* 4 — Classic. */}

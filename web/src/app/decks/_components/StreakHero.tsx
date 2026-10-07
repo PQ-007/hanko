@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, GraduationCap, Pencil, Plus, Snowflake } from "lucide-react";
+import { Flame, GraduationCap, Pencil, Plus, Share2, Snowflake } from "@/ui/icons";
 import { T } from "../_lib/strings";
 import { useCountUp, useInView } from "../_lib/useAnim";
 import { RING_ADDED, RING_GOAL } from "../_lib/chartColors";
@@ -20,6 +20,7 @@ export default function StreakHero({
   onPractice,
   onAddWord,
   onEditGoal,
+  onShareToday,
 }: {
   streak: number;
   bestStreak: number;
@@ -39,6 +40,8 @@ export default function StreakHero({
   onAddWord: () => void;
   /** Opens GoalModal to edit newGoal. */
   onEditGoal: () => void;
+  /** Opens the "today's words" story image. */
+  onShareToday?: () => void;
 }) {
   const [ref, inView] = useInView<HTMLDivElement>();
   const shown = useCountUp(streak, 1000, inView);
@@ -46,9 +49,11 @@ export default function StreakHero({
   return (
     <div
       ref={ref}
-      className="flex flex-col items-center justify-between gap-6 rounded-control border border-line-soft bg-white p-6 shadow-sm sm:flex-row sm:gap-8"
+      // lg: three columns with equal outer tracks, so the rings sit at the true
+      // centre whatever the widths of the streak and the buttons.
+      className="flex flex-col items-center justify-between gap-6 rounded-control border border-line-soft bg-surface p-6 shadow-sm sm:flex-row sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
     >
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-5 lg:justify-self-start">
         <div className="rounded-full bg-seal p-4 text-white">
           <Flame size={30} />
         </div>
@@ -97,14 +102,23 @@ export default function StreakHero({
         />
       </div>
 
-      <div className="flex flex-col items-center gap-2 sm:items-end">
+      <div className="flex flex-col items-center gap-2 sm:items-end lg:justify-self-end">
         <p className="text-center text-sm text-ink-soft sm:text-right">
           {addedToday > 0 ? T.addedTodayCta(addedToday) : T.addedTodayNone}
         </p>
         {/* The line above is about words added today, so the way to add one
             belongs next to it — the dashboard otherwise reports on the
             collection without offering any way to change it. */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end lg:flex-nowrap [&>button]:lg:px-3.5 [&>button]:whitespace-nowrap">
+          {onShareToday && (
+            <button
+              onClick={onShareToday}
+              title={T.shareToday}
+              className="flex items-center gap-1.5 hk-btn hk-btn-quiet px-4 py-2.5 text-sm"
+            >
+              <Share2 size={16} /> {T.shareToday}
+            </button>
+          )}
           <button
             onClick={onAddWord}
             className="flex items-center gap-1.5 hk-btn hk-btn-quiet px-4 py-2.5 text-sm"

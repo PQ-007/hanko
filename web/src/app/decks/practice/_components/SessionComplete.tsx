@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Check, LayoutDashboard, RotateCcw } from "lucide-react";
+import { Check, LayoutDashboard, RotateCcw } from "@/ui/icons";
 import { T } from "../../_lib/strings";
 
 export default function SessionComplete({ count }: { count: number }) {
   return (
     <div className="mx-auto max-w-md px-4 py-10 text-center">
-      <div className="rounded-card border border-line-soft bg-white p-8 shadow-sm">
+      <div className="rounded-card border border-line-soft bg-surface p-8 shadow-sm">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-seal text-paper">
           <Check size={26} />
         </div>

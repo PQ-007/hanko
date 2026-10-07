@@ -26,8 +26,15 @@ interface AnswerRow {
   effective_ms: number;
 }
 
+// Rounds in a row with no answer row from the opponent before they count as
+// gone. A timeout still writes a row (submit sends it as wrong), so a missing
+// one means their app isn't there at all (PVP.md 3.4).
+const ABSENT_ROUNDS = 3;
+
 export function createRemoteOpponent(match: RemoteMatch): OpponentDriver {
   let channel: RealtimeChannel | null = null;
+  let missing = 0;
+  let left = false;
 
   async function readAnswer(roundNo: number): Promise<AnswerRow | null> {
     const { data } = await supabase
@@ -109,9 +116,23 @@ export function createRemoteOpponent(match: RemoteMatch): OpponentDriver {
       // Always re-read, whether or not the channel fired: this is the part
       // that is actually load-bearing.
       const row = await readAnswer(roundNo);
+      missing = row ? 0 : missing + 1;
+      if (missing >= ABSENT_ROUNDS && !left) {
+        left = true;
+        // The one still here claims the match — forfeit_match's meaning.
+        await supabase.rpc("forfeit_match", { p_match_id: match.matchId }).then(undefined, () => {});
+      }
       if (!row) return null;
       void arrived;
       return { correct: row.correct, elapsedMs: row.effective_ms } satisfies DuelAnswer;
+    },
+
+    left() {
+      return left;
+    },
+
+    async concede() {
+      await supabase.rpc("concede_match", { p_match_id: match.matchId });
     },
 
     async submit(roundNo, answer, cardId) {

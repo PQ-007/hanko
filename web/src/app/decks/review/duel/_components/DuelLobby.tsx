@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, Copy, Loader2, LogIn, Swords, Users } from "lucide-react";
+import { ArrowLeft, Bot, Copy, Loader2, LogIn, Swords, Users, Versus } from "@/ui/icons";
 import { supabase } from "../../../_lib/db";
 import { T } from "../../../_lib/strings";
 import { MIN_WORDS_FOR_BATTLE } from "../../battle/_lib/quiz";
@@ -127,7 +127,11 @@ export default function DuelLobby() {
 
   async function cancelMatch() {
     if (!match) return;
-    await supabase.rpc("forfeit_match", { p_match_id: match.id });
+    // concede, not forfeit: if a guest joined in the same instant, they win.
+    // forfeit_match would hand the win to whoever calls it. Without 0026 the
+    // fallback is only reached for a lobby, which has no winner anyway.
+    const { error: err } = await supabase.rpc("concede_match", { p_match_id: match.id });
+    if (err) await supabase.rpc("forfeit_match", { p_match_id: match.id });
     setMatch(null);
   }
 
@@ -199,7 +203,7 @@ export default function DuelLobby() {
         <p className="mt-1 text-sm text-ink-soft">{T.duelCodeShare}</p>
         <button
           onClick={() => navigator.clipboard?.writeText(match.join_code ?? "")}
-          className="mt-6 flex w-full items-center justify-center gap-3 rounded-card border border-line bg-white py-6 text-4xl font-extrabold tracking-[0.3em] text-ink transition hover:bg-paper-dim"
+          className="mt-6 flex w-full items-center justify-center gap-3 rounded-card border border-line bg-surface py-6 text-4xl font-extrabold tracking-[0.3em] text-ink transition hover:bg-paper-dim"
         >
           {match.join_code}
           <Copy size={18} className="text-ink-mute" />
@@ -232,17 +236,20 @@ export default function DuelLobby() {
           <Bot size={16} className="text-seal" /> {T.duelBotSection}
         </h2>
         <p className="mt-0.5 text-xs text-ink-mute">{T.duelBotDesc}</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {/* Phones: three compact tiles in a row (name + start); the one-line
+            description joins them from sm up. */}
+        <div className="mt-3 grid grid-cols-3 gap-2">
           {BOT_DIFFICULTIES.map((d) => (
             <button
               key={d}
               onClick={() => startBot(d)}
-              className="hk-card hk-card-interactive group flex flex-col items-center gap-2 px-4 py-5 text-center"
+              title={BOT_LABEL[d].desc}
+              className="hk-card hk-card-interactive group flex flex-col items-center gap-1 px-2 py-3 text-center sm:gap-2 sm:px-4 sm:py-5"
             >
-              <span className="text-sm font-semibold text-ink">{BOT_LABEL[d].name}</span>
-              <span className="text-xs leading-relaxed text-ink-mute">{BOT_LABEL[d].desc}</span>
-              <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-seal">
-                <Swords size={12} /> {T.practiceStart}
+              <span className="text-[13px] font-semibold text-ink sm:text-sm">{BOT_LABEL[d].name}</span>
+              <span className="hidden text-xs leading-relaxed text-ink-mute sm:block">{BOT_LABEL[d].desc}</span>
+              <span className="flex items-center gap-1 text-[11px] font-medium text-seal sm:mt-1">
+                <Versus size={12} /> {T.practiceStart}
               </span>
             </button>
           ))}
@@ -274,7 +281,7 @@ export default function DuelLobby() {
             placeholder={T.duelCodePlaceholder}
             aria-label={T.duelCodeLabel}
             maxLength={4}
-            className="flex-1 rounded-control border border-line bg-white px-4 py-3 text-center text-lg font-bold tracking-[0.3em] uppercase focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
+            className="flex-1 rounded-control border border-line bg-surface px-4 py-3 text-center text-lg font-bold tracking-[0.3em] uppercase focus:border-seal focus:outline-none hk-input focus:ring-2 focus:ring-seal-tint"
           />
           <button
             onClick={joinMatch}
@@ -289,7 +296,7 @@ export default function DuelLobby() {
       {/* Whoever you walk in as. Shared with Monster Hunt through localStorage,
           so picking a hero there is picking one here. */}
       <div className="mt-8 flex items-center justify-center gap-3 text-xs text-ink-mute">
-        <div className="hanko-hero-chip flex items-center justify-center rounded-control border border-line bg-white">
+        <div className="hanko-hero-chip flex items-center justify-center rounded-control border border-line bg-surface">
           <FighterSprite slug={hero} state="idle" preload={["idle"]} />
         </div>
         <span>{CHARACTER_NAMES[hero] ?? hero}</span>

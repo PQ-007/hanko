@@ -45,7 +45,7 @@ export default function WeekdayReviewsChart({
   const todayIdx = new Date().getDay();
 
   return (
-    <div ref={ref} className="rounded-control border border-line-soft bg-white p-4 shadow-sm">
+    <div ref={ref} className="rounded-control border border-line-soft bg-surface p-4 shadow-sm">
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink-soft">{T.weekdayTitle}</h3>
         <p className="text-xs text-ink-mute">{T.weekdaySummary(grand)}</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "@/ui/icons";
 import { useCountUp, useInView } from "../_lib/useAnim";
 
 // A single headline number with a label and icon. Numeric values count up on

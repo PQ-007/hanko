@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Dumbbell, GraduationCap, Settings2, Swords, Users, X } from "lucide-react";
+import { Dumbbell, GraduationCap, PenLine, Settings2, Swords, Versus, X } from "@/ui/icons";
 import { T } from "../_lib/strings";
 import { useModalChrome } from "../_lib/useModal";
 import { MIN_WORDS_FOR_BATTLE } from "../review/battle/_lib/quiz";
@@ -99,7 +99,7 @@ export default function ReviewModeModal({
             href="/decks/review/battle?mode=free"
             onNavigate={onClose}
             icon={<Dumbbell size={19} />}
-            iconClass="bg-sky-50 text-sky-700 ring-1 ring-sky-100"
+            iconClass="bg-sky-50 text-sky-700 ring-1 ring-sky-100 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/20"
             title={T.freeModeTitle}
             desc={T.freeModeDesc}
             highlight={nothingDue}
@@ -115,13 +115,23 @@ export default function ReviewModeModal({
             desc={T.classicModeDesc}
           />
 
+          {/* Kanji writing lessons (mobile parity). Practice only — 'drill'. */}
+          <ModeRow
+            href="/decks/writing"
+            onNavigate={onClose}
+            icon={<PenLine size={19} />}
+            iconClass="bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
+            title={T.writingTitle}
+            desc={T.writingDesc}
+          />
+
           {/* 4 — PvP. Built now (PVP.md): a bot opponent needs no second
               player, so this is never a dead end even alone. */}
           <ModeRow
             href="/decks/review/duel"
             onNavigate={onClose}
-            icon={<Users size={19} />}
-            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
+            icon={<Versus size={19} />}
+            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100 dark:bg-violet-400/10 dark:text-violet-300 dark:ring-violet-400/20"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
           />

@@ -6,8 +6,13 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/audio.dart';
 import '../../core/offline_review.dart';
+import '../../core/strings.dart';
+import '../../core/theme.dart';
+import '../../core/widgets.dart';
 import '../../models/queue_card.dart';
-import 'srs_preview.dart';
+import '../battle/fight_scene.dart';
+import '../battle/hero.dart';
+import '../decks/word_actions.dart' show speakWord;
 
 const _uuid = Uuid();
 
@@ -212,47 +217,32 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
     if (_queue == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.deckName ?? 'Давтах')),
-        body: Center(
-          child: _error == null
-              ? const CircularProgressIndicator()
-              : Padding(
+        appBar: AppBar(title: Text(widget.deckName ?? T.practice)),
+        body: _error == null
+            ? const LoadingScene(label: T.loading)
+            : Center(
+                child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text('Уншиж чадсангүй:\n$_error'),
+                  child: Text('${T.loadFailed}:\n$_error'),
                 ),
-        ),
+              ),
       );
     }
 
     if (card == null) {
+      final hero = ref.watch(heroProvider);
       return Scaffold(
-        appBar: AppBar(title: Text(widget.deckName ?? 'Давтах')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _reviewed > 0 ? Icons.check_circle_outline : Icons.inbox_outlined,
-                  size: 48,
-                  color: Colors.grey,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _reviewed > 0
-                      ? 'Давтаж дууслаа!\nТа $_reviewed үг дахин үзлээ.'
-                      : 'Одоогоор давтах үг алга.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Буцах'),
-                ),
-              ],
-            ),
+        appBar: AppBar(title: Text(widget.deckName ?? T.practice)),
+        body: HeroEmptyState(
+          hero: hero,
+          // A finished session gets the hero's heaviest swing; an empty queue
+          // gets them resting.
+          state: _reviewed > 0 ? 'attack01' : 'idle',
+          title: _reviewed > 0 ? T.sessionComplete : T.noWordsDue,
+          subtitle: _reviewed > 0 ? T.sessionCompleteDesc(_reviewed) : null,
+          action: FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(T.back),
           ),
         ),
       );
@@ -284,22 +274,22 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           if (_error != null)
             Container(
               width: double.infinity,
-              color: Colors.red.shade50,
+              color: Theme.of(context).colorScheme.errorContainer,
               padding: const EdgeInsets.all(12),
               child: Text(
                 'Хадгалж чадсангүй: $_error',
-                style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 12),
               ),
             ),
           if (_offline)
             Container(
               width: double.infinity,
-              color: Colors.amber.shade50,
+              color: context.hk.warnBg,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   Icon(Icons.cloud_off_outlined,
-                      size: 16, color: Colors.amber.shade900),
+                      size: 16, color: context.hk.warnFg),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -307,7 +297,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                           ? 'Офлайн — $_queuedAnswers хариулт хадгалагдсан, дараа илгээнэ'
                           : 'Офлайн — хадгалсан жагсаалтаар давтаж байна',
                       style: TextStyle(
-                          color: Colors.amber.shade900, fontSize: 12),
+                          color: context.hk.warnFg, fontSize: 12),
                     ),
                   ),
                 ],
@@ -341,23 +331,24 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                               Text(
                                 card.reading!,
                                 style: theme.textTheme.titleMedium
-                                    ?.copyWith(color: Colors.grey),
+                                    ?.copyWith(color: context.hk.inkMute),
                               ),
-                            // Only offered when there is something to play:
-                            // a speaker icon that does nothing is worse than
-                            // no icon at all.
-                            if (card.audioPath != null &&
-                                card.audioPath!.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.volume_up_outlined),
-                                iconSize: 20,
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => ref
-                                    .read(audioProvider)
-                                    .play(card.wordId, card.audioPath),
-                              ),
-                            ],
+                            // Always available: the recorded clip when there is
+                            // one (cached, so it works offline), otherwise the
+                            // phone's own Japanese voice.
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.volume_up_outlined),
+                              iconSize: 20,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                if (card.audioPath != null && card.audioPath!.isNotEmpty) {
+                                  ref.read(audioProvider).play(card.wordId, card.audioPath);
+                                } else {
+                                  speakWord(context, ref, reading: card.reading, term: card.term);
+                                }
+                              },
+                            ),
                           ],
                         ),
                         const Padding(
@@ -376,7 +367,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                             card.meaning!,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey),
+                                ?.copyWith(color: context.hk.inkMute),
                           ),
                         ],
                       ] else ...[
@@ -384,7 +375,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         Text(
                           'Хариулт харах',
                           style: theme.textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey),
+                              ?.copyWith(color: context.hk.inkMute),
                         ),
                       ],
                     ],
@@ -396,29 +387,18 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              // Lifted into thumb reach rather than pinned to the bottom edge.
+              padding: EdgeInsets.fromLTRB(12, 12, 12, 12 + thumbZoneLift(context)),
               child: _revealed
-                  ? Row(
-                      children: [
-                        for (final r in const ['again', 'hard', 'good', 'easy'])
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 3),
-                              child: _RatingButton(
-                                rating: r,
-                                card: card,
-                                enabled: !_sending,
-                                onTap: () => _rate(r),
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
+                  ? RatingButtonRow(enabled: !_sending, onRate: _rate)
                   : SizedBox(
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: () => setState(() => _revealed = true),
-                        child: const Text('Хариулт харах'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                        ),
+                        child: const Text(T.showAnswer),
                       ),
                     ),
             ),
@@ -429,64 +409,73 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   }
 }
 
+/// Shared by every screen that grades a card. Deliberately no interval preview:
+/// the web removed it because the scheduled gap read as a forgetting date
+/// rather than "when I'll ask again", and mobile's copy was a stale SM-2
+/// formula besides — the server has scheduled with FSRS since 0021.
+class RatingButtonRow extends StatelessWidget {
+  const RatingButtonRow({super.key, required this.enabled, required this.onRate});
+  final bool enabled;
+  final ValueChanged<String> onRate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final r in const ['again', 'hard', 'good', 'easy'])
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: _RatingButton(rating: r, enabled: enabled, onTap: () => onRate(r)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _RatingButton extends StatelessWidget {
   const _RatingButton({
     required this.rating,
-    required this.card,
     required this.enabled,
     required this.onTap,
   });
 
   final String rating;
-  final QueueCard card;
   final bool enabled;
   final VoidCallback onTap;
 
   static const _labels = {
-    'again': 'Дахин',
-    'hard': 'Хэцүү',
-    'good': 'Сайн',
-    'easy': 'Амархан',
-  };
-
-  static const _colors = {
-    'again': Color(0xFFDC2626),
-    'hard': Color(0xFFD97706),
-    'good': Color(0xFF111827),
-    'easy': Color(0xFF059669),
+    'again': T.again,
+    'hard': T.hard,
+    'good': T.good,
+    'easy': T.easy,
   };
 
   @override
   Widget build(BuildContext context) {
-    // Every button states its real consequence, including the minute-scale
-    // ones: a card still in the learning steps comes back in minutes, so
-    // labelling that "1 өдөр" would be a lie.
-    final preview = formatPreview(previewNext(
-      state: card.state,
-      learningStep: card.learningStep,
-      intervalDays: card.intervalDays,
-      repetitions: card.repetitions,
-      easeFactor: card.easeFactor,
-      rating: rating,
-    ));
-
-    return OutlinedButton(
-      onPressed: enabled ? onTap : null,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: _colors[rating],
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _labels[rating]!,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 2),
-          Text(preview, style: const TextStyle(fontSize: 10)),
-        ],
-      ),
-    );
+    final color = context.hk.rating(rating);
+    final primary = rating == 'good';
+    return primary
+        ? FilledButton(
+            onPressed: enabled ? onTap : null,
+            style: FilledButton.styleFrom(
+              backgroundColor: color,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+            ),
+            child: Text(_labels[rating]!,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          )
+        : OutlinedButton(
+            onPressed: enabled ? onTap : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: color,
+              side: BorderSide(color: color.withValues(alpha: 0.4)),
+              backgroundColor: color.withValues(alpha: 0.06),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+            ),
+            child: Text(_labels[rating]!,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          );
   }
 }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Hanko's ensō, in the blue theme's colours (see decks/_lib/theme.ts). -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c72cc"/><stop offset="1" stop-color="#0f3672"/></linearGradient></defs>
+  <circle cx="64" cy="64" r="64" fill="url(#g)"/>
+  <g transform="translate(64 64) scale(3.4) translate(-12 -12)">
+    <path d="M17.6 5.6A8 8 0 1 0 20 11.2" fill="none" stroke="#ffffff" stroke-width="2.7" stroke-linecap="square" stroke-linejoin="miter"/>
+  </g>
+</svg>

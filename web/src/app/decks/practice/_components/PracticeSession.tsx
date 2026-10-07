@@ -1,8 +1,9 @@
 "use client";
 
+import { useImmersive } from "../../_lib/useImmersive";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Undo2, X } from "lucide-react";
+import { Undo2, X } from "@/ui/icons";
 import { T } from "../../_lib/strings";
 import { usePracticeSession } from "../../_lib/usePracticeSession";
 import PracticeCard from "./PracticeCard";
@@ -11,6 +12,7 @@ import SessionComplete from "./SessionComplete";
 import LoadingScene from "../../review/battle/_components/LoadingScene";
 
 export default function PracticeSession() {
+  useImmersive();
   const params = useSearchParams();
   const deckId = params.get("deck");
 
@@ -46,7 +48,7 @@ export default function PracticeSession() {
             <p className="mt-2 text-xs opacity-80">{loadError}</p>
           </div>
         ) : (
-          <div className="rounded-control border border-dashed border-line bg-white p-10 text-ink-soft">
+          <div className="rounded-control border border-dashed border-line bg-surface p-10 text-ink-soft">
             {T.noWordsDue}
           </div>
         )}
@@ -58,7 +60,9 @@ export default function PracticeSession() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6 sm:py-10">
+    // Below lg the session owns the screen (useImmersive): the card stretches
+    // and the answer buttons sit at the bottom, in thumb reach.
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:gap-5 lg:min-h-0 lg:py-10">
       {/* Progress + session controls */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-ink-soft">

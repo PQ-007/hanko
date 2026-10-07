@@ -243,25 +243,69 @@ any third-party sign-in. Add it as a second Supabase provider before submitting.
 
 ---
 
-## Capture stays on the extension — deliberate scope decision
+## Capture — extension, manual entry, and (since mobile Stage 3) the camera
 
-**Mobile does not capture words.** No share-target intent, no OCR, no in-app
-browser. Words enter the system two ways only:
+**Reversed by the owner:** the original rule was "mobile does not capture
+words". Mobile now has camera capture (`mobile/lib/features/capture/`), and is
+a standalone product that must not depend on the Next.js server. Words enter
+the system three ways:
 
 1. The browser extension, automated as far as it can go
 2. Manual entry in the web app or mobile app
+3. Mobile camera capture: photo or gallery image → ML Kit text recognition on
+   the device (bundled Japanese model, works offline) → suggested words plus
+   manual span selection → Jisho lookup + EN→MN from the phone → batch save
 
-Don't propose mobile capture features; the split is intentional — desktop
-captures, mobile reviews.
+How it's built, so nobody re-litigates it:
+- **No tokenizer, on purpose.** `segment.dart` suggests words by script
+  boundaries (kanji run + okurigana, katakana runs) and Jisho resolves the
+  dictionary form; `lookupMatches()` rejects Jisho's fuzzy guesses at other
+  words. kuromoji/MeCab would mean tens of MB on the device or a server
+  dependency. Hiragana-only words are never suggested — manual selection
+  covers them.
+- **Saves go through `WordOutbox`** (`core/offline_words.dart`, Drift
+  `PendingWords`, schema v3): device-generated ids + `addWords`' ignore-on-
+  conflict make replay idempotent, same reasoning as the answer outbox.
+  Flushed on app start and resume (`AppShell`). It writes `words` only; the
+  trigger creates the cards.
+- `image_picker` (system camera/gallery) rather than a live `camera` preview:
+  fewer permissions to manage, and screenshots work too.
 
-Worth doing on the extension side, since it is now the only automated capture
-surface: `chrome/content.js` already holds the full selection and throws away
+Still worth doing on the extension side, since it is the only capture
+surface that sees the original page: `chrome/content.js` already holds the full selection and throws away
 everything but the word. Add `words.context_sentence` and `words.source_url` and
 populate them at capture time. Context and cloze cards retain substantially
 better than bare word→meaning pairs, and the data is free at the moment of
 capture — but only the extension is positioned to collect it.
 
 ---
+
+## Audio decks (mobile) — deck → MP3 for listening
+
+`mobile/lib/features/audio/`. Built on the phone, no server of ours:
+- **Speech** is Google Translate's keyless TTS (`tts_clips.dart`, the same
+  endpoint as the web's `tts.ts`), Japanese (the reading, else the term) then
+  the English meaning. **There is no Mongolian voice** — verified: the
+  endpoint answers 400 for `tl=mn` and no phone engine ships one; only Azure
+  has one, and that was declined (paid, plus an Edge Function). Mongolian
+  meanings show as text in the player instead.
+- **One real MP3** is assembled without an encoder (`mp3.dart`): every clip is
+  MPEG-2 Layer III 24 kHz mono, so clips concatenate frame for frame and the
+  pauses are zeroed frames in the same format. Verified to decode cleanly in
+  ffmpeg with exact length; `mp3_test.dart` runs on real clips.
+- Clips are cached on disk by language + FNV-1a hash of the text, so
+  rebuilding is cheap. Each deck is `audio_decks/<deckId>.mp3` plus a JSON
+  sidecar with the options and per-word cues (start ms), which is how the
+  player shows the word being spoken.
+- Playback is plain `just_audio` in the app (`deck_player.dart`), with its
+  own player separate from word pronunciation in `core/audio.dart`. **Do not
+  add `audio_service` back** without testing on a device: on Flutter 3.44 it
+  deadlocked Android's main thread (Dart and the platform share one thread
+  since 3.29, and the `DisableMergedPlatformUIThread` opt-out now crashes the
+  app at launch) — an ANR on first play, a hang at the splash screen when
+  started from `main()`. For listening with the screen locked, the player
+  shares the MP3 to the phone's music app, which has its own lock-screen
+  controls.
 
 ## Phase 2 — Parity polish (done)
 
@@ -358,6 +402,7 @@ Do not confuse it with 3.2 below — different mode, different `source` value:
 | Classic review | `review` | yes |
 | **Monster Hunt (scored)** | **`quiz`** | **yes** |
 | Free practice / speed round | `drill` | no |
+| Kanji writing lessons (mobile + web) | `drill` | no |
 | PvP duel (3.2, unbuilt) | `battle` | no |
 
 **`quiz` is not a downgrade of `review`.** Monster Hunt is real recall practice
@@ -379,6 +424,48 @@ Jisho-backed `distractor_cache` an earlier draft of 3.2 called for was built,
 found too slow in real play, and dropped — `0015` created that table and `0016`
 drops it. Do not resurrect it; **item 2 under 3.2 below is solved.**
 
+**Monster Hunt on mobile** (`mobile/lib/features/battle/rules.dart`,
+`battle_controller.dart`, `battle_screen.dart`) is a port, not a redesign: the
+damage fold, quiz builder and monster bag are pinned to the TypeScript by
+`web/src/app/decks/review/battle/_lib/fixtures/battle.fixture.json` (generated
+by `generate-battle-fixture.ts`, read by `battle-fixture.test.ts` and
+`battle_rules_test.dart`). Same rule as the duel fixture: regenerate only for an
+intended behaviour change, and change both sides. Offline answers keep their
+`quiz` label through the outbox (`PendingAnswers.source`, Drift schema v2).
+
+**Both hunts also ask the learner to write the word.**
+Each question is either the word → its meaning (built by the fixture-pinned
+`buildQuiz`) or reading + meaning → write the kanji, 3:2, one kanji per box
+(mobile `question_kinds.dart`, web `battle/_lib/questionKinds.ts`, same cases
+in both tests). A missed kanji's correction is drawn on the pad and the clock
+holds until the learner continues; only then does the miss land. Writing gets
+12 s per kanji, its speed tier is judged against that limit (`speedFor`), and
+a correct written answer does ×1.5 damage — applied to the event *after*
+`rollEvent`, so the shared rules and battle.fixture.json are untouched. Both
+kinds answer as `quiz` and schedule. "Pick the word" and "listen" kinds were
+tried and dropped as clutter.
+
+How the two check a kanji differs, on purpose: mobile runs ML Kit digital ink
+and then the stroke grader (`KanjiChecker`); the web has no recogniser, so it
+uses the grader alone (`writing/_lib/strokes.ts`) and only offers a word for
+writing once KanjiVG stroke data for every kanji in it has loaded (the arena
+prefetches the queue's kanji). The two graders are pinned against each other
+by `writing/_lib/fixtures/strokes.fixture.json`, generated from Dart by
+`mobile/test/stroke_fixture_test.dart` (`GEN_STROKE_FIXTURE=1`) and read by
+`strokes.test.ts`. The same rule as the other fixtures applies: regenerate only
+for an intended change, and change both graders.
+
+**Kanji writing lessons exist on both clients** (mobile `features/writing/`,
+web `/decks/writing`): pick words or kanji, then trace → some strokes → from
+memory per new kanji, then the whole word (`lesson.ts` ports `lesson.dart`,
+same cases). Answers log as `drill` and learned kanji go to `learned_kanji`
+(0026). On the web, a kanji with no stroke data falls back to self-judging.
+
+Mobile's review sheet is three modes — Monster Hunt, classic cards, kanji
+writing — plus a leech-rescue link shown only when leeches exist. Speed round
+was removed from mobile (free practice covers it); `mature_cards()` stays in
+the database for the web.
+
 ### 3.2 Online 1v1 battle mode (built, unplayed — see `PVP.md`)
 Fast-paced vocabulary duel, in its own feature folder so it never entangles
 with the review code.
@@ -395,6 +482,24 @@ the same tables and RPCs.
 Phases 1–4 are in the tree: `/decks/review/duel` plays a bot with no network at
 all, and an invite-code match against a real player via `0020_pvp.sql` and one
 Realtime channel. **Nobody has played it** — that is phase 5.
+
+**Mobile now has the duel too** (`mobile/lib/features/duel/`, the PvP tab):
+bot duels offline at three levels and invite-code PvP against the same
+`0020` RPCs and Realtime, so web and mobile players can fight each other.
+`duel_rules.dart` is a port of `duel.ts` + `bot.ts`, pinned by the same
+`duel.fixture.json` (all 484 cases), and `duel_rules_test.dart` also checks
+the newest SQL `duel_round_duration_ms` against the client curve — it had
+drifted (clients 10 s→6 s, server still 5 s→3 s, so the server closed PvP
+rounds early); `0025_duel_timing.sql` fixes it.
+
+**`forfeit_match` makes its CALLER the winner** — it means "my opponent has
+gone", called by the one still there. Leaving a match must call
+`concede_match` (0026, caller loses) instead; mobile did call forfeit on
+leave at first, which with ELO would have been a free win for walking out.
+A remote opponent with no answer row for 3 rounds in a row (timeouts still
+write one) is treated as gone, and that client calls `forfeit_match`. Both
+clients do this now (web: `remoteOpponent.ts` `left()` / `concede()`,
+mobile: `opponent.dart`).
 
 Two things a future session must not "tidy up":
 
@@ -457,6 +562,82 @@ scheduling anything, with nothing erroring — see 3.1b.
 
 ---
 
+## Friends, XP and ELO (`0026_social.sql`) — mobile and web
+
+Mobile's **Найзууд** tab and the web's `/decks/friends` page (nav tab
+**Найзууд**; `web/src/app/decks/friends/`, helpers in `_lib/social.ts` with
+the same level curve as mobile, pinned by matching tests): friends by handle (`profiles.handle`, never by email),
+requests through `send_friend_request` / `respond_friend_request` /
+`remove_friend`, a friends-only leaderboard (7-day XP, total XP, ELO) and
+each friend's activity — all from one `friend_overview()` that decides on
+the server whose numbers a caller may see. `profiles.share_activity = false`
+hides a user's numbers even from friends.
+
+- **XP is derived, never stored** (`user_xp()`, not callable by clients):
+  scheduling answers 10 (2 for "again"), drills/duel answers 2, words added 5,
+  learned kanji 20, PvP win/draw/loss 50/25/10. Change weights there only.
+- **ELO** lives in `player_ratings`, which clients can read (own row) but
+  never write; the `matches_apply_rating` trigger updates it once per match
+  (K=32, guarded by `matches.rating_applied`). Verified as the
+  `authenticated` role: forged rating/friendship writes, direct `user_xp` /
+  `are_friends` calls and cross-user kanji writes are all refused.
+- **Global board** (`0027_global_leaderboard.sql`, the **Бүгд** switch on
+  both leaderboards): every user with a handle who shares, top 50 plus your
+  own row at its real rank. Strangers get **handle and scores only** — no
+  name, picture, activity or user id. Because a public board is worth
+  farming, `user_xp` caps non-scheduling XP (drill + battle answers) at 100 a
+  day; scheduling answers stay uncapped since `review_queue()` already limits
+  them. `global_leaderboard()` computes XP for every eligible user per call —
+  fine at this size, materialise it if the user count grows.
+- **Learned kanji** (writing lessons) sync to `learned_kanji`; the phone keeps
+  a local copy for offline lessons and merges on each lesson start
+  (`syncLearnedKanji`).
+
+## Public deck links and story images (`0028_deck_share.sql`)
+
+- **`/share/<token>`** (`web/src/app/share/`) is outside `/decks`, so the
+  proxy never sends a visitor to /login. Anyone with the link sees the deck's
+  words and can play Monster Hunt or flip cards with **no account and nothing
+  saved**: `_lib/trial.ts` is a local stand-in for `usePracticeSession`
+  (pinned by `trial.test.ts`), and the real arena runs on it — `BattleArena.tsx`
+  exports `Arena`, which takes any `ArenaSession`. A signed-in visitor can copy
+  the deck (`copy_shared_deck`; the copy gets fresh `new` cards, never the
+  owner's history).
+- What a link exposes is decided in one place, `shared_deck()`: deck name +
+  term/reading/meaning/meaning_mn, max 500 words. No owner, no ids, no SRS
+  state. Tokens are 128 random bits and **expire 24 hours after issue**
+  (`decks.share_expires_at`, checked by `shared_deck` and `copy_shared_deck`);
+  re-enabling a live link keeps it, an expired one gets a new token. Owners
+  toggle it from the deck header (Share), which shows the time left.
+- **Share surfaces are deliberately unbranded** (owner's call): no logo, app
+  name or 判 on the share page, its preview image or the story images.
+- Story images (1080×1920) are drawn on a canvas in the browser
+  (`decks/_lib/storyCard.ts`), shared through the Web Share API where it can
+  share files, downloaded otherwise. "Today's words" on the stats page reads
+  `share_today()` — the caller's recalls since the SRS-day start, excluding
+  misses, undone answers and PvP (`battle`). Link previews come from
+  `share/[token]/opengraph-image.tsx`, which pulls a Noto Sans JP subset from
+  Google Fonts at render time (falls back to the default face offline).
+
+## Web app shell (phones and tablets)
+
+`decks/layout.tsx` is a fixed shell, not a scrolling page: `h-dvh`, header and
+bottom bar stay put, only `<main id="hk-main">` scrolls. Below `lg` the header
+shows the screen's title (`PageTitle`) and navigation is a bottom tab bar
+(`TabBar`, raised Review button in the middle, safe-area padded); from `lg`
+up the header nav is unchanged. Sessions — practice, Monster Hunt, duel arena,
+writing lesson — call `useImmersive()`, which hides both bars below `lg` so
+the session owns the screen and is laid out to fit it without scrolling
+(verified down to 360×740). The decks page is list → deck on phones/tablets,
+with the open deck in `?deck=` so the back gesture returns to the list.
+`app/manifest.ts` makes "Add to Home Screen" open standalone.
+
+Two traps found doing this:
+- Anything that scrolls "the page" must scroll `#hk-main`, not `window`.
+- `.hk-btn` lives in `@layer components` on purpose. Unlayered, its
+  `display` beat every Tailwind utility, so `max-sm:hidden` on a button
+  silently did nothing.
+
 ## Stack
 
 - **Flutter** in `mobile/`, `supabase_flutter`, **Riverpod** for state
@@ -469,6 +650,91 @@ scheduling anything, with nothing erroring — see 3.1b.
 - Reuse the existing Supabase project throughout. No backend rewrite.
 
 ## Standing notes
+
+- **The web leaderboard is friends only** (owner's call): podium + rows,
+  metric switch (7 хоног / Нийт XP / ELO), and tapping a friend opens your
+  online duel log with them — `headToHead()` in `decks/_lib/social.ts`
+  (tested) tallies your own finished/abandoned `matches` rows, which RLS
+  already scopes to you. `global_leaderboard()` (0027) is no longer called by
+  the web; mobile still has its Бүгд switch.
+- **Monster Hunt only asks you to write kanji you've learned** in Ханз бичих
+  lessons (`learned_kanji`), on web (`BattleArena`: learned AND stroke data
+  loaded) and mobile (`eligibleKinds(learned:)`, the phone's own copy from
+  `kanji_progress.dart`). Everything else is asked by meaning. Online battle
+  has no writing questions.
+- **Mobile shares decks too** (`deck_share_sheet.dart`): the same
+  `set_deck_share` link as the web, built on `Config.webUrl` (dart-define
+  `WEB_URL`, default `https://hanko-amber.vercel.app`) — the only use of the
+  web's address on the phone; the app still never calls that server.
+- **Story images** (web, `_lib/storyCard.ts`): header band with up to three
+  big numbers, a two-column word grid (fewer, taller tiles; meanings wrap to
+  two lines via the tested `wrapLines`), a "+N" pill; three styles and
+  Монгол / English / Хоёул meanings, remembered per browser.
+- **Mobile offline decks** (Drift schema v4: `OfflineDecks`,
+  `OfflineDeckCards`): "Офлайнд татах" in a deck's menu saves every card
+  (practice_cards), flags which ones review_queue() was serving, refreshes
+  the hunt's word cache and pre-caches pronunciation. With no connection,
+  `OfflineReview.queue(deckId)` serves that deck: due review/learning cards by
+  the server's own due dates, new cards only if the server's queue included
+  them (keeps the daily cap), minus anything waiting in the outbox. Still not
+  a sync engine — answers replay through review_card(), which schedules.
+- **Themes = the story image styles** (owner's call), on web and mobile:
+  **Цайвар** (default — warm amber paper, white cards, vermilion accent),
+  **Бараан** (dark) and **Цэнхэр** (seal blue, white type, navy buttons).
+  No "follow the system" option and no plain white theme; older stored
+  values land on Цайвар. Web: `decks/_lib/theme.ts` sets `html[data-theme]`
+  (light/dark — what `dark:` keys off, so blue gets every dark fix) plus
+  `html[data-scheme]` (paper/blue token re-tints in `globals.css`), before
+  first paint via the inline script in `app/layout.tsx`. Mobile:
+  `AppTheme` in `core/theme_mode.dart`, palettes in `core/theme.dart` with
+  the same values. **Use tokens, never hard-coded colours**: cards are
+  `bg-surface`, the accent is `seal` (web) / `context.hk.seal` (mobile; use
+  `context.hk.sealText` for accent text and icons — navy on the blue page
+  is unreadable). Chart/grade colours are `var(--hk-grade-*)` with blue
+  fallbacks (`gradeColors.ts`), so they must go through `style={{…}}` —
+  CSS variables don't work in SVG attributes.
+  The browser tab icon follows the theme too (`public/favicon-{paper,dark,
+  blue}.svg`): the theme script creates and owns `<link id="hk-icon">`.
+  Don't move it back into JSX or `app/icon.svg` — React re-inserts its own
+  copy of a hoisted link the script changed, and the stale icon wins.
+  The **phone's home-screen icon** follows the theme as well, natively with
+  no package (`core/app_icon.dart`, channel `hanko/app_icon`). Android: three
+  launcher activities `.IconPaper/.IconDark/.IconBlue` (trampolines in
+  `IconTrampoline.kt` that open MainActivity), one enabled at a time,
+  switched in `MainActivity.onStop` so a launcher refresh never hits mid-use.
+  They are real `<activity>`s, not `activity-alias`es, because the Flutter
+  tool only finds MAIN/LAUNCHER on `<activity>` — aliases broke `flutter
+  run`. iOS: primary `AppIcon` is Цайвар, `AppIconDark`/`AppIconBlue` are
+  alternate sets (`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), set via
+  `setAlternateIconName`, which shows iOS's own one-line notice.
+- **Story images on mobile too** (`features/share/`): `story_card.dart`
+  ports `storyCard.ts` (same palettes, layout and `wrapLines`, pinned by the
+  same cases in `story_card_test.dart`), drawn on a Flutter canvas to PNG
+  and shared via `share_plus`. Entry points: Home's ✦ button (today's words,
+  `share_today()`) and "Story зураг" in a deck's share sheet.
+- **Settings** (`/decks/settings`): photo, name, username, theme, daily
+  limits + day cutoff, activity sharing, sign out. Profile pictures go to the
+  public `avatars` bucket (`0029_avatars.sql`), resized client-side to 256px
+  WebP; `profiles.image` may only be a Google photo or that bucket (a free
+  URL would let someone track who views their profile).
+- **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
+  from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
+  `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a
+  red action for deletes. Sidebar decks/folders open a menu on right-click
+  (web); library rows open an action sheet on long-press (mobile).
+- The web phone tab bar uses the **mobile app's Material icons**, extracted
+  from the Flutter SDK font into `web/src/ui/MaterialIcon.tsx`.
+- **Web icons are Hanko's own, not lucide-react** (uninstalled; ESLint's
+  `no-restricted-imports` rejects it and other icon packs). Drawings live in
+  `web/src/ui/Icon.tsx`; `web/src/ui/icons.tsx` exports them under the old
+  Lucide names (`Swords`, `Flame`, `X`…) so components import from
+  `@/ui/icons` and still pass icons around as values. A new icon means a new
+  drawing in Icon.tsx, in the same style (1.6 stroke, square caps, mitred
+  joins).
+- A "UI v2" redesign (Today page, sidebar-free header, mincho, sheets) was
+  built and **reverted at the owner's request** — the earlier design was
+  preferred. Kept from it: the icons above, and rarely used deck actions
+  behind the ⋯ menu at every screen size (`DeckHeader.tsx`).
 
 - **`PVP.md` is the worked plan for Phase 3.2**, the only phase big enough
   to need its own file. Read it before touching anything duel-shaped.
@@ -499,6 +765,20 @@ scheduling anything, with nothing erroring — see 3.1b.
   being an open proxy, but per-instance, so it is not a defence against a
   distributed caller. Revisit if the app is ever deployed to more than one
   instance.
+- **Mobile: Dart runs on Android's main thread** (Flutter 3.29+, no opt-out —
+  the `DisableMergedPlatformUIThread` flag now crashes the app at launch). Any
+  long synchronous Dart work is an ANR, not just jank: heavy work goes to an
+  isolate (`Isolate.run`, as audio-deck MP3 assembly does), and plugins that
+  block the main thread are out (audio_service deadlocked — see Audio decks).
+- **Mobile release builds need `android/app/proguard-rules.pro`**: the ML Kit
+  text-recognition plugin references every script's recognizer but only the
+  Japanese one is bundled, and R8 refuses the missing classes without the
+  `-dontwarn` rules. AGP 9 also runs R8 in full mode, which stripped the
+  reflectively-created ML Kit/Firebase component registrars and Room's
+  `WorkDatabase_Impl` — the release app crashed at launch until the `-keep`
+  rules in the same file were added. Build `--release` **and launch it on a
+  device** after adding any ML Kit or native plugin; debug builds don't
+  shrink, so they show neither problem.
 - The extension has **no build step** — edits to `src/sync.js` must be copied
   verbatim into both `chrome/` and `firefox/`.
 - Never commit `config.js` or `.env.local`. The publishable key is safe to ship;

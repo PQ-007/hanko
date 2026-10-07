@@ -15,7 +15,8 @@ export const HEATMAP_STEPS = [
 
 // A day with no reviews is chart furniture, not a data value, so it sits
 // outside the ramp as a neutral surface tint.
-export const HEATMAP_EMPTY = "#ebedf0";
+// A theme token, so empty days sit quietly in dark mode too (was #ebedf0).
+export const HEATMAP_EMPTY = "var(--color-paper-deep)";
 
 // Maps a day's review count onto a ramp step. Thresholds are relative to the
 // user's own busiest day so the scale stays meaningful whether they do 5

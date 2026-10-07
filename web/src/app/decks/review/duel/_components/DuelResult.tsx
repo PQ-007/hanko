@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "@/ui/icons";
 import { T } from "../../../_lib/strings";
 import FighterSprite from "../../battle/_components/FighterSprite";
 import type { DuelOutcome, DuelState, ResolvedRound } from "../_lib/duel";
@@ -45,6 +45,7 @@ export default function DuelResult({
   hero,
   onRematch,
   exitHref,
+  opponentLeft = false,
 }: {
   outcome: DuelOutcome;
   rounds: ResolvedRound[];
@@ -54,6 +55,8 @@ export default function DuelResult({
   hero: string;
   onRematch?: () => void;
   exitHref: string;
+  /** The win came from the other player leaving, not from the fight. */
+  opponentLeft?: boolean;
 }) {
   const { correct, damage, bestStreak } = summarise(rounds);
 
@@ -61,7 +64,9 @@ export default function DuelResult({
     outcome === "won" ? T.duelWon : outcome === "lost" ? T.duelLost : T.duelDraw;
   const desc =
     outcome === "won"
-      ? T.duelWonDesc
+      ? opponentLeft
+        ? T.duelOpponentLeft
+        : T.duelWonDesc
       : outcome === "lost"
         ? T.duelLostDesc
         : T.duelDrawDesc;
@@ -73,7 +78,7 @@ export default function DuelResult({
         : "text-amber-300";
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl flex-col justify-center px-4 py-8">
+    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-4 py-8">
       <div className="hk-arena flex flex-col gap-6 p-6 sm:p-8">
         <div className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-paper/40">

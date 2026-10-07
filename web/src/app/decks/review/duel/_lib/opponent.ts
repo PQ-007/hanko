@@ -25,6 +25,16 @@ export interface OpponentDriver {
    */
   baselineMs: number | null;
   answerFor(roundNo: number, durationMs: number, signal: AbortSignal): Promise<DuelAnswer | null>;
+  /**
+   * True once a real opponent has gone (no answer row for several rounds).
+   * The match then ends as a win for whoever is still here.
+   */
+  left?(): boolean;
+  /**
+   * Leaving the match yourself: the caller LOSES (concede_match, 0026). Never
+   * forfeit_match for this — that makes its caller the winner.
+   */
+  concede?(): Promise<void>;
   /** Publishes the local player's answer. No-op for a bot — nobody is watching. */
   submit?(roundNo: number, answer: DuelAnswer | null, cardId: string | null): Promise<void>;
   dispose?(): void;

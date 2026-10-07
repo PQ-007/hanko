@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Play, Trash2 } from "lucide-react";
+import { Pencil, Play, Trash2 } from "@/ui/icons";
 import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
@@ -71,7 +71,7 @@ export default function WordRow({
       <div className="hk-flip h-48">
         <div className="hk-flip-inner">
           {/* Front — the prompt */}
-          <div className="hk-flip-face flex flex-col items-center justify-center border border-line-soft bg-white p-4 text-center">
+          <div className="hk-flip-face flex flex-col items-center justify-center border border-line-soft bg-surface p-4 text-center">
             <GradeBadge word={word} />
             <div className="relative text-3xl font-bold leading-tight text-ink">{word.term}</div>
             {word.reading && <div className="relative mt-1.5 text-sm text-ink-mute">{word.reading}</div>}
