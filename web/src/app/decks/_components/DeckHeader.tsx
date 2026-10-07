@@ -7,6 +7,7 @@ import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { buildLibraryTree, flattenTree } from "../_lib/folderTree";
 import { T } from "../_lib/strings";
+import { askConfirm } from "@/ui/Dialog";
 import type { WordView } from "../_lib/types";
 import DeckShareModal from "./DeckShareModal";
 
@@ -62,7 +63,12 @@ export default function DeckHeader({
   }
 
   async function remove() {
-    if (!confirm(T.deleteDeckConfirm(deck.name))) return;
+    const ok = await askConfirm({
+      title: T.deleteDeckTitle,
+      body: T.deleteDeckConfirm(deck.name),
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from("words").update({ deleted: true }).eq("deck_id", deck.id);
     await supabase.from("decks").update({ deleted: true }).eq("id", deck.id);
     onChanged();

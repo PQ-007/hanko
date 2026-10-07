@@ -92,7 +92,11 @@ export default function WritingPad({
     ctx.clearRect(0, 0, size, size);
 
     // Practice-paper cross (十字), dashed.
-    ctx.strokeStyle = "rgba(120,110,90,0.25)";
+    // Ink, guide and grid follow the theme: dark ink on a dark pad would be
+    // invisible.
+    const dark = document.documentElement.dataset.theme === "dark";
+    const INK = dark ? "#ece9e2" : "#1f2933";
+    ctx.strokeStyle = dark ? "rgba(236,233,226,0.14)" : "rgba(120,110,90,0.25)";
     ctx.lineWidth = 1;
     ctx.setLineDash([8, 8]);
     ctx.beginPath();
@@ -132,7 +136,7 @@ export default function WritingPad({
       pts.reduce((s, p, k) => (k ? s + Math.hypot(p[0] - pts[k - 1][0], p[1] - pts[k - 1][1]) : 0), 0);
 
     if (strokes && guideCount > 0) {
-      ctx.strokeStyle = answer ? "rgba(220,38,38,0.3)" : "rgba(31,41,51,0.13)";
+      ctx.strokeStyle = answer ? "rgba(220,38,38,0.3)" : dark ? "rgba(236,233,226,0.16)" : "rgba(31,41,51,0.13)";
       ctx.lineWidth = width;
       strokes.polylines.slice(0, guideCount).forEach((p) => line(p));
       if (answer && focusStroke !== null && focusStroke < strokes.polylines.length) {
@@ -141,7 +145,7 @@ export default function WritingPad({
       }
       // Stroke numbers at each stroke's start.
       ctx.font = `${Math.round(size * 0.035)}px sans-serif`;
-      ctx.fillStyle = answer ? RED : "rgba(102,96,83,0.9)";
+      ctx.fillStyle = answer ? RED : dark ? "rgba(185,179,168,0.9)" : "rgba(102,96,83,0.9)";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       strokes.starts.slice(0, guideCount).forEach((s: Pt, i) => ctx.fillText(String(i + 1), s[0] * scale - 4, s[1] * scale));
@@ -157,7 +161,7 @@ export default function WritingPad({
     }
 
     ink.forEach((s, i) => {
-      ctx.strokeStyle = i === badInk ? RED : "#1f2933";
+      ctx.strokeStyle = i === badInk ? RED : INK;
       ctx.fillStyle = ctx.strokeStyle;
       ctx.lineWidth = width * 0.8;
       if (s.length === 1) {

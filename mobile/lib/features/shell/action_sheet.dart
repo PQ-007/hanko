@@ -93,7 +93,7 @@ class _Tile extends StatelessWidget {
     final enabled = onTap != null;
     final fg = primary ? Colors.white : (enabled ? context.hk.ink : context.hk.inkMute);
     return Material(
-      color: primary ? HankoColors.seal : context.hk.card,
+      color: primary ? context.hk.seal : context.hk.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: primary ? BorderSide.none : BorderSide(color: context.hk.lineSoft),
@@ -106,7 +106,7 @@ class _Tile extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 30, color: primary ? Colors.white : (enabled ? HankoColors.seal : context.hk.line)),
+              Icon(icon, size: 30, color: primary ? Colors.white : (enabled ? context.hk.seal : context.hk.line)),
               const SizedBox(height: 6),
               Text(label,
                   textAlign: TextAlign.center,

@@ -6,6 +6,7 @@ import '../../core/offline_words.dart';
 import '../../core/providers.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/widgets.dart';
 import 'action_sheet.dart';
 
 /// Four tabs around a center action button.
@@ -95,8 +96,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
             tooltip: T.navActions,
           ),
           NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups),
+            icon: Icon(Icons.sports_kabaddi_outlined),
+            selectedIcon: Icon(Icons.sports_kabaddi),
             label: T.navPvp,
           ),
           NavigationDestination(
@@ -119,17 +120,18 @@ class _CenterButton extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: HankoColors.seal,
+        color: context.hk.seal,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: HankoColors.sealDark.withValues(alpha: 0.35),
+            color: context.hk.sealDark.withValues(alpha: 0.35),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: const Icon(Icons.add, color: Colors.white, size: 30),
+      // The app's own mark (the icon's ensō), not a generic plus.
+      child: const Center(child: EnsoMark(size: 32)),
     );
   }
 }

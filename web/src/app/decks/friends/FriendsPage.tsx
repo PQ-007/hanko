@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Copy, Eye, Plus, Swords, Trophy, Users, X } from "@/ui/icons";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
+import { askConfirm } from "@/ui/Dialog";
 import {
   displayName,
   levelFor,
@@ -272,7 +273,7 @@ function HandleCard({ onSaved }: { onSaved: () => Promise<void> }) {
       <h2 className="text-base font-bold text-ink">{T.socialPickHandle}</h2>
       <p className="mt-1 text-xs text-ink-mute">{T.socialPickHandleDesc}</p>
       <div className="mt-3 flex gap-2">
-        <div className="flex flex-1 items-center rounded-control border border-line bg-surface pl-3">
+        <div className="hk-field flex flex-1 items-center rounded-control border border-line bg-surface pl-3 focus-within:border-seal focus-within:ring-2 focus-within:ring-seal-tint">
           <span className="text-sm text-ink-mute">@</span>
           <input
             value={value}
@@ -369,7 +370,16 @@ function ActivityCard({ row: r, onRemove }: { row: FriendRow; onRemove?: () => v
         )}
         {onRemove && (
           <button
-            onClick={() => window.confirm(`${T.socialRemove}?`) && onRemove()}
+            onClick={async () => {
+              const ok = await askConfirm({
+                title: T.removeFriendTitle,
+                body: r.handle ? T.removeFriendBody(r.handle) : undefined,
+                confirmLabel: T.socialRemove,
+                danger: true,
+                icon: "friends",
+              });
+              if (ok) onRemove();
+            }}
             className="hk-btn px-2 py-1 text-xs"
             aria-label={T.socialRemove}
           >
@@ -482,9 +492,9 @@ function BoardTab({ rows }: { rows: FriendRow[] }) {
 }
 
 const PODIUM = [
-  { ring: "ring-[#d4a63a]", bg: "bg-[#f6ead0]", text: "text-[#8a6416]", h: "h-20" },
-  { ring: "ring-[#a9b1bb]", bg: "bg-[#eceff2]", text: "text-[#4c5560]", h: "h-14" },
-  { ring: "ring-[#c48a5a]", bg: "bg-[#f4e4d6]", text: "text-[#7a4a24]", h: "h-10" },
+  { ring: "ring-[#d4a63a]", bg: "bg-[#f6ead0] dark:bg-[#3a3120]", text: "text-[#8a6416] dark:text-[#e6c46a]", h: "h-20" },
+  { ring: "ring-[#a9b1bb]", bg: "bg-[#eceff2] dark:bg-[#2c333c]", text: "text-[#4c5560] dark:text-[#c8d0d9]", h: "h-14" },
+  { ring: "ring-[#c48a5a]", bg: "bg-[#f4e4d6] dark:bg-[#3a2a1f]", text: "text-[#7a4a24] dark:text-[#e2a676]", h: "h-10" },
 ];
 
 function formatValue(v: number, by: RankBy) {

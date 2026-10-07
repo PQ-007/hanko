@@ -4,7 +4,7 @@ import { useImmersive } from "../../../_lib/useImmersive";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pause, Play, Skull, Undo2 } from "@/ui/icons";
+import { ArrowLeft, Check, Pause, Play, Skull, Undo2, X } from "@/ui/icons";
 import type { Rating } from "@/lib/srs";
 import { usePracticeSession, type UsePracticeSessionResult } from "../../../_lib/usePracticeSession";
 import { supabase } from "../../../_lib/db";
@@ -194,9 +194,28 @@ export function Arena({
   useImmersive();
   const exitHref = trial?.exitHref ?? "/decks/review";
 
-  // Stroke data for the queue's kanji, fetched in the background. A word is
-  // only asked as "write it" once every one of its kanji has loaded — the
-  // first questions are therefore usually by meaning, which is fine.
+  // Kanji learned in writing lessons (learned_kanji, 0026). A word is only
+  // asked as "write it" when every one of its kanji is in here — the hunt
+  // tests writing you've practised, it doesn't spring unseen kanji on you.
+  // Null until loaded; empty on the share page's trial (no account).
+  const [learned, setLearned] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("learned_kanji")
+      .select("kanji")
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLearned(error ? new Set() : new Set(((data as { kanji: string }[]) ?? []).map((r) => r.kanji)));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Stroke data for the queue's learned kanji, fetched in the background. A
+  // word is only asked as "write it" once every one of its kanji has loaded —
+  // the first questions are therefore usually by meaning, which is fine.
   const [strokes, setStrokes] = useState<Map<string, KanjiStrokes | null>>(new Map());
   // Each kanji is requested once per arena. The queue changes after every
   // answer, so a download in flight is never cancelled by that — only by
@@ -210,8 +229,8 @@ export function Arena({
     };
   }, []);
   useEffect(() => {
-    if (!queue) return;
-    const wanted = kanjiInOrder(queue.map((c) => c.term)).filter((k) => !requested.current.has(k));
+    if (!queue || !learned) return;
+    const wanted = kanjiInOrder(queue.map((c) => c.term)).filter((k) => learned.has(k) && !requested.current.has(k));
     if (!wanted.length) return;
     wanted.forEach((k) => requested.current.add(k));
     void (async () => {
@@ -228,7 +247,7 @@ export function Arena({
         });
       }
     })();
-  }, [queue]);
+  }, [queue, learned]);
 
   const [events, setEvents] = useState<BattleEvent[]>([]);
   const [monsterStartIndex, setMonsterStartIndex] = useState(0);
@@ -255,13 +274,17 @@ export function Arena({
   const [playerPose, setPlayerPose] = useState<SpriteState>("idle");
   const [monsterPose, setMonsterPose] = useState<SpriteState>("idle");
   const [lastFlag, setLastFlag] = useState<Flag>(null);
-  // The word just answered, shown briefly with its reading. The whole point
-  // of a vocabulary quiz is learning the word, and answering by meaning alone
-  // never surfaces how it's actually pronounced — so the yomikata is shown
-  // after the fact, when knowing it can't give the answer away.
+  // The word just answered — term, reading and meaning, big enough to read
+  // at a glance. The whole point of a vocabulary quiz is learning the word,
+  // and answering by meaning alone never surfaces how it's pronounced; after
+  // a miss it's also the only place the right answer is spelled out. Shown
+  // after the fact, when knowing it can't give the answer away. `id` re-keys
+  // it so the pop-in replays even when the same word comes back.
   const [lastAnswer, setLastAnswer] = useState<{
+    id: number;
     term: string;
     reading: string | null;
+    meaning: string;
     correct: boolean;
   } | null>(null);
 
@@ -350,7 +373,7 @@ export function Arena({
   // finishing its download would re-roll the question under the player.
   const kind = useMemo<QuestionKind>(
     () =>
-      card ? pickKind(eligibleKinds(card.term, (k) => !!strokes.get(k)), Math.random) : "meaning",
+      card ? pickKind(eligibleKinds(card.term, (k) => !!learned?.has(k) && !!strokes.get(k)), Math.random) : "meaning",
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     [questionKey]
   );
@@ -541,7 +564,14 @@ export function Arena({
 
     const correct = rating !== "again";
     if (card) {
-      setLastAnswer({ term: card.term, reading: card.reading, correct });
+      setLastAnswer({
+        id: Date.now(),
+        term: card.term,
+        reading: card.reading,
+        // Same text the options use (meaning_mn, else English).
+        meaning: card.meaning_mn?.trim() || card.meaning?.trim() || "",
+        correct,
+      });
     }
     if (correct) {
       // The swing escalates with the streak, and a crit always lands the
@@ -854,27 +884,50 @@ export function Arena({
 
       {/* Fixed-height, always rendered: an element that appears and vanishes
           between questions would shove everything below it up and down. */}
-      <div className="flex h-8 items-center justify-center gap-3">
+      <div className="flex h-[4.5rem] items-center justify-center gap-2 sm:h-20">
         {lastAnswer && (
-          <span
-            className={`text-base font-semibold ${
-              lastAnswer.correct ? "text-emerald-600" : "text-red-600"
+          <div
+            key={lastAnswer.id}
+            className={`hk-answer-pop flex min-w-0 max-w-full items-center gap-3 rounded-2xl px-3.5 py-2 ring-1 sm:gap-4 sm:px-5 ${
+              lastAnswer.correct
+                ? "bg-emerald-400/10 ring-emerald-400/35"
+                : "bg-red-400/10 ring-red-400/40"
             }`}
           >
-            {lastAnswer.term}
-            {/* Only when it adds something: a kana-only word's reading is
-                identical to the term, and echoing it twice reads as a bug. */}
-            {lastAnswer.reading && lastAnswer.reading !== lastAnswer.term && (
-              <span className="ml-2 font-normal opacity-80">
-                {lastAnswer.reading}
-              </span>
-            )}
-          </span>
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${
+                lastAnswer.correct ? "bg-emerald-400 text-[#10241c]" : "bg-red-400 text-[#2a1012]"
+              }`}
+            >
+              {lastAnswer.correct ? <Check size={18} strokeWidth={3} /> : <X size={18} strokeWidth={3} />}
+            </span>
+            <div className="min-w-0 text-left">
+              <div className="flex min-w-0 items-baseline gap-2.5">
+                <span className="shrink-0 text-2xl font-bold leading-tight tracking-tight text-paper sm:text-3xl">
+                  {lastAnswer.term}
+                </span>
+                {/* Only when it adds something: a kana-only word's reading is
+                    identical to the term, and echoing it twice reads as a bug. */}
+                {lastAnswer.reading && lastAnswer.reading !== lastAnswer.term && (
+                  <span className="truncate text-base font-medium text-sky-200 sm:text-lg">
+                    {lastAnswer.reading}
+                  </span>
+                )}
+              </div>
+              {lastAnswer.meaning && (
+                <div className="truncate text-sm font-medium text-paper/85 sm:text-base">
+                  {lastAnswer.meaning}
+                </div>
+              )}
+            </div>
+          </div>
         )}
         {lastFlag && (
           <span
-            className={`text-sm font-bold tracking-wide ${
-              lastFlag === "victory" ? "text-emerald-500" : "text-amber-600"
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold tracking-wide ring-1 ${
+              lastFlag === "victory"
+                ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/30"
+                : "bg-amber-400/10 text-amber-300 ring-amber-400/30"
             }`}
           >
             {lastFlag === "victory" && T.victoryFlag}

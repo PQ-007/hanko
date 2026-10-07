@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/confirm_dialog.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/widgets.dart';
 import '../battle/hero.dart';
 import '../battle/sprite_view.dart';
 import '../decks/word_actions.dart' show toast;
@@ -311,7 +313,7 @@ class _RequestTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
       child: ListTile(
-        leading: _Avatar(name: r.name ?? r.handle ?? '?'),
+        leading: UserAvatar(name: r.name ?? r.handle ?? '?'),
         title: Text(r.name ?? '@${r.handle}'),
         subtitle: Text(
           r.incoming
@@ -343,33 +345,6 @@ class _RequestTile extends ConsumerWidget {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name, this.image, this.radius = 20});
-  final String name;
-  final String? image;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    final img = image;
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: context.hk.sealTint,
-      foregroundImage: img != null && img.startsWith('https://')
-          ? NetworkImage(img)
-          : null,
-      child: Text(
-        name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-        style: TextStyle(
-          color: HankoColors.seal,
-          fontWeight: FontWeight.w800,
-          fontSize: radius * 0.8,
-        ),
-      ),
-    );
-  }
-}
-
 /// One person's day: level and XP, what they added and reviewed today, what
 /// they've learned, and the kanji they wrote from memory most recently.
 class _ActivityCard extends ConsumerWidget {
@@ -387,7 +362,7 @@ class _ActivityCard extends ConsumerWidget {
     Widget chip(String text, IconData icon) => Padding(
       padding: const EdgeInsets.only(right: 6, bottom: 6),
       child: Chip(
-        avatar: Icon(icon, size: 16, color: HankoColors.seal),
+        avatar: Icon(icon, size: 16, color: context.hk.sealText),
         label: Text(text, style: const TextStyle(fontSize: 12)),
         visualDensity: VisualDensity.compact,
         side: BorderSide(color: context.hk.lineSoft),
@@ -399,7 +374,7 @@ class _ActivityCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: r.isMe ? HankoColors.seal : context.hk.lineSoft,
+          color: r.isMe ? context.hk.seal : context.hk.lineSoft,
           width: r.isMe ? 1.5 : 1,
         ),
       ),
@@ -418,7 +393,7 @@ class _ActivityCard extends ConsumerWidget {
                           size: 44,
                         ),
                       )
-                    : _Avatar(name: r.displayName, image: r.image, radius: 22),
+                    : UserAvatar(name: r.displayName, image: r.image, radius: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -446,6 +421,15 @@ class _ActivityCard extends ConsumerWidget {
                 if (!r.isMe)
                   PopupMenuButton<String>(
                     onSelected: (_) async {
+                      final ok = await askConfirm(
+                        context,
+                        title: T.removeFriendTitle,
+                        body: r.handle == null ? null : T.removeFriendBody(r.handle!),
+                        confirmLabel: T.socialRemove,
+                        danger: true,
+                        icon: Icons.person_remove_outlined,
+                      );
+                      if (!ok) return;
                       try {
                         await ref.read(socialApiProvider).remove(r.userId);
                       } catch (_) {}

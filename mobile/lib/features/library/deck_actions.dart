@@ -5,8 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/audio.dart';
+import '../../core/offline_review.dart';
 import '../../core/providers.dart';
 import '../../core/repository.dart';
+import '../../core/confirm_dialog.dart';
 import '../../core/strings.dart';
 import '../../models/library.dart';
 import '../decks/word_actions.dart';
@@ -56,24 +59,13 @@ Future<void> moveDeck(BuildContext context, WidgetRef ref, Deck deck) async {
 
 /// Returns true if deleted, so a deck page can pop itself.
 Future<bool> deleteDeck(BuildContext context, WidgetRef ref, Deck deck) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      content: Text(T.deleteDeckConfirm(deck.name)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text(T.cancel),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text(T.delete),
-        ),
-      ],
-    ),
+  final ok = await askConfirm(
+    context,
+    title: T.deleteDeckTitle,
+    body: T.deleteDeckConfirm(deck.name),
+    danger: true,
   );
-  if (ok != true) return false;
+  if (!ok) return false;
   try {
     await ref.read(repositoryProvider).deleteDeck(deck.id);
     ref.refreshLibrary();
@@ -194,24 +186,13 @@ Future<void> deleteFolder(
   WidgetRef ref,
   Folder folder,
 ) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      content: Text(T.deleteFolderConfirm(folder.name)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text(T.cancel),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text(T.delete),
-        ),
-      ],
-    ),
+  final ok = await askConfirm(
+    context,
+    title: T.deleteFolderTitle,
+    body: T.deleteFolderConfirm(folder.name),
+    danger: true,
   );
-  if (ok != true) return;
+  if (!ok) return;
   try {
     await ref.read(repositoryProvider).deleteFolder(folder.id);
     ref.refreshLibrary();
@@ -346,5 +327,35 @@ class _NewDeckDialogState extends State<_NewDeckDialog> {
         FilledButton(onPressed: _submit, child: const Text(T.create)),
       ],
     );
+  }
+}
+
+/// Downloads [deck] for offline review: every card, which ones are due, the
+/// word list for Monster Hunt's options, and the cards' pronunciation audio.
+/// Downloading again refreshes the copy.
+Future<void> downloadDeckOffline(BuildContext context, WidgetRef ref, Deck deck) async {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.showSnackBar(const SnackBar(content: Text(T.offlineDownloading)));
+  try {
+    final n = await ref.read(offlineReviewProvider).download(deck.id, deck.name);
+    ref.invalidate(offlineDecksProvider);
+    // Pronunciation clips that already exist on the server; best effort.
+    final words = await ref.read(repositoryProvider).words(deck.id);
+    await ref.read(audioProvider).precache([for (final w in words) (wordId: w.id, audioPath: w.audioPath)]);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(T.offlineReady(n))));
+  } catch (_) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text(T.offlineDownloadFailed)));
+  }
+}
+
+Future<void> removeDeckOffline(BuildContext context, WidgetRef ref, Deck deck) async {
+  await ref.read(offlineReviewProvider).removeDownload(deck.id);
+  ref.invalidate(offlineDecksProvider);
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(T.offlineRemoved)));
   }
 }

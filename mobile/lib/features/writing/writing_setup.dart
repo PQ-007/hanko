@@ -332,7 +332,7 @@ class _KanjiGrid extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: on ? HankoColors.seal : context.hk.lineSoft,
+              color: on ? context.hk.seal : context.hk.lineSoft,
               width: on ? 2 : 1,
             ),
           ),

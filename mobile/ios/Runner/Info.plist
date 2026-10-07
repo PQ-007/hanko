@@ -9,7 +9,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Hanko reads Japanese text from photos so you can add words to your decks.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Hanko reads Japanese text from photos and screenshots you choose so you can add words to your decks.</string>
+	<string>Hanko reads Japanese text from photos and screenshots you choose so you can add words to your decks, and lets you pick a profile picture.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -1,6 +1,6 @@
 "use client";
 
-import { type DragEvent, useState } from "react";
+import { type DragEvent, type MouseEvent, useEffect, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -9,12 +9,14 @@ import {
   FolderPlus,
   Layers,
   Search,
+  Trash2,
   X,
 } from "@/ui/icons";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { buildLibraryTree, subtreeIds, totalDecks, type FolderNode } from "../_lib/folderTree";
 import { T } from "../_lib/strings";
+import { askConfirm, askText } from "@/ui/Dialog";
 
 // Drag payloads carry their kind, since both decks and folders can be dropped
 // onto a folder now.
@@ -48,6 +50,36 @@ export default function Sidebar({
   // Quick filter, shown once the library is big enough to need it. While it's
   // non-empty the tree shows only matching decks (and the folders they're in).
   const [filter, setFilter] = useState("");
+  // Right-click menu: what was clicked and where (viewport coordinates).
+  const [menu, setMenu] = useState<
+    { x: number; y: number; deck?: DeckWithCount; folder?: Folder } | null
+  >(null);
+
+  // The menu closes on any outside press, scroll, resize or Escape.
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
+
+  function openMenu(e: MouseEvent, target: { deck?: DeckWithCount; folder?: Folder }) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Keep the menu on screen near the right/bottom edges.
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 140);
+    setMenu({ x, y, ...target });
+  }
   const q = filter.trim().toLowerCase();
   const shown = q ? decks.filter((d) => d.name.toLowerCase().includes(q)) : decks;
 
@@ -89,7 +121,11 @@ export default function Sidebar({
   }
 
   async function createSubfolder(parent: Folder) {
-    const name = prompt(T.newSubfolder)?.trim();
+    const name = await askText({
+      title: T.newSubfolder,
+      placeholder: T.subfolderName,
+      confirmLabel: T.create,
+    });
     if (!name) return;
     const {
       data: { user },
@@ -119,9 +155,28 @@ export default function Sidebar({
   }
 
   async function deleteFolder(f: Folder) {
-    if (!confirm(T.deleteFolderConfirm(f.name))) return;
+    const ok = await askConfirm({
+      title: T.deleteFolderTitle,
+      body: T.deleteFolderConfirm(f.name),
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from("folders").update({ deleted: true }).eq("id", f.id);
     onFoldersChanged();
+    onDecksChanged();
+  }
+
+  // Same semantics as DeckHeader's delete: tombstone the words, then the deck
+  // (cards stay, so a restored deck keeps its schedules).
+  async function deleteDeck(d: DeckWithCount) {
+    const ok = await askConfirm({
+      title: T.deleteDeckTitle,
+      body: T.deleteDeckConfirm(d.name),
+      danger: true,
+    });
+    if (!ok) return;
+    await supabase.from("words").update({ deleted: true }).eq("deck_id", d.id);
+    await supabase.from("decks").update({ deleted: true }).eq("id", d.id);
     onDecksChanged();
   }
 
@@ -134,6 +189,7 @@ export default function Sidebar({
           e.dataTransfer.effectAllowed = "move";
         }}
         onClick={() => onSelect(d.id)}
+        onContextMenu={(e) => openMenu(e, { deck: d })}
         style={{ paddingLeft: 12 + depth * 20 }}
         title={d.name}
         className={`flex min-h-10 w-full cursor-grab items-center gap-2.5 rounded-control py-2 pr-2.5 text-left transition active:cursor-grabbing ${
@@ -185,6 +241,7 @@ export default function Sidebar({
               e.dataTransfer.effectAllowed = "move";
             }}
             onClick={() => setCollapsed((c) => ({ ...c, [f.id]: !isCollapsed }))}
+            onContextMenu={(e) => openMenu(e, { folder: f })}
             style={{ paddingLeft: 6 + depth * 20 }}
             aria-expanded={!isCollapsed}
             className="flex min-w-0 flex-1 cursor-grab items-center gap-2 py-2 pr-2 text-left text-ink active:cursor-grabbing"
@@ -251,7 +308,7 @@ export default function Sidebar({
 
         {decks.length > 6 && (
           <div className="border-b border-line-soft px-3 py-2.5">
-            <label className="flex items-center gap-2 rounded-control bg-paper-dim px-2.5 py-2 focus-within:ring-2 focus-within:ring-seal-tint">
+            <label className="hk-field flex items-center gap-2 rounded-control bg-paper-dim px-2.5 py-2 focus-within:ring-2 focus-within:ring-seal-tint">
               <Search size={15} className="shrink-0 text-ink-mute" />
               <input
                 value={filter}
@@ -334,6 +391,60 @@ export default function Sidebar({
           </div>
         </div>
       </div>
+
+      {menu && (
+        <div
+          role="menu"
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{ left: menu.x, top: menu.y }}
+          className="hk-menu fixed z-[90] w-52 rounded-control border border-line bg-surface p-1 shadow-xl"
+        >
+          <div className="truncate px-3 pb-1 pt-1.5 text-xs font-medium text-ink-mute">
+            {menu.deck?.name ?? menu.folder?.name}
+          </div>
+          {menu.deck && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                onSelect(menu.deck!.id);
+                setMenu(null);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm transition text-ink hover:bg-paper-dim"
+            >
+              <Layers size={16} className="text-ink-mute" />
+              {T.openDeck}
+            </button>
+          )}
+          {menu.folder && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                const f = menu.folder!;
+                setMenu(null);
+                createSubfolder(f);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm transition text-ink hover:bg-paper-dim"
+            >
+              <FolderPlus size={16} className="text-ink-mute" />
+              {T.newSubfolder}
+            </button>
+          )}
+          <div className="my-1 h-px bg-line-soft" />
+          <button
+            role="menuitem"
+            onClick={() => {
+              const { deck, folder } = menu;
+              setMenu(null);
+              if (deck) deleteDeck(deck);
+              else if (folder) deleteFolder(folder);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm transition text-red-600 hover:bg-red-50 dark:text-red-300"
+          >
+            <Trash2 size={16} />
+            {T.delete}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

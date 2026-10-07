@@ -9,12 +9,15 @@ import '../../core/repository.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../social/social_api.dart';
 import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
 import '../battle/hero_picker.dart';
 import '../battle/sprite_view.dart';
 import '../shell/action_sheet.dart';
 import '../shell/quick_add_sheet.dart';
+import '../share/story_sheet.dart';
+import '../share/story_sources.dart';
 import '../stats/streaks.dart';
 import '../stats/stats_math.dart';
 import 'goal_dialog.dart';
@@ -98,10 +101,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         actions: [
+          // Today's recalled words as a story image (share_today, like the
+          // web's stats page).
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: T.settings,
-            onPressed: () => context.push(Routes.settings),
+            tooltip: T.shareTodayTitle,
+            icon: const Icon(Icons.auto_awesome_outlined),
+            onPressed: () => showStorySheet(
+              context,
+              title: T.shareTodayTitle,
+              card: todayStory(streak: streak),
+              fileName: 'words-${DateTime.now().toIso8601String().substring(0, 10)}',
+            ),
+          ),
+          // Your picture opens Settings (profile, theme, goal, sign-out).
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: T.settings,
+              onPressed: () => context.push(Routes.settings),
+              icon: Builder(builder: (context) {
+                final me = ref.watch(myProfileProvider).value;
+                return UserAvatar(name: me?.displayName ?? '', image: me?.image, radius: 16);
+              }),
+            ),
           ),
         ],
       ),
@@ -145,11 +167,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.only(bottom: 6),
                                 child: Icon(
                                   Icons.local_fire_department,
-                                  color: HankoColors.seal,
+                                  color: context.hk.sealText,
                                 ),
                               ),
                             ],
@@ -200,11 +222,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           children: [
                             Text(
                               T.practiceKicker.toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 letterSpacing: 1.5,
                                 fontWeight: FontWeight.w700,
-                                color: HankoColors.seal,
+                                color: context.hk.sealText,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -349,7 +371,7 @@ class _Shortcut extends StatelessWidget {
                   child: Center(
                     child:
                         leading ??
-                        Icon(icon, color: HankoColors.seal, size: 28),
+                        Icon(icon, color: context.hk.sealText, size: 28),
                   ),
                 ),
                 const SizedBox(height: 6),

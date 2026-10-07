@@ -263,7 +263,7 @@ class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
                   BotDifficulty.rookie => Icons.sentiment_satisfied_alt,
                   BotDifficulty.rival => Icons.sports_martial_arts,
                   BotDifficulty.master => Icons.local_fire_department,
-                }, color: HankoColors.seal),
+                }, color: context.hk.sealText),
                 title: Text(
                   _botLabel(d).$1,
                   style: const TextStyle(fontWeight: FontWeight.w700),

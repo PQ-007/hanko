@@ -99,7 +99,7 @@ export default function WordEditModal({
 
   const labelCls = "mb-1 block text-xs font-medium text-ink-soft";
   const inputCls =
-    "w-full rounded-control border border-line px-3 py-2 text-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint";
+    "w-full rounded-control border border-line px-3 py-2 text-sm focus:border-seal focus:outline-none hk-input focus:ring-2 focus:ring-seal-tint";
   const areaCls = `${inputCls} min-h-[72px] resize-y leading-snug`;
 
   return (

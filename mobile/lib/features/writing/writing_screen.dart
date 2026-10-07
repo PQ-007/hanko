@@ -607,7 +607,7 @@ class _WordRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 color: i == highlight ? context.hk.sealTint : null,
                 border: Border.all(
-                  color: i == highlight ? HankoColors.seal : Colors.transparent,
+                  color: i == highlight ? context.hk.seal : Colors.transparent,
                   width: 2,
                 ),
               ),

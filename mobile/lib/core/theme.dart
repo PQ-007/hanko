@@ -42,7 +42,21 @@ class HankoPalette extends ThemeExtension<HankoPalette> {
     required this.easy,
     required this.warnBg,
     required this.warnFg,
+    this.seal = HankoColors.seal,
+    this.sealDark = HankoColors.sealDark,
+    this.sealTextOverride,
   });
+
+  /// The accent (primary buttons, links, selected states). Blue everywhere
+  /// except Цайвар, which takes the vermilion of the hanko seal itself.
+  final Color seal;
+  final Color sealDark;
+
+  /// The accent as text or an icon on the page. Same as [seal] except on
+  /// Цэнхэр, where navy on a blue page is unreadable (web: the
+  /// html[data-scheme="blue"] .text-seal override).
+  Color get sealText => sealTextOverride ?? seal;
+  final Color? sealTextOverride;
 
   /// Page background.
   final Color paper;
@@ -134,11 +148,72 @@ class HankoPalette extends ThemeExtension<HankoPalette> {
     warnFg: Color(0xFFFCD679),
   );
 
+  /// Цэнхэр — the story image's seal blue (storyCard.ts "seal"), same
+  /// tokens as the web's html[data-scheme="blue"]: a blue page, lighter blue
+  /// cards, white type, deep-navy buttons; the grade ramp runs dim → bright.
+  static const blue = HankoPalette(
+    paper: Color(0xFF2563B8),
+    card: Color(0xFF2F6EC4),
+    paperDim: Color(0xFF1F57A6),
+    paperDeep: Color(0xFF1B4F96),
+    line: Color(0xFF5B8FD6),
+    lineSoft: Color(0xFF3F78C8),
+    ink: Color(0xFFFFFFFF),
+    inkSoft: Color(0xFFDBE8FB),
+    inkMute: Color(0xFFB3CBEE),
+    sealTint: Color(0xFF3A74C4),
+    heatmapEmpty: Color(0xFF1B4F96),
+    gradeNew: Color(0xFF9AAECB),
+    gradeF: Color(0xFF7FB0EE),
+    gradeD: Color(0xFFA6C9F5),
+    gradeC: Color(0xFFC9DFFB),
+    gradeB: Color(0xFFE4EFFD),
+    gradeA: Color(0xFFFFFFFF),
+    again: Color(0xFFFCA5A5),
+    hard: Color(0xFFFCD34D),
+    easy: Color(0xFF6EE7B7),
+    warnBg: Color(0xFF4A3A12),
+    warnFg: Color(0xFFFCD679),
+    seal: Color(0xFF0F3A78),
+    sealDark: Color(0xFF0B2D5E),
+    sealTextOverride: Color(0xFFD6E8FF),
+  );
+
+  /// Цайвар — the story image's washi paper (storyCard.ts "paper"), the
+  /// default: warm amber cream, white cards, the hanko's vermilion as the
+  /// accent. Same tokens as the web's html[data-scheme="paper"].
+  static const paperTheme = HankoPalette(
+    paper: Color(0xFFF7EEDD),
+    card: Color(0xFFFFFFFF),
+    paperDim: Color(0xFFEFE0C4),
+    paperDeep: Color(0xFFE6D3B1),
+    line: Color(0xFFDCC7A2),
+    lineSoft: Color(0xFFECDFC6),
+    ink: Color(0xFF1C232B),
+    inkSoft: Color(0xFF5F5546),
+    inkMute: Color(0xFF75685A),
+    sealTint: Color(0xFFF6DDD6),
+    heatmapEmpty: Color(0xFFEFE0C4),
+    gradeNew: Color(0xFF8C7F6C),
+    gradeF: Color(0xFFEFA898),
+    gradeD: Color(0xFFE07A63),
+    gradeC: Color(0xFFC8442F),
+    gradeB: Color(0xFF9E3322),
+    gradeA: Color(0xFF6E2116),
+    again: Color(0xFFB91C1C),
+    hard: Color(0xFF92400E),
+    easy: Color(0xFF047857),
+    warnBg: Color(0xFFFFF4D6),
+    warnFg: Color(0xFF8A5A00),
+    seal: Color(0xFFC8442F),
+    sealDark: Color(0xFFA83623),
+  );
+
   Color rating(String rating) => switch (rating) {
         'again' => again,
         'hard' => hard,
         'easy' => easy,
-        _ => HankoColors.seal,
+        _ => seal,
       };
 
   @override
@@ -171,6 +246,9 @@ class HankoPalette extends ThemeExtension<HankoPalette> {
       easy: l(easy, other.easy),
       warnBg: l(warnBg, other.warnBg),
       warnFg: l(warnFg, other.warnFg),
+      seal: l(seal, other.seal),
+      sealDark: l(sealDark, other.sealDark),
+      sealTextOverride: l(sealText, other.sealText),
     );
   }
 }
@@ -179,12 +257,12 @@ extension HankoThemeContext on BuildContext {
   HankoPalette get hk => Theme.of(this).extension<HankoPalette>() ?? HankoPalette.light;
 }
 
-ThemeData buildHankoTheme(Brightness brightness) {
-  final p = brightness == Brightness.dark ? HankoPalette.dark : HankoPalette.light;
+ThemeData buildHankoTheme(Brightness brightness, [HankoPalette? palette]) {
+  final p = palette ?? (brightness == Brightness.dark ? HankoPalette.dark : HankoPalette.light);
   final scheme = ColorScheme.fromSeed(
-    seedColor: HankoColors.seal,
+    seedColor: p.seal,
     brightness: brightness,
-    primary: HankoColors.seal,
+    primary: p.seal,
     onPrimary: Colors.white,
     surface: p.paper,
     onSurface: p.ink,

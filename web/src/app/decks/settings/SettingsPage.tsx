@@ -117,7 +117,7 @@ function useFlash(): [boolean, () => void] {
 }
 
 const inputCls =
-  "w-full rounded-control border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-seal focus:ring-2 focus:ring-seal-tint";
+  "hk-input w-full rounded-control border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-seal focus:ring-2 focus:ring-seal-tint";
 
 // ---- Profile -----------------------------------------------------------------
 
@@ -222,7 +222,7 @@ function ProfileCard({ profile, onChanged }: { profile: Profile; onChanged: () =
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-ink-soft">{T.socialHandleLabel}</span>
-          <span className="flex items-center rounded-control border border-line bg-surface pl-3 focus-within:border-seal focus-within:ring-2 focus-within:ring-seal-tint">
+          <span className="hk-field flex items-center rounded-control border border-line bg-surface pl-3 focus-within:border-seal focus-within:ring-2 focus-within:ring-seal-tint">
             <span className="text-sm text-ink-mute">@</span>
             <input
               value={handle}
@@ -256,25 +256,17 @@ function ProfileCard({ profile, onChanged }: { profile: Profile; onChanged: () =
 // ---- Appearance --------------------------------------------------------------
 
 function ThemeCard() {
-  const [theme, setTheme] = useState<ThemeChoice>("system");
+  const [theme, setTheme] = useState<ThemeChoice>("paper");
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the stored choice is browser-only
     setTheme(readTheme());
   }, []);
 
-  // "System" must keep following the OS while the page is open.
-  useEffect(() => {
-    if (theme !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const on = () => saveTheme("system");
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, [theme]);
-
+  // The story images' three styles, as whole-app themes.
   const options: { value: ThemeChoice; label: string; swatch: string }[] = [
-    { value: "light", label: T.themeLight, swatch: "bg-[#faf7f0] border-[#d8d0be]" },
+    { value: "paper", label: T.themePaper, swatch: "bg-[radial-gradient(circle_at_50%_55%,#c8442f_0_22%,#f7eedd_26%)] border-[#dcc7a2]" },
     { value: "dark", label: T.themeDark, swatch: "bg-[#14171c] border-[#363d48]" },
-    { value: "system", label: T.themeSystem, swatch: "bg-[linear-gradient(135deg,#faf7f0_50%,#14171c_50%)] border-line" },
+    { value: "blue", label: T.themeBlue, swatch: "bg-[linear-gradient(180deg,#2c72cc,#0f3672)] border-[#5b8fd6]" },
   ];
 
   return (

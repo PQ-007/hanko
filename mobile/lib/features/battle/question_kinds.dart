@@ -41,12 +41,15 @@ const maxWriteKanji = 3;
 const writeMsPerKanji = 12000;
 
 /// The kinds [w] can be asked as. Writing needs kanji to write, not too many,
-/// and the handwriting recogniser to be ready ([canWrite]).
-Set<QuestionKind> eligibleKinds(QuizWord w, {required bool canWrite}) {
-  final kanji = kanjiOf(w.term).length;
+/// the handwriting recogniser ready ([canWrite]), and **every kanji already
+/// learned in a writing lesson** ([learned]): the hunt tests writing you've
+/// practised, it doesn't spring unseen kanji on you mid-fight.
+Set<QuestionKind> eligibleKinds(QuizWord w, {required bool canWrite, required Set<String> learned}) {
+  final kanji = kanjiOf(w.term);
   return {
     QuestionKind.meaning,
-    if (canWrite && kanji > 0 && kanji <= maxWriteKanji && hasKanji(w.term)) QuestionKind.write,
+    if (canWrite && kanji.isNotEmpty && kanji.length <= maxWriteKanji && hasKanji(w.term) && kanji.every(learned.contains))
+      QuestionKind.write,
   };
 }
 

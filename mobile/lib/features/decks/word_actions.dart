@@ -5,6 +5,7 @@ import '../../core/audio.dart';
 import '../../core/providers.dart';
 import '../../core/repository.dart';
 import '../../core/speech.dart';
+import '../../core/confirm_dialog.dart';
 import '../../core/strings.dart';
 import '../../models/library.dart';
 
@@ -30,24 +31,14 @@ Future<bool> addWordChecked(
     final existing = await repo.existingTerms(deckId, [draft.term]);
     if (existing.isNotEmpty) {
       if (!context.mounted) return false;
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text(T.duplicateWord),
-          content: Text(T.duplicateWordConfirm(draft.term)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text(T.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text(T.addAnyway),
-            ),
-          ],
-        ),
+      final ok = await askConfirm(
+        context,
+        title: T.duplicateWord,
+        body: T.duplicateWordConfirm(draft.term),
+        confirmLabel: T.addAnyway,
+        icon: Icons.content_copy_rounded,
       );
-      if (ok != true) return false;
+      if (!ok) return false;
     }
     await repo.addWords(deckId, [draft]);
     ref.refreshLibrary(deckId: deckId);
@@ -82,24 +73,13 @@ Future<void> speakWord(
 }
 
 Future<void> confirmDeleteWord(BuildContext context, WidgetRef ref, Word word) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('“${word.term}” — ${T.removeWord}?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text(T.cancel),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text(T.delete),
-        ),
-      ],
-    ),
+  final ok = await askConfirm(
+    context,
+    title: T.deleteWordTitle,
+    body: T.deleteWordBody(word.term),
+    danger: true,
   );
-  if (ok != true) return;
+  if (!ok) return;
   try {
     await ref.read(repositoryProvider).deleteWord(word.id);
     ref.refreshLibrary(deckId: word.deckId);

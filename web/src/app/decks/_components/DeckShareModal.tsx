@@ -5,7 +5,7 @@ import { Check, Copy, Image as ImageIcon, Link2, X } from "@/ui/icons";
 import type { DeckWithCount } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
-import { STORY_MAX_WORDS } from "../_lib/storyCard";
+import { STORY_MAX_WORDS, type StoryWord } from "../_lib/storyCard";
 import StoryImagePanel from "./StoryImagePanel";
 
 /**
@@ -25,7 +25,7 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [story, setStory] = useState<{ term: string; reading: string | null; meaning: string | null }[] | null>(null);
+  const [story, setStory] = useState<StoryWord[] | null>(null);
   const [showStory, setShowStory] = useState(false);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
       .limit(STORY_MAX_WORDS);
     setStory(
       ((data as { term: string; reading: string | null; meaning: string | null; meaning_mn: string | null }[]) ?? []).map(
-        (w) => ({ term: w.term, reading: w.reading, meaning: w.meaning_mn || w.meaning })
+        (w) => ({ term: w.term, reading: w.reading, meaningMn: w.meaning_mn, meaningEn: w.meaning })
       )
     );
   }
@@ -149,11 +149,12 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
                     card={{
                       kicker: T.sharedBy,
                       heading: deck.name,
-                      stats: T.storyDeckStats(deck.word_count),
+                      numbers: [{ value: String(deck.word_count), label: T.storyNumWords }],
                       words: story,
                       total: deck.word_count,
                       moreLabel: T.storyMore,
-                      footer: link.replace(/^https?:\/\//, ""),
+                      // No link on the image: it's shared on its own (copy /
+                      // send above), not printed where it can't be tapped.
                     }}
                   />
                 )}

@@ -3,6 +3,8 @@
 import { useImmersive } from "../../../_lib/useImmersive";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { askConfirm } from "@/ui/Dialog";
 import { ArrowLeft, Flame } from "@/ui/icons";
 import { supabase } from "../../../_lib/db";
 import { T } from "../../../_lib/strings";
@@ -62,6 +64,7 @@ export default function DuelArena({
 }) {
   useImmersive();
   const hero = usePlayerCharacter();
+  const router = useRouter();
 
   const [cards, setCards] = useState<QueueCard[] | null>(null);
   const [allWords, setAllWords] = useState<OwnWord[] | null>(null);
@@ -374,12 +377,20 @@ export default function DuelArena({
             href={exitHref}
             onClick={(e) => {
               // Leaving a live match against a person concedes it — after asking.
-              if (!opponent.concede) return;
-              if (!window.confirm(`${T.duelLeaveTitle}\n${T.duelLeaveDesc}`)) {
-                e.preventDefault();
-                return;
-              }
-              void opponent.concede().catch(() => {});
+              const concede = opponent.concede;
+              if (!concede) return;
+              e.preventDefault();
+              void askConfirm({
+                title: T.duelLeaveTitle,
+                body: T.duelLeaveDesc,
+                confirmLabel: T.exitBattle,
+                danger: true,
+                icon: "alert",
+              }).then((ok) => {
+                if (!ok) return;
+                void concede().catch(() => {});
+                router.push(exitHref);
+              });
             }}
             className="flex items-center gap-1 rounded-control px-2 py-1 font-medium text-paper/60 transition hover:bg-white/10 hover:text-paper"
           >

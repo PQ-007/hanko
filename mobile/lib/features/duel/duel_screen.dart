@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/repository.dart';
+import '../../core/confirm_dialog.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -68,24 +69,22 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   Future<bool> _confirmLeave() async {
     final c = _c;
     if (widget.matchId == null || c == null || c.outcome != DuelOutcome.ongoing) return true;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(T.duelLeaveTitle),
-        content: const Text(T.duelLeaveDesc),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text(T.duelStay)),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text(T.duelLeave)),
-        ],
-      ),
+    final ok = await askConfirm(
+      context,
+      title: T.duelLeaveTitle,
+      body: T.duelLeaveDesc,
+      confirmLabel: T.duelLeave,
+      cancelLabel: T.duelStay,
+      danger: true,
+      icon: Icons.flag_outlined,
     );
-    if (ok == true) {
+    if (ok) {
       try {
         // concede, not forfeit: forfeit_match makes its caller the winner.
         await ref.read(duelApiProvider).concede(widget.matchId!);
       } catch (_) {}
     }
-    return ok == true;
+    return ok;
   }
 
   Future<void> _leave() async {
@@ -354,7 +353,7 @@ class _Option extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = switch (state) {
       _OptionState.right => const Color(0xFF16A34A),
-      _OptionState.picked => HankoColors.seal,
+      _OptionState.picked => context.hk.seal,
       _ => Colors.transparent,
     };
     return Opacity(

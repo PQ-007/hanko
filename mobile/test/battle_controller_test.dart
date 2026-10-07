@@ -88,6 +88,7 @@ BattleController make(
   bool free = false,
   Set<QuestionKind> kinds = const {QuestionKind.meaning},
   bool canWrite = false,
+  Set<String>? learned,
 }) {
   final db = LocalDb.forTesting(NativeDatabase.memory());
   // 0.99: never crit, never evade, so damage is exactly the base number.
@@ -104,6 +105,8 @@ BattleController make(
     // so the damage and timing expectations stay exact.
     kinds: kinds,
     writingReady: () async => canWrite,
+    // Every kanji the test words use counts as learned, unless a test says not.
+    learnedKanji: () async => learned ?? const {'語', '連', '帯'},
   );
   c.load();
   async.flushMicrotasks();
@@ -288,6 +291,7 @@ void main() {
         bag: MonsterBag(random: () => 0.5),
         kinds: const {QuestionKind.meaning},
         writingReady: () async => false,
+        learnedKanji: () async => const {},
       )..load();
       async.flushMicrotasks();
       repo.offline = true;

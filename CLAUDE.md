@@ -593,7 +593,7 @@ hides a user's numbers even from friends.
   a local copy for offline lessons and merges on each lesson start
   (`syncLearnedKanji`).
 
-## Public deck links and story images (`0028_deck_share.sql`) — web only
+## Public deck links and story images (`0028_deck_share.sql`)
 
 - **`/share/<token>`** (`web/src/app/share/`) is outside `/decks`, so the
   proxy never sends a visitor to /login. Anyone with the link sees the deck's
@@ -657,19 +657,71 @@ Two traps found doing this:
   (tested) tallies your own finished/abandoned `matches` rows, which RLS
   already scopes to you. `global_leaderboard()` (0027) is no longer called by
   the web; mobile still has its Бүгд switch.
-- **Web themes**: light / dark / system, per device (`decks/_lib/theme.ts`,
-  applied as `html[data-theme]` by an inline script in `app/layout.tsx`
-  before first paint). Dark works by re-mapping the colour tokens in
-  `globals.css`, so **use tokens, never hard-coded light colours**: cards are
-  `bg-surface` (not `bg-white`), and colours inside SVG must go through
-  `style={{…}}` (CSS variables don't work in SVG attributes). Blue *text* in
-  dark mode has its own lighter shade (the seal blue behind white button
-  text is too dark to read as text).
+- **Monster Hunt only asks you to write kanji you've learned** in Ханз бичих
+  lessons (`learned_kanji`), on web (`BattleArena`: learned AND stroke data
+  loaded) and mobile (`eligibleKinds(learned:)`, the phone's own copy from
+  `kanji_progress.dart`). Everything else is asked by meaning. Online battle
+  has no writing questions.
+- **Mobile shares decks too** (`deck_share_sheet.dart`): the same
+  `set_deck_share` link as the web, built on `Config.webUrl` (dart-define
+  `WEB_URL`, default `https://hanko-amber.vercel.app`) — the only use of the
+  web's address on the phone; the app still never calls that server.
+- **Story images** (web, `_lib/storyCard.ts`): header band with up to three
+  big numbers, a two-column word grid (fewer, taller tiles; meanings wrap to
+  two lines via the tested `wrapLines`), a "+N" pill; three styles and
+  Монгол / English / Хоёул meanings, remembered per browser.
+- **Mobile offline decks** (Drift schema v4: `OfflineDecks`,
+  `OfflineDeckCards`): "Офлайнд татах" in a deck's menu saves every card
+  (practice_cards), flags which ones review_queue() was serving, refreshes
+  the hunt's word cache and pre-caches pronunciation. With no connection,
+  `OfflineReview.queue(deckId)` serves that deck: due review/learning cards by
+  the server's own due dates, new cards only if the server's queue included
+  them (keeps the daily cap), minus anything waiting in the outbox. Still not
+  a sync engine — answers replay through review_card(), which schedules.
+- **Themes = the story image styles** (owner's call), on web and mobile:
+  **Цайвар** (default — warm amber paper, white cards, vermilion accent),
+  **Бараан** (dark) and **Цэнхэр** (seal blue, white type, navy buttons).
+  No "follow the system" option and no plain white theme; older stored
+  values land on Цайвар. Web: `decks/_lib/theme.ts` sets `html[data-theme]`
+  (light/dark — what `dark:` keys off, so blue gets every dark fix) plus
+  `html[data-scheme]` (paper/blue token re-tints in `globals.css`), before
+  first paint via the inline script in `app/layout.tsx`. Mobile:
+  `AppTheme` in `core/theme_mode.dart`, palettes in `core/theme.dart` with
+  the same values. **Use tokens, never hard-coded colours**: cards are
+  `bg-surface`, the accent is `seal` (web) / `context.hk.seal` (mobile; use
+  `context.hk.sealText` for accent text and icons — navy on the blue page
+  is unreadable). Chart/grade colours are `var(--hk-grade-*)` with blue
+  fallbacks (`gradeColors.ts`), so they must go through `style={{…}}` —
+  CSS variables don't work in SVG attributes.
+  The browser tab icon follows the theme too (`public/favicon-{paper,dark,
+  blue}.svg`): the theme script creates and owns `<link id="hk-icon">`.
+  Don't move it back into JSX or `app/icon.svg` — React re-inserts its own
+  copy of a hoisted link the script changed, and the stale icon wins.
+  The **phone's home-screen icon** follows the theme as well, natively with
+  no package (`core/app_icon.dart`, channel `hanko/app_icon`). Android: three
+  launcher activities `.IconPaper/.IconDark/.IconBlue` (trampolines in
+  `IconTrampoline.kt` that open MainActivity), one enabled at a time,
+  switched in `MainActivity.onStop` so a launcher refresh never hits mid-use.
+  They are real `<activity>`s, not `activity-alias`es, because the Flutter
+  tool only finds MAIN/LAUNCHER on `<activity>` — aliases broke `flutter
+  run`. iOS: primary `AppIcon` is Цайвар, `AppIconDark`/`AppIconBlue` are
+  alternate sets (`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), set via
+  `setAlternateIconName`, which shows iOS's own one-line notice.
+- **Story images on mobile too** (`features/share/`): `story_card.dart`
+  ports `storyCard.ts` (same palettes, layout and `wrapLines`, pinned by the
+  same cases in `story_card_test.dart`), drawn on a Flutter canvas to PNG
+  and shared via `share_plus`. Entry points: Home's ✦ button (today's words,
+  `share_today()`) and "Story зураг" in a deck's share sheet.
 - **Settings** (`/decks/settings`): photo, name, username, theme, daily
   limits + day cutoff, activity sharing, sign out. Profile pictures go to the
   public `avatars` bucket (`0029_avatars.sql`), resized client-side to 256px
   WebP; `profiles.image` may only be a Google photo or that bucket (a free
   URL would let someone track who views their profile).
+- **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
+  from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
+  `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a
+  red action for deletes. Sidebar decks/folders open a menu on right-click
+  (web); library rows open an action sheet on long-press (mobile).
 - The web phone tab bar uses the **mobile app's Material icons**, extracted
   from the Flutter SDK font into `web/src/ui/MaterialIcon.tsx`.
 - **Web icons are Hanko's own, not lucide-react** (uninstalled; ESLint's

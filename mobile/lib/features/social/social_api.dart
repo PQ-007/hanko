@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -37,10 +38,17 @@ class MyProfile {
     required this.handle,
     required this.shareActivity,
     this.name,
+    this.image,
+    this.email,
   });
   final String? handle;
   final bool shareActivity;
   final String? name;
+  /// Uploaded (avatars bucket, 0029) or Google photo; null = initial only.
+  final String? image;
+  final String? email;
+
+  String get displayName => (name?.trim().isNotEmpty ?? false) ? name!.trim() : (handle ?? email ?? '?');
 }
 
 /// One row of friend_overview() (0026): you or an accepted friend. Numbers
@@ -161,16 +169,45 @@ class SocialApi {
 
   String? get _uid => db.auth.currentUser?.id;
 
+  /// Uploads a new profile picture (already shrunk by the picker) to the
+  /// public `avatars` bucket under your own folder (0029), points
+  /// profiles.image at it, and clears out the previous ones.
+  Future<void> setAvatar(Uint8List jpeg) async {
+    final uid = _uid!;
+    final bucket = db.storage.from('avatars');
+    final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    await bucket.uploadBinary(path, jpeg, fileOptions: const FileOptions(contentType: 'image/jpeg'));
+    await db.from('profiles').update({'image': bucket.getPublicUrl(path)}).eq('id', uid);
+    try {
+      final old = await bucket.list(path: uid);
+      final stale = [for (final o in old) '$uid/${o.name}'].where((p) => p != path).toList();
+      if (stale.isNotEmpty) await bucket.remove(stale);
+    } catch (_) {}
+  }
+
+  /// Back to the initial-letter avatar; the uploaded files go too.
+  Future<void> removeAvatar() async {
+    final uid = _uid!;
+    await db.from('profiles').update({'image': null}).eq('id', uid);
+    try {
+      final bucket = db.storage.from('avatars');
+      final old = await bucket.list(path: uid);
+      if (old.isNotEmpty) await bucket.remove([for (final o in old) '$uid/${o.name}']);
+    } catch (_) {}
+  }
+
   Future<MyProfile> me() async {
     final row = await db
         .from('profiles')
-        .select('handle, share_activity, name')
+        .select('handle, share_activity, name, image')
         .eq('id', _uid!)
         .maybeSingle();
     return MyProfile(
       handle: row?['handle'] as String?,
       shareActivity: row?['share_activity'] as bool? ?? true,
       name: row?['name'] as String?,
+      image: row?['image'] as String?,
+      email: db.auth.currentUser?.email,
     );
   }
 

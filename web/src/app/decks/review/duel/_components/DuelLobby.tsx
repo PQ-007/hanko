@@ -281,7 +281,7 @@ export default function DuelLobby() {
             placeholder={T.duelCodePlaceholder}
             aria-label={T.duelCodeLabel}
             maxLength={4}
-            className="flex-1 rounded-control border border-line bg-surface px-4 py-3 text-center text-lg font-bold tracking-[0.3em] uppercase focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
+            className="flex-1 rounded-control border border-line bg-surface px-4 py-3 text-center text-lg font-bold tracking-[0.3em] uppercase focus:border-seal focus:outline-none hk-input focus:ring-2 focus:ring-seal-tint"
           />
           <button
             onClick={joinMatch}

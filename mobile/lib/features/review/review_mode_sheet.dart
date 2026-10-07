@@ -70,8 +70,8 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(T.practiceKicker.toUpperCase(),
-              style: const TextStyle(
-                  fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w700, color: HankoColors.seal)),
+              style: TextStyle(
+                  fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w700, color: context.hk.sealText)),
           const SizedBox(height: 6),
           due.when(
             loading: () => const SizedBox(height: 52, child: LinearProgressIndicator()),
@@ -124,14 +124,14 @@ class _ReviewModeSheetState extends ConsumerState<_ReviewModeSheet> {
                 : () => Navigator.of(context).pop(Routes.hunt(deckId: _deckId)),
           ),
           _Mode(
-            leading: const Icon(Icons.style_outlined, color: HankoColors.seal, size: 30),
+            leading: Icon(Icons.style_outlined, color: context.hk.sealText, size: 30),
             title: T.classicModeTitle,
             subtitle: T.classicModeDesc,
             onTap: () => Navigator.of(context)
                 .pop(Routes.review(deckId: _deckId, deckName: deckName)),
           ),
           _Mode(
-            leading: const Icon(Icons.draw_outlined, color: HankoColors.seal, size: 30),
+            leading: Icon(Icons.draw_outlined, color: context.hk.sealText, size: 30),
             title: T.writingTitle,
             subtitle: T.writingDesc,
             onTap: () => Navigator.of(context).pop(

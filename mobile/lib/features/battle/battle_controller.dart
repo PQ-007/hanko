@@ -9,6 +9,7 @@ import '../../core/offline_review.dart';
 import '../../core/repository.dart';
 import '../../models/queue_card.dart';
 import '../writing/kanji_checker.dart';
+import '../writing/kanji_progress.dart';
 import '../writing/lesson.dart';
 import 'question_kinds.dart';
 import 'rules.dart';
@@ -27,10 +28,14 @@ const _tickMs = 100;
 enum BattleFlag { crit, evaded, armor, timeout, victory }
 
 class LastAnswer {
-  const LastAnswer(this.term, this.reading, this.correct);
+  const LastAnswer(this.term, this.reading, this.correct, {this.meaning = ''});
   final String term;
   final String? reading;
   final bool correct;
+
+  /// The text the options use (Mongolian, else English) — after a miss this
+  /// is the only place the right answer is spelled out.
+  final String meaning;
 }
 
 class DamagePopup {
@@ -120,8 +125,10 @@ class BattleController extends ChangeNotifier {
     int Function() now = _wallClockMs,
     this.kinds,
     Future<bool> Function()? writingReady,
+    Future<Set<String>> Function()? learnedKanji,
   })  : bag = bag ?? monsterBag,
         _writingReady = writingReady ?? _writingReadyOrFetch,
+        _learnedKanji = learnedKanji ?? loadLearnedKanji,
         _clock = _QuestionClock(now) {
     monster = this.bag.pick(exclude: hero);
   }
@@ -138,9 +145,14 @@ class BattleController extends ChangeNotifier {
   /// Restricts the question kinds asked (tests pin one); null asks all.
   final Set<QuestionKind>? kinds;
   final Future<bool> Function() _writingReady;
+  final Future<Set<String>> Function() _learnedKanji;
 
   /// Whether writing questions can be asked this hunt.
   bool canWrite = false;
+
+  /// Kanji learned in writing lessons — the only ones the hunt asks to write.
+  /// The phone's own copy (kanji_progress.dart), so it works offline too.
+  Set<String> learned = const {};
 
   String get _source => free ? 'drill' : 'quiz';
 
@@ -248,6 +260,11 @@ class BattleController extends ChangeNotifier {
       } catch (_) {
         canWrite = false;
       }
+      try {
+        learned = await _learnedKanji();
+      } catch (_) {
+        learned = const {};
+      }
       final rows = await offline.quizWords();
       words = [
         for (final w in rows)
@@ -327,7 +344,14 @@ class BattleController extends ChangeNotifier {
     final killed = after.monsterDefeated;
 
     if (answeredCard != null) {
-      lastAnswer = LastAnswer(answeredCard.term, answeredCard.reading, event.correct);
+      lastAnswer = LastAnswer(
+        answeredCard.term,
+        answeredCard.reading,
+        event.correct,
+        meaning: (answeredCard.meaningMn?.trim().isNotEmpty ?? false)
+            ? answeredCard.meaningMn!.trim()
+            : (answeredCard.meaning?.trim() ?? ''),
+      );
     }
 
     if (event.correct) {
@@ -635,7 +659,7 @@ class BattleController extends ChangeNotifier {
   /// none — an empty list, so the question still counts as live.
   List<QuizOption> _buildQuestion(QueueCard c) {
     final w = QuizWord(id: c.wordId, term: c.term, reading: c.reading, meaning: c.meaning, meaningMn: c.meaningMn);
-    kind = pickKind(eligibleKinds(w, canWrite: canWrite), rand, allowed: kinds);
+    kind = pickKind(eligibleKinds(w, canWrite: canWrite, learned: learned), rand, allowed: kinds);
     return switch (kind) {
       QuestionKind.meaning => buildQuiz(
           wordId: c.wordId,

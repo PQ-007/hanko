@@ -305,11 +305,11 @@ class _ItemTile extends StatelessWidget {
                             color: context.hk.sealTint,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Text(
+                          child: Text(
                             T.captureAlreadyInDeck,
                             style: TextStyle(
                               fontSize: 11,
-                              color: HankoColors.seal,
+                              color: context.hk.sealText,
                             ),
                           ),
                         ),

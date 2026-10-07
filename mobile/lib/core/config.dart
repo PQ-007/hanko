@@ -38,6 +38,11 @@ class Config {
   /// Supabase plus public dictionary/translate endpoints (core/dictionary.dart).
   static const privacyUrl = String.fromEnvironment('PRIVACY_URL');
 
+  /// The web app's address — only for building public deck links
+  /// (`/share/<token>`, 0028), which open in any browser without an account.
+  /// The phone itself never calls this server.
+  static const webUrl = String.fromEnvironment('WEB_URL', defaultValue: 'https://hanko-amber.vercel.app');
+
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 }

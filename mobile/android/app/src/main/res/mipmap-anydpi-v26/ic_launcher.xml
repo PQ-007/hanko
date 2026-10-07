@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon (Android 8+): seal blue behind the ensō, so every launcher
-     shape — circle, squircle, square — masks it cleanly. Same mark as the
-     web favicon (web/src/app/icon.svg). Older Android uses the PNGs. -->
+<!-- The app's own icon (app info, recents): Цайвар, the default theme. The
+     home-screen icon is one of the ic_launcher_<theme> aliases instead —
+     see the activity-alias entries in AndroidManifest.xml. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <background android:drawable="@drawable/ic_launcher_bg_paper" />
+    <foreground android:drawable="@drawable/ic_launcher_fg_paper" />
     <monochrome android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>

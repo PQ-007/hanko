@@ -22,9 +22,10 @@ export const WRITE_MS_PER_KANJI = 12_000;
 export const QUESTION_TIME_LIMIT_MS = 10_000;
 
 /**
- * The kinds a word can be asked as. On the web, writing needs stroke data for
- * every kanji in the word (there's no recogniser to fall back on), so
- * `canWrite(k)` says whether a kanji's strokes are loaded.
+ * The kinds a word can be asked as. `canWrite(k)` must hold for every kanji
+ * in the word: the arena passes "learned in a writing lesson AND its stroke
+ * data has loaded" (the web has no recogniser to fall back on). Same rule as
+ * mobile's eligibleKinds(learned:).
  */
 export function eligibleKinds(term: string, canWrite: (kanji: string) => boolean): Set<QuestionKind> {
   const kanji = kanjiOf(term);

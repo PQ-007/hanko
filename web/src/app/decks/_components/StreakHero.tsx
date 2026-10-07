@@ -49,9 +49,11 @@ export default function StreakHero({
   return (
     <div
       ref={ref}
-      className="flex flex-col items-center justify-between gap-6 rounded-control border border-line-soft bg-surface p-6 shadow-sm sm:flex-row sm:gap-8"
+      // lg: three columns with equal outer tracks, so the rings sit at the true
+      // centre whatever the widths of the streak and the buttons.
+      className="flex flex-col items-center justify-between gap-6 rounded-control border border-line-soft bg-surface p-6 shadow-sm sm:flex-row sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
     >
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-5 lg:justify-self-start">
         <div className="rounded-full bg-seal p-4 text-white">
           <Flame size={30} />
         </div>
@@ -100,14 +102,14 @@ export default function StreakHero({
         />
       </div>
 
-      <div className="flex flex-col items-center gap-2 sm:items-end">
+      <div className="flex flex-col items-center gap-2 sm:items-end lg:justify-self-end">
         <p className="text-center text-sm text-ink-soft sm:text-right">
           {addedToday > 0 ? T.addedTodayCta(addedToday) : T.addedTodayNone}
         </p>
         {/* The line above is about words added today, so the way to add one
             belongs next to it — the dashboard otherwise reports on the
             collection without offering any way to change it. */}
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end lg:flex-nowrap [&>button]:lg:px-3.5 [&>button]:whitespace-nowrap">
           {onShareToday && (
             <button
               onClick={onShareToday}

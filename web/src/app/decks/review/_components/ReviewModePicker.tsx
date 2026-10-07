@@ -287,7 +287,7 @@ export default function ReviewModePicker() {
           <ModeRow
             href={withDeck("/decks/review/battle?mode=free")}
             icon={<Dumbbell size={19} />}
-            iconClass="bg-sky-50 text-sky-700 ring-1 ring-sky-100"
+            iconClass="bg-sky-50 text-sky-700 ring-1 ring-sky-100 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/20"
             title={T.freeModeTitle}
             desc={T.freeModeDesc}
             highlight={nothingDue}
@@ -301,7 +301,7 @@ export default function ReviewModePicker() {
           <ModeRow
             href="/decks/review/duel"
             icon={<Versus size={19} />}
-            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100"
+            iconClass="bg-violet-50 text-violet-700 ring-1 ring-violet-100 dark:bg-violet-400/10 dark:text-violet-300 dark:ring-violet-400/20"
             title={T.multiplayerTitle}
             desc={T.multiplayerDesc}
           />
@@ -310,7 +310,7 @@ export default function ReviewModePicker() {
           <ModeRow
             href="/decks/writing"
             icon={<PenLine size={19} />}
-            iconClass="bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+            iconClass="bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
             title={T.writingTitle}
             desc={T.writingDesc}
           />

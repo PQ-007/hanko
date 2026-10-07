@@ -38,16 +38,19 @@ export default function TodayShareModal({ streak, onClose }: { streak: number; o
     card = {
       kicker: formatDateMn(new Date(y, m - 1, d)),
       heading: T.storyTodayHeading,
-      stats: T.storyTodayStats(today.recalled, today.added),
-      badge: streak > 1 ? T.storyStreak(streak) : undefined,
+      numbers: [
+        { value: String(today.recalled), label: T.storyNumRecalled },
+        ...(today.added > 0 ? [{ value: String(today.added), label: T.storyNumAdded }] : []),
+        ...(streak > 1 ? [{ value: String(streak), label: T.storyNumStreak }] : []),
+      ],
       words: today.words.slice(0, STORY_MAX_WORDS).map((w) => ({
         term: w.term,
         reading: w.reading,
-        meaning: w.meaning_mn || w.meaning,
+        meaningMn: w.meaning_mn,
+        meaningEn: w.meaning,
       })),
       total: today.recalled,
       moreLabel: T.storyMore,
-      footer: "",
     };
   }
 

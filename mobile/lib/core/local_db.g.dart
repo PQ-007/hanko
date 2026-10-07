@@ -2141,6 +2141,1233 @@ class PendingWordsCompanion extends UpdateCompanion<PendingWord> {
   }
 }
 
+class $OfflineDecksTable extends OfflineDecks
+    with TableInfo<$OfflineDecksTable, OfflineDeck> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OfflineDecksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deckIdMeta = const VerificationMeta('deckId');
+  @override
+  late final GeneratedColumn<String> deckId = GeneratedColumn<String>(
+    'deck_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downloadedAtMeta = const VerificationMeta(
+    'downloadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> downloadedAt = GeneratedColumn<DateTime>(
+    'downloaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cardCountMeta = const VerificationMeta(
+    'cardCount',
+  );
+  @override
+  late final GeneratedColumn<int> cardCount = GeneratedColumn<int>(
+    'card_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [deckId, name, downloadedAt, cardCount];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'offline_decks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OfflineDeck> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('deck_id')) {
+      context.handle(
+        _deckIdMeta,
+        deckId.isAcceptableOrUnknown(data['deck_id']!, _deckIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deckIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('downloaded_at')) {
+      context.handle(
+        _downloadedAtMeta,
+        downloadedAt.isAcceptableOrUnknown(
+          data['downloaded_at']!,
+          _downloadedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_downloadedAtMeta);
+    }
+    if (data.containsKey('card_count')) {
+      context.handle(
+        _cardCountMeta,
+        cardCount.isAcceptableOrUnknown(data['card_count']!, _cardCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cardCountMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deckId};
+  @override
+  OfflineDeck map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OfflineDeck(
+      deckId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deck_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      downloadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}downloaded_at'],
+      )!,
+      cardCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}card_count'],
+      )!,
+    );
+  }
+
+  @override
+  $OfflineDecksTable createAlias(String alias) {
+    return $OfflineDecksTable(attachedDatabase, alias);
+  }
+}
+
+class OfflineDeck extends DataClass implements Insertable<OfflineDeck> {
+  final String deckId;
+  final String name;
+  final DateTime downloadedAt;
+  final int cardCount;
+  const OfflineDeck({
+    required this.deckId,
+    required this.name,
+    required this.downloadedAt,
+    required this.cardCount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['deck_id'] = Variable<String>(deckId);
+    map['name'] = Variable<String>(name);
+    map['downloaded_at'] = Variable<DateTime>(downloadedAt);
+    map['card_count'] = Variable<int>(cardCount);
+    return map;
+  }
+
+  OfflineDecksCompanion toCompanion(bool nullToAbsent) {
+    return OfflineDecksCompanion(
+      deckId: Value(deckId),
+      name: Value(name),
+      downloadedAt: Value(downloadedAt),
+      cardCount: Value(cardCount),
+    );
+  }
+
+  factory OfflineDeck.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OfflineDeck(
+      deckId: serializer.fromJson<String>(json['deckId']),
+      name: serializer.fromJson<String>(json['name']),
+      downloadedAt: serializer.fromJson<DateTime>(json['downloadedAt']),
+      cardCount: serializer.fromJson<int>(json['cardCount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deckId': serializer.toJson<String>(deckId),
+      'name': serializer.toJson<String>(name),
+      'downloadedAt': serializer.toJson<DateTime>(downloadedAt),
+      'cardCount': serializer.toJson<int>(cardCount),
+    };
+  }
+
+  OfflineDeck copyWith({
+    String? deckId,
+    String? name,
+    DateTime? downloadedAt,
+    int? cardCount,
+  }) => OfflineDeck(
+    deckId: deckId ?? this.deckId,
+    name: name ?? this.name,
+    downloadedAt: downloadedAt ?? this.downloadedAt,
+    cardCount: cardCount ?? this.cardCount,
+  );
+  OfflineDeck copyWithCompanion(OfflineDecksCompanion data) {
+    return OfflineDeck(
+      deckId: data.deckId.present ? data.deckId.value : this.deckId,
+      name: data.name.present ? data.name.value : this.name,
+      downloadedAt: data.downloadedAt.present
+          ? data.downloadedAt.value
+          : this.downloadedAt,
+      cardCount: data.cardCount.present ? data.cardCount.value : this.cardCount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineDeck(')
+          ..write('deckId: $deckId, ')
+          ..write('name: $name, ')
+          ..write('downloadedAt: $downloadedAt, ')
+          ..write('cardCount: $cardCount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(deckId, name, downloadedAt, cardCount);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OfflineDeck &&
+          other.deckId == this.deckId &&
+          other.name == this.name &&
+          other.downloadedAt == this.downloadedAt &&
+          other.cardCount == this.cardCount);
+}
+
+class OfflineDecksCompanion extends UpdateCompanion<OfflineDeck> {
+  final Value<String> deckId;
+  final Value<String> name;
+  final Value<DateTime> downloadedAt;
+  final Value<int> cardCount;
+  final Value<int> rowid;
+  const OfflineDecksCompanion({
+    this.deckId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.downloadedAt = const Value.absent(),
+    this.cardCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OfflineDecksCompanion.insert({
+    required String deckId,
+    required String name,
+    required DateTime downloadedAt,
+    required int cardCount,
+    this.rowid = const Value.absent(),
+  }) : deckId = Value(deckId),
+       name = Value(name),
+       downloadedAt = Value(downloadedAt),
+       cardCount = Value(cardCount);
+  static Insertable<OfflineDeck> custom({
+    Expression<String>? deckId,
+    Expression<String>? name,
+    Expression<DateTime>? downloadedAt,
+    Expression<int>? cardCount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deckId != null) 'deck_id': deckId,
+      if (name != null) 'name': name,
+      if (downloadedAt != null) 'downloaded_at': downloadedAt,
+      if (cardCount != null) 'card_count': cardCount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OfflineDecksCompanion copyWith({
+    Value<String>? deckId,
+    Value<String>? name,
+    Value<DateTime>? downloadedAt,
+    Value<int>? cardCount,
+    Value<int>? rowid,
+  }) {
+    return OfflineDecksCompanion(
+      deckId: deckId ?? this.deckId,
+      name: name ?? this.name,
+      downloadedAt: downloadedAt ?? this.downloadedAt,
+      cardCount: cardCount ?? this.cardCount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deckId.present) {
+      map['deck_id'] = Variable<String>(deckId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (downloadedAt.present) {
+      map['downloaded_at'] = Variable<DateTime>(downloadedAt.value);
+    }
+    if (cardCount.present) {
+      map['card_count'] = Variable<int>(cardCount.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineDecksCompanion(')
+          ..write('deckId: $deckId, ')
+          ..write('name: $name, ')
+          ..write('downloadedAt: $downloadedAt, ')
+          ..write('cardCount: $cardCount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OfflineDeckCardsTable extends OfflineDeckCards
+    with TableInfo<$OfflineDeckCardsTable, OfflineDeckCard> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OfflineDeckCardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cardIdMeta = const VerificationMeta('cardId');
+  @override
+  late final GeneratedColumn<String> cardId = GeneratedColumn<String>(
+    'card_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wordIdMeta = const VerificationMeta('wordId');
+  @override
+  late final GeneratedColumn<String> wordId = GeneratedColumn<String>(
+    'word_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deckIdMeta = const VerificationMeta('deckId');
+  @override
+  late final GeneratedColumn<String> deckId = GeneratedColumn<String>(
+    'deck_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _templateMeta = const VerificationMeta(
+    'template',
+  );
+  @override
+  late final GeneratedColumn<String> template = GeneratedColumn<String>(
+    'template',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _learningStepMeta = const VerificationMeta(
+    'learningStep',
+  );
+  @override
+  late final GeneratedColumn<int> learningStep = GeneratedColumn<int>(
+    'learning_step',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueAtMeta = const VerificationMeta('dueAt');
+  @override
+  late final GeneratedColumn<DateTime> dueAt = GeneratedColumn<DateTime>(
+    'due_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _intervalDaysMeta = const VerificationMeta(
+    'intervalDays',
+  );
+  @override
+  late final GeneratedColumn<int> intervalDays = GeneratedColumn<int>(
+    'interval_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repetitionsMeta = const VerificationMeta(
+    'repetitions',
+  );
+  @override
+  late final GeneratedColumn<int> repetitions = GeneratedColumn<int>(
+    'repetitions',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _easeFactorMeta = const VerificationMeta(
+    'easeFactor',
+  );
+  @override
+  late final GeneratedColumn<double> easeFactor = GeneratedColumn<double>(
+    'ease_factor',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _termMeta = const VerificationMeta('term');
+  @override
+  late final GeneratedColumn<String> term = GeneratedColumn<String>(
+    'term',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readingMeta = const VerificationMeta(
+    'reading',
+  );
+  @override
+  late final GeneratedColumn<String> reading = GeneratedColumn<String>(
+    'reading',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _meaningMeta = const VerificationMeta(
+    'meaning',
+  );
+  @override
+  late final GeneratedColumn<String> meaning = GeneratedColumn<String>(
+    'meaning',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _meaningMnMeta = const VerificationMeta(
+    'meaningMn',
+  );
+  @override
+  late final GeneratedColumn<String> meaningMn = GeneratedColumn<String>(
+    'meaning_mn',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _audioPathMeta = const VerificationMeta(
+    'audioPath',
+  );
+  @override
+  late final GeneratedColumn<String> audioPath = GeneratedColumn<String>(
+    'audio_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _inQueueMeta = const VerificationMeta(
+    'inQueue',
+  );
+  @override
+  late final GeneratedColumn<bool> inQueue = GeneratedColumn<bool>(
+    'in_queue',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("in_queue" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    cardId,
+    wordId,
+    deckId,
+    template,
+    state,
+    learningStep,
+    dueAt,
+    intervalDays,
+    repetitions,
+    easeFactor,
+    term,
+    reading,
+    meaning,
+    meaningMn,
+    audioPath,
+    inQueue,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'offline_deck_cards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OfflineDeckCard> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('card_id')) {
+      context.handle(
+        _cardIdMeta,
+        cardId.isAcceptableOrUnknown(data['card_id']!, _cardIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cardIdMeta);
+    }
+    if (data.containsKey('word_id')) {
+      context.handle(
+        _wordIdMeta,
+        wordId.isAcceptableOrUnknown(data['word_id']!, _wordIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordIdMeta);
+    }
+    if (data.containsKey('deck_id')) {
+      context.handle(
+        _deckIdMeta,
+        deckId.isAcceptableOrUnknown(data['deck_id']!, _deckIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deckIdMeta);
+    }
+    if (data.containsKey('template')) {
+      context.handle(
+        _templateMeta,
+        template.isAcceptableOrUnknown(data['template']!, _templateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_templateMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('learning_step')) {
+      context.handle(
+        _learningStepMeta,
+        learningStep.isAcceptableOrUnknown(
+          data['learning_step']!,
+          _learningStepMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_learningStepMeta);
+    }
+    if (data.containsKey('due_at')) {
+      context.handle(
+        _dueAtMeta,
+        dueAt.isAcceptableOrUnknown(data['due_at']!, _dueAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueAtMeta);
+    }
+    if (data.containsKey('interval_days')) {
+      context.handle(
+        _intervalDaysMeta,
+        intervalDays.isAcceptableOrUnknown(
+          data['interval_days']!,
+          _intervalDaysMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_intervalDaysMeta);
+    }
+    if (data.containsKey('repetitions')) {
+      context.handle(
+        _repetitionsMeta,
+        repetitions.isAcceptableOrUnknown(
+          data['repetitions']!,
+          _repetitionsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_repetitionsMeta);
+    }
+    if (data.containsKey('ease_factor')) {
+      context.handle(
+        _easeFactorMeta,
+        easeFactor.isAcceptableOrUnknown(data['ease_factor']!, _easeFactorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_easeFactorMeta);
+    }
+    if (data.containsKey('term')) {
+      context.handle(
+        _termMeta,
+        term.isAcceptableOrUnknown(data['term']!, _termMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_termMeta);
+    }
+    if (data.containsKey('reading')) {
+      context.handle(
+        _readingMeta,
+        reading.isAcceptableOrUnknown(data['reading']!, _readingMeta),
+      );
+    }
+    if (data.containsKey('meaning')) {
+      context.handle(
+        _meaningMeta,
+        meaning.isAcceptableOrUnknown(data['meaning']!, _meaningMeta),
+      );
+    }
+    if (data.containsKey('meaning_mn')) {
+      context.handle(
+        _meaningMnMeta,
+        meaningMn.isAcceptableOrUnknown(data['meaning_mn']!, _meaningMnMeta),
+      );
+    }
+    if (data.containsKey('audio_path')) {
+      context.handle(
+        _audioPathMeta,
+        audioPath.isAcceptableOrUnknown(data['audio_path']!, _audioPathMeta),
+      );
+    }
+    if (data.containsKey('in_queue')) {
+      context.handle(
+        _inQueueMeta,
+        inQueue.isAcceptableOrUnknown(data['in_queue']!, _inQueueMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cardId};
+  @override
+  OfflineDeckCard map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OfflineDeckCard(
+      cardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}card_id'],
+      )!,
+      wordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}word_id'],
+      )!,
+      deckId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deck_id'],
+      )!,
+      template: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      learningStep: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}learning_step'],
+      )!,
+      dueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_at'],
+      )!,
+      intervalDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interval_days'],
+      )!,
+      repetitions: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}repetitions'],
+      )!,
+      easeFactor: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}ease_factor'],
+      )!,
+      term: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}term'],
+      )!,
+      reading: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reading'],
+      ),
+      meaning: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meaning'],
+      ),
+      meaningMn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meaning_mn'],
+      ),
+      audioPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}audio_path'],
+      ),
+      inQueue: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}in_queue'],
+      )!,
+    );
+  }
+
+  @override
+  $OfflineDeckCardsTable createAlias(String alias) {
+    return $OfflineDeckCardsTable(attachedDatabase, alias);
+  }
+}
+
+class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
+  final String cardId;
+  final String wordId;
+  final String deckId;
+  final String template;
+  final String state;
+  final int learningStep;
+  final DateTime dueAt;
+  final int intervalDays;
+  final int repetitions;
+  final double easeFactor;
+  final String term;
+  final String? reading;
+  final String? meaning;
+  final String? meaningMn;
+  final String? audioPath;
+  final bool inQueue;
+  const OfflineDeckCard({
+    required this.cardId,
+    required this.wordId,
+    required this.deckId,
+    required this.template,
+    required this.state,
+    required this.learningStep,
+    required this.dueAt,
+    required this.intervalDays,
+    required this.repetitions,
+    required this.easeFactor,
+    required this.term,
+    this.reading,
+    this.meaning,
+    this.meaningMn,
+    this.audioPath,
+    required this.inQueue,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['card_id'] = Variable<String>(cardId);
+    map['word_id'] = Variable<String>(wordId);
+    map['deck_id'] = Variable<String>(deckId);
+    map['template'] = Variable<String>(template);
+    map['state'] = Variable<String>(state);
+    map['learning_step'] = Variable<int>(learningStep);
+    map['due_at'] = Variable<DateTime>(dueAt);
+    map['interval_days'] = Variable<int>(intervalDays);
+    map['repetitions'] = Variable<int>(repetitions);
+    map['ease_factor'] = Variable<double>(easeFactor);
+    map['term'] = Variable<String>(term);
+    if (!nullToAbsent || reading != null) {
+      map['reading'] = Variable<String>(reading);
+    }
+    if (!nullToAbsent || meaning != null) {
+      map['meaning'] = Variable<String>(meaning);
+    }
+    if (!nullToAbsent || meaningMn != null) {
+      map['meaning_mn'] = Variable<String>(meaningMn);
+    }
+    if (!nullToAbsent || audioPath != null) {
+      map['audio_path'] = Variable<String>(audioPath);
+    }
+    map['in_queue'] = Variable<bool>(inQueue);
+    return map;
+  }
+
+  OfflineDeckCardsCompanion toCompanion(bool nullToAbsent) {
+    return OfflineDeckCardsCompanion(
+      cardId: Value(cardId),
+      wordId: Value(wordId),
+      deckId: Value(deckId),
+      template: Value(template),
+      state: Value(state),
+      learningStep: Value(learningStep),
+      dueAt: Value(dueAt),
+      intervalDays: Value(intervalDays),
+      repetitions: Value(repetitions),
+      easeFactor: Value(easeFactor),
+      term: Value(term),
+      reading: reading == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reading),
+      meaning: meaning == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meaning),
+      meaningMn: meaningMn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meaningMn),
+      audioPath: audioPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(audioPath),
+      inQueue: Value(inQueue),
+    );
+  }
+
+  factory OfflineDeckCard.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OfflineDeckCard(
+      cardId: serializer.fromJson<String>(json['cardId']),
+      wordId: serializer.fromJson<String>(json['wordId']),
+      deckId: serializer.fromJson<String>(json['deckId']),
+      template: serializer.fromJson<String>(json['template']),
+      state: serializer.fromJson<String>(json['state']),
+      learningStep: serializer.fromJson<int>(json['learningStep']),
+      dueAt: serializer.fromJson<DateTime>(json['dueAt']),
+      intervalDays: serializer.fromJson<int>(json['intervalDays']),
+      repetitions: serializer.fromJson<int>(json['repetitions']),
+      easeFactor: serializer.fromJson<double>(json['easeFactor']),
+      term: serializer.fromJson<String>(json['term']),
+      reading: serializer.fromJson<String?>(json['reading']),
+      meaning: serializer.fromJson<String?>(json['meaning']),
+      meaningMn: serializer.fromJson<String?>(json['meaningMn']),
+      audioPath: serializer.fromJson<String?>(json['audioPath']),
+      inQueue: serializer.fromJson<bool>(json['inQueue']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cardId': serializer.toJson<String>(cardId),
+      'wordId': serializer.toJson<String>(wordId),
+      'deckId': serializer.toJson<String>(deckId),
+      'template': serializer.toJson<String>(template),
+      'state': serializer.toJson<String>(state),
+      'learningStep': serializer.toJson<int>(learningStep),
+      'dueAt': serializer.toJson<DateTime>(dueAt),
+      'intervalDays': serializer.toJson<int>(intervalDays),
+      'repetitions': serializer.toJson<int>(repetitions),
+      'easeFactor': serializer.toJson<double>(easeFactor),
+      'term': serializer.toJson<String>(term),
+      'reading': serializer.toJson<String?>(reading),
+      'meaning': serializer.toJson<String?>(meaning),
+      'meaningMn': serializer.toJson<String?>(meaningMn),
+      'audioPath': serializer.toJson<String?>(audioPath),
+      'inQueue': serializer.toJson<bool>(inQueue),
+    };
+  }
+
+  OfflineDeckCard copyWith({
+    String? cardId,
+    String? wordId,
+    String? deckId,
+    String? template,
+    String? state,
+    int? learningStep,
+    DateTime? dueAt,
+    int? intervalDays,
+    int? repetitions,
+    double? easeFactor,
+    String? term,
+    Value<String?> reading = const Value.absent(),
+    Value<String?> meaning = const Value.absent(),
+    Value<String?> meaningMn = const Value.absent(),
+    Value<String?> audioPath = const Value.absent(),
+    bool? inQueue,
+  }) => OfflineDeckCard(
+    cardId: cardId ?? this.cardId,
+    wordId: wordId ?? this.wordId,
+    deckId: deckId ?? this.deckId,
+    template: template ?? this.template,
+    state: state ?? this.state,
+    learningStep: learningStep ?? this.learningStep,
+    dueAt: dueAt ?? this.dueAt,
+    intervalDays: intervalDays ?? this.intervalDays,
+    repetitions: repetitions ?? this.repetitions,
+    easeFactor: easeFactor ?? this.easeFactor,
+    term: term ?? this.term,
+    reading: reading.present ? reading.value : this.reading,
+    meaning: meaning.present ? meaning.value : this.meaning,
+    meaningMn: meaningMn.present ? meaningMn.value : this.meaningMn,
+    audioPath: audioPath.present ? audioPath.value : this.audioPath,
+    inQueue: inQueue ?? this.inQueue,
+  );
+  OfflineDeckCard copyWithCompanion(OfflineDeckCardsCompanion data) {
+    return OfflineDeckCard(
+      cardId: data.cardId.present ? data.cardId.value : this.cardId,
+      wordId: data.wordId.present ? data.wordId.value : this.wordId,
+      deckId: data.deckId.present ? data.deckId.value : this.deckId,
+      template: data.template.present ? data.template.value : this.template,
+      state: data.state.present ? data.state.value : this.state,
+      learningStep: data.learningStep.present
+          ? data.learningStep.value
+          : this.learningStep,
+      dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
+      intervalDays: data.intervalDays.present
+          ? data.intervalDays.value
+          : this.intervalDays,
+      repetitions: data.repetitions.present
+          ? data.repetitions.value
+          : this.repetitions,
+      easeFactor: data.easeFactor.present
+          ? data.easeFactor.value
+          : this.easeFactor,
+      term: data.term.present ? data.term.value : this.term,
+      reading: data.reading.present ? data.reading.value : this.reading,
+      meaning: data.meaning.present ? data.meaning.value : this.meaning,
+      meaningMn: data.meaningMn.present ? data.meaningMn.value : this.meaningMn,
+      audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      inQueue: data.inQueue.present ? data.inQueue.value : this.inQueue,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineDeckCard(')
+          ..write('cardId: $cardId, ')
+          ..write('wordId: $wordId, ')
+          ..write('deckId: $deckId, ')
+          ..write('template: $template, ')
+          ..write('state: $state, ')
+          ..write('learningStep: $learningStep, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('intervalDays: $intervalDays, ')
+          ..write('repetitions: $repetitions, ')
+          ..write('easeFactor: $easeFactor, ')
+          ..write('term: $term, ')
+          ..write('reading: $reading, ')
+          ..write('meaning: $meaning, ')
+          ..write('meaningMn: $meaningMn, ')
+          ..write('audioPath: $audioPath, ')
+          ..write('inQueue: $inQueue')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    cardId,
+    wordId,
+    deckId,
+    template,
+    state,
+    learningStep,
+    dueAt,
+    intervalDays,
+    repetitions,
+    easeFactor,
+    term,
+    reading,
+    meaning,
+    meaningMn,
+    audioPath,
+    inQueue,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OfflineDeckCard &&
+          other.cardId == this.cardId &&
+          other.wordId == this.wordId &&
+          other.deckId == this.deckId &&
+          other.template == this.template &&
+          other.state == this.state &&
+          other.learningStep == this.learningStep &&
+          other.dueAt == this.dueAt &&
+          other.intervalDays == this.intervalDays &&
+          other.repetitions == this.repetitions &&
+          other.easeFactor == this.easeFactor &&
+          other.term == this.term &&
+          other.reading == this.reading &&
+          other.meaning == this.meaning &&
+          other.meaningMn == this.meaningMn &&
+          other.audioPath == this.audioPath &&
+          other.inQueue == this.inQueue);
+}
+
+class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
+  final Value<String> cardId;
+  final Value<String> wordId;
+  final Value<String> deckId;
+  final Value<String> template;
+  final Value<String> state;
+  final Value<int> learningStep;
+  final Value<DateTime> dueAt;
+  final Value<int> intervalDays;
+  final Value<int> repetitions;
+  final Value<double> easeFactor;
+  final Value<String> term;
+  final Value<String?> reading;
+  final Value<String?> meaning;
+  final Value<String?> meaningMn;
+  final Value<String?> audioPath;
+  final Value<bool> inQueue;
+  final Value<int> rowid;
+  const OfflineDeckCardsCompanion({
+    this.cardId = const Value.absent(),
+    this.wordId = const Value.absent(),
+    this.deckId = const Value.absent(),
+    this.template = const Value.absent(),
+    this.state = const Value.absent(),
+    this.learningStep = const Value.absent(),
+    this.dueAt = const Value.absent(),
+    this.intervalDays = const Value.absent(),
+    this.repetitions = const Value.absent(),
+    this.easeFactor = const Value.absent(),
+    this.term = const Value.absent(),
+    this.reading = const Value.absent(),
+    this.meaning = const Value.absent(),
+    this.meaningMn = const Value.absent(),
+    this.audioPath = const Value.absent(),
+    this.inQueue = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OfflineDeckCardsCompanion.insert({
+    required String cardId,
+    required String wordId,
+    required String deckId,
+    required String template,
+    required String state,
+    required int learningStep,
+    required DateTime dueAt,
+    required int intervalDays,
+    required int repetitions,
+    required double easeFactor,
+    required String term,
+    this.reading = const Value.absent(),
+    this.meaning = const Value.absent(),
+    this.meaningMn = const Value.absent(),
+    this.audioPath = const Value.absent(),
+    this.inQueue = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : cardId = Value(cardId),
+       wordId = Value(wordId),
+       deckId = Value(deckId),
+       template = Value(template),
+       state = Value(state),
+       learningStep = Value(learningStep),
+       dueAt = Value(dueAt),
+       intervalDays = Value(intervalDays),
+       repetitions = Value(repetitions),
+       easeFactor = Value(easeFactor),
+       term = Value(term);
+  static Insertable<OfflineDeckCard> custom({
+    Expression<String>? cardId,
+    Expression<String>? wordId,
+    Expression<String>? deckId,
+    Expression<String>? template,
+    Expression<String>? state,
+    Expression<int>? learningStep,
+    Expression<DateTime>? dueAt,
+    Expression<int>? intervalDays,
+    Expression<int>? repetitions,
+    Expression<double>? easeFactor,
+    Expression<String>? term,
+    Expression<String>? reading,
+    Expression<String>? meaning,
+    Expression<String>? meaningMn,
+    Expression<String>? audioPath,
+    Expression<bool>? inQueue,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cardId != null) 'card_id': cardId,
+      if (wordId != null) 'word_id': wordId,
+      if (deckId != null) 'deck_id': deckId,
+      if (template != null) 'template': template,
+      if (state != null) 'state': state,
+      if (learningStep != null) 'learning_step': learningStep,
+      if (dueAt != null) 'due_at': dueAt,
+      if (intervalDays != null) 'interval_days': intervalDays,
+      if (repetitions != null) 'repetitions': repetitions,
+      if (easeFactor != null) 'ease_factor': easeFactor,
+      if (term != null) 'term': term,
+      if (reading != null) 'reading': reading,
+      if (meaning != null) 'meaning': meaning,
+      if (meaningMn != null) 'meaning_mn': meaningMn,
+      if (audioPath != null) 'audio_path': audioPath,
+      if (inQueue != null) 'in_queue': inQueue,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OfflineDeckCardsCompanion copyWith({
+    Value<String>? cardId,
+    Value<String>? wordId,
+    Value<String>? deckId,
+    Value<String>? template,
+    Value<String>? state,
+    Value<int>? learningStep,
+    Value<DateTime>? dueAt,
+    Value<int>? intervalDays,
+    Value<int>? repetitions,
+    Value<double>? easeFactor,
+    Value<String>? term,
+    Value<String?>? reading,
+    Value<String?>? meaning,
+    Value<String?>? meaningMn,
+    Value<String?>? audioPath,
+    Value<bool>? inQueue,
+    Value<int>? rowid,
+  }) {
+    return OfflineDeckCardsCompanion(
+      cardId: cardId ?? this.cardId,
+      wordId: wordId ?? this.wordId,
+      deckId: deckId ?? this.deckId,
+      template: template ?? this.template,
+      state: state ?? this.state,
+      learningStep: learningStep ?? this.learningStep,
+      dueAt: dueAt ?? this.dueAt,
+      intervalDays: intervalDays ?? this.intervalDays,
+      repetitions: repetitions ?? this.repetitions,
+      easeFactor: easeFactor ?? this.easeFactor,
+      term: term ?? this.term,
+      reading: reading ?? this.reading,
+      meaning: meaning ?? this.meaning,
+      meaningMn: meaningMn ?? this.meaningMn,
+      audioPath: audioPath ?? this.audioPath,
+      inQueue: inQueue ?? this.inQueue,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cardId.present) {
+      map['card_id'] = Variable<String>(cardId.value);
+    }
+    if (wordId.present) {
+      map['word_id'] = Variable<String>(wordId.value);
+    }
+    if (deckId.present) {
+      map['deck_id'] = Variable<String>(deckId.value);
+    }
+    if (template.present) {
+      map['template'] = Variable<String>(template.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (learningStep.present) {
+      map['learning_step'] = Variable<int>(learningStep.value);
+    }
+    if (dueAt.present) {
+      map['due_at'] = Variable<DateTime>(dueAt.value);
+    }
+    if (intervalDays.present) {
+      map['interval_days'] = Variable<int>(intervalDays.value);
+    }
+    if (repetitions.present) {
+      map['repetitions'] = Variable<int>(repetitions.value);
+    }
+    if (easeFactor.present) {
+      map['ease_factor'] = Variable<double>(easeFactor.value);
+    }
+    if (term.present) {
+      map['term'] = Variable<String>(term.value);
+    }
+    if (reading.present) {
+      map['reading'] = Variable<String>(reading.value);
+    }
+    if (meaning.present) {
+      map['meaning'] = Variable<String>(meaning.value);
+    }
+    if (meaningMn.present) {
+      map['meaning_mn'] = Variable<String>(meaningMn.value);
+    }
+    if (audioPath.present) {
+      map['audio_path'] = Variable<String>(audioPath.value);
+    }
+    if (inQueue.present) {
+      map['in_queue'] = Variable<bool>(inQueue.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineDeckCardsCompanion(')
+          ..write('cardId: $cardId, ')
+          ..write('wordId: $wordId, ')
+          ..write('deckId: $deckId, ')
+          ..write('template: $template, ')
+          ..write('state: $state, ')
+          ..write('learningStep: $learningStep, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('intervalDays: $intervalDays, ')
+          ..write('repetitions: $repetitions, ')
+          ..write('easeFactor: $easeFactor, ')
+          ..write('term: $term, ')
+          ..write('reading: $reading, ')
+          ..write('meaning: $meaning, ')
+          ..write('meaningMn: $meaningMn, ')
+          ..write('audioPath: $audioPath, ')
+          ..write('inQueue: $inQueue, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$LocalDb extends GeneratedDatabase {
   _$LocalDb(QueryExecutor e) : super(e);
   $LocalDbManager get managers => $LocalDbManager(this);
@@ -2150,6 +3377,10 @@ abstract class _$LocalDb extends GeneratedDatabase {
     this,
   );
   late final $PendingWordsTable pendingWords = $PendingWordsTable(this);
+  late final $OfflineDecksTable offlineDecks = $OfflineDecksTable(this);
+  late final $OfflineDeckCardsTable offlineDeckCards = $OfflineDeckCardsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2159,6 +3390,8 @@ abstract class _$LocalDb extends GeneratedDatabase {
     cachedCards,
     cachedQuizWords,
     pendingWords,
+    offlineDecks,
+    offlineDeckCards,
   ];
 }
 
@@ -3234,6 +4467,605 @@ typedef $$PendingWordsTableProcessedTableManager =
       PendingWord,
       PrefetchHooks Function()
     >;
+typedef $$OfflineDecksTableCreateCompanionBuilder =
+    OfflineDecksCompanion Function({
+      required String deckId,
+      required String name,
+      required DateTime downloadedAt,
+      required int cardCount,
+      Value<int> rowid,
+    });
+typedef $$OfflineDecksTableUpdateCompanionBuilder =
+    OfflineDecksCompanion Function({
+      Value<String> deckId,
+      Value<String> name,
+      Value<DateTime> downloadedAt,
+      Value<int> cardCount,
+      Value<int> rowid,
+    });
+
+class $$OfflineDecksTableFilterComposer
+    extends Composer<_$LocalDb, $OfflineDecksTable> {
+  $$OfflineDecksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deckId => $composableBuilder(
+    column: $table.deckId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cardCount => $composableBuilder(
+    column: $table.cardCount,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OfflineDecksTableOrderingComposer
+    extends Composer<_$LocalDb, $OfflineDecksTable> {
+  $$OfflineDecksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deckId => $composableBuilder(
+    column: $table.deckId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cardCount => $composableBuilder(
+    column: $table.cardCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OfflineDecksTableAnnotationComposer
+    extends Composer<_$LocalDb, $OfflineDecksTable> {
+  $$OfflineDecksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deckId =>
+      $composableBuilder(column: $table.deckId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cardCount =>
+      $composableBuilder(column: $table.cardCount, builder: (column) => column);
+}
+
+class $$OfflineDecksTableTableManager
+    extends
+        RootTableManager<
+          _$LocalDb,
+          $OfflineDecksTable,
+          OfflineDeck,
+          $$OfflineDecksTableFilterComposer,
+          $$OfflineDecksTableOrderingComposer,
+          $$OfflineDecksTableAnnotationComposer,
+          $$OfflineDecksTableCreateCompanionBuilder,
+          $$OfflineDecksTableUpdateCompanionBuilder,
+          (
+            OfflineDeck,
+            BaseReferences<_$LocalDb, $OfflineDecksTable, OfflineDeck>,
+          ),
+          OfflineDeck,
+          PrefetchHooks Function()
+        > {
+  $$OfflineDecksTableTableManager(_$LocalDb db, $OfflineDecksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OfflineDecksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OfflineDecksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OfflineDecksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> deckId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> downloadedAt = const Value.absent(),
+                Value<int> cardCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OfflineDecksCompanion(
+                deckId: deckId,
+                name: name,
+                downloadedAt: downloadedAt,
+                cardCount: cardCount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deckId,
+                required String name,
+                required DateTime downloadedAt,
+                required int cardCount,
+                Value<int> rowid = const Value.absent(),
+              }) => OfflineDecksCompanion.insert(
+                deckId: deckId,
+                name: name,
+                downloadedAt: downloadedAt,
+                cardCount: cardCount,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OfflineDecksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$LocalDb,
+      $OfflineDecksTable,
+      OfflineDeck,
+      $$OfflineDecksTableFilterComposer,
+      $$OfflineDecksTableOrderingComposer,
+      $$OfflineDecksTableAnnotationComposer,
+      $$OfflineDecksTableCreateCompanionBuilder,
+      $$OfflineDecksTableUpdateCompanionBuilder,
+      (OfflineDeck, BaseReferences<_$LocalDb, $OfflineDecksTable, OfflineDeck>),
+      OfflineDeck,
+      PrefetchHooks Function()
+    >;
+typedef $$OfflineDeckCardsTableCreateCompanionBuilder =
+    OfflineDeckCardsCompanion Function({
+      required String cardId,
+      required String wordId,
+      required String deckId,
+      required String template,
+      required String state,
+      required int learningStep,
+      required DateTime dueAt,
+      required int intervalDays,
+      required int repetitions,
+      required double easeFactor,
+      required String term,
+      Value<String?> reading,
+      Value<String?> meaning,
+      Value<String?> meaningMn,
+      Value<String?> audioPath,
+      Value<bool> inQueue,
+      Value<int> rowid,
+    });
+typedef $$OfflineDeckCardsTableUpdateCompanionBuilder =
+    OfflineDeckCardsCompanion Function({
+      Value<String> cardId,
+      Value<String> wordId,
+      Value<String> deckId,
+      Value<String> template,
+      Value<String> state,
+      Value<int> learningStep,
+      Value<DateTime> dueAt,
+      Value<int> intervalDays,
+      Value<int> repetitions,
+      Value<double> easeFactor,
+      Value<String> term,
+      Value<String?> reading,
+      Value<String?> meaning,
+      Value<String?> meaningMn,
+      Value<String?> audioPath,
+      Value<bool> inQueue,
+      Value<int> rowid,
+    });
+
+class $$OfflineDeckCardsTableFilterComposer
+    extends Composer<_$LocalDb, $OfflineDeckCardsTable> {
+  $$OfflineDeckCardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cardId => $composableBuilder(
+    column: $table.cardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wordId => $composableBuilder(
+    column: $table.wordId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deckId => $composableBuilder(
+    column: $table.deckId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get template => $composableBuilder(
+    column: $table.template,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get learningStep => $composableBuilder(
+    column: $table.learningStep,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get intervalDays => $composableBuilder(
+    column: $table.intervalDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repetitions => $composableBuilder(
+    column: $table.repetitions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get easeFactor => $composableBuilder(
+    column: $table.easeFactor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reading => $composableBuilder(
+    column: $table.reading,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meaning => $composableBuilder(
+    column: $table.meaning,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get meaningMn => $composableBuilder(
+    column: $table.meaningMn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get audioPath => $composableBuilder(
+    column: $table.audioPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get inQueue => $composableBuilder(
+    column: $table.inQueue,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OfflineDeckCardsTableOrderingComposer
+    extends Composer<_$LocalDb, $OfflineDeckCardsTable> {
+  $$OfflineDeckCardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cardId => $composableBuilder(
+    column: $table.cardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wordId => $composableBuilder(
+    column: $table.wordId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deckId => $composableBuilder(
+    column: $table.deckId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get template => $composableBuilder(
+    column: $table.template,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get learningStep => $composableBuilder(
+    column: $table.learningStep,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get intervalDays => $composableBuilder(
+    column: $table.intervalDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repetitions => $composableBuilder(
+    column: $table.repetitions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get easeFactor => $composableBuilder(
+    column: $table.easeFactor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reading => $composableBuilder(
+    column: $table.reading,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get meaning => $composableBuilder(
+    column: $table.meaning,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get meaningMn => $composableBuilder(
+    column: $table.meaningMn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get audioPath => $composableBuilder(
+    column: $table.audioPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get inQueue => $composableBuilder(
+    column: $table.inQueue,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OfflineDeckCardsTableAnnotationComposer
+    extends Composer<_$LocalDb, $OfflineDeckCardsTable> {
+  $$OfflineDeckCardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cardId =>
+      $composableBuilder(column: $table.cardId, builder: (column) => column);
+
+  GeneratedColumn<String> get wordId =>
+      $composableBuilder(column: $table.wordId, builder: (column) => column);
+
+  GeneratedColumn<String> get deckId =>
+      $composableBuilder(column: $table.deckId, builder: (column) => column);
+
+  GeneratedColumn<String> get template =>
+      $composableBuilder(column: $table.template, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get learningStep => $composableBuilder(
+    column: $table.learningStep,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get dueAt =>
+      $composableBuilder(column: $table.dueAt, builder: (column) => column);
+
+  GeneratedColumn<int> get intervalDays => $composableBuilder(
+    column: $table.intervalDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get repetitions => $composableBuilder(
+    column: $table.repetitions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get easeFactor => $composableBuilder(
+    column: $table.easeFactor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get term =>
+      $composableBuilder(column: $table.term, builder: (column) => column);
+
+  GeneratedColumn<String> get reading =>
+      $composableBuilder(column: $table.reading, builder: (column) => column);
+
+  GeneratedColumn<String> get meaning =>
+      $composableBuilder(column: $table.meaning, builder: (column) => column);
+
+  GeneratedColumn<String> get meaningMn =>
+      $composableBuilder(column: $table.meaningMn, builder: (column) => column);
+
+  GeneratedColumn<String> get audioPath =>
+      $composableBuilder(column: $table.audioPath, builder: (column) => column);
+
+  GeneratedColumn<bool> get inQueue =>
+      $composableBuilder(column: $table.inQueue, builder: (column) => column);
+}
+
+class $$OfflineDeckCardsTableTableManager
+    extends
+        RootTableManager<
+          _$LocalDb,
+          $OfflineDeckCardsTable,
+          OfflineDeckCard,
+          $$OfflineDeckCardsTableFilterComposer,
+          $$OfflineDeckCardsTableOrderingComposer,
+          $$OfflineDeckCardsTableAnnotationComposer,
+          $$OfflineDeckCardsTableCreateCompanionBuilder,
+          $$OfflineDeckCardsTableUpdateCompanionBuilder,
+          (
+            OfflineDeckCard,
+            BaseReferences<_$LocalDb, $OfflineDeckCardsTable, OfflineDeckCard>,
+          ),
+          OfflineDeckCard,
+          PrefetchHooks Function()
+        > {
+  $$OfflineDeckCardsTableTableManager(
+    _$LocalDb db,
+    $OfflineDeckCardsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OfflineDeckCardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OfflineDeckCardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OfflineDeckCardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> cardId = const Value.absent(),
+                Value<String> wordId = const Value.absent(),
+                Value<String> deckId = const Value.absent(),
+                Value<String> template = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> learningStep = const Value.absent(),
+                Value<DateTime> dueAt = const Value.absent(),
+                Value<int> intervalDays = const Value.absent(),
+                Value<int> repetitions = const Value.absent(),
+                Value<double> easeFactor = const Value.absent(),
+                Value<String> term = const Value.absent(),
+                Value<String?> reading = const Value.absent(),
+                Value<String?> meaning = const Value.absent(),
+                Value<String?> meaningMn = const Value.absent(),
+                Value<String?> audioPath = const Value.absent(),
+                Value<bool> inQueue = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OfflineDeckCardsCompanion(
+                cardId: cardId,
+                wordId: wordId,
+                deckId: deckId,
+                template: template,
+                state: state,
+                learningStep: learningStep,
+                dueAt: dueAt,
+                intervalDays: intervalDays,
+                repetitions: repetitions,
+                easeFactor: easeFactor,
+                term: term,
+                reading: reading,
+                meaning: meaning,
+                meaningMn: meaningMn,
+                audioPath: audioPath,
+                inQueue: inQueue,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String cardId,
+                required String wordId,
+                required String deckId,
+                required String template,
+                required String state,
+                required int learningStep,
+                required DateTime dueAt,
+                required int intervalDays,
+                required int repetitions,
+                required double easeFactor,
+                required String term,
+                Value<String?> reading = const Value.absent(),
+                Value<String?> meaning = const Value.absent(),
+                Value<String?> meaningMn = const Value.absent(),
+                Value<String?> audioPath = const Value.absent(),
+                Value<bool> inQueue = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OfflineDeckCardsCompanion.insert(
+                cardId: cardId,
+                wordId: wordId,
+                deckId: deckId,
+                template: template,
+                state: state,
+                learningStep: learningStep,
+                dueAt: dueAt,
+                intervalDays: intervalDays,
+                repetitions: repetitions,
+                easeFactor: easeFactor,
+                term: term,
+                reading: reading,
+                meaning: meaning,
+                meaningMn: meaningMn,
+                audioPath: audioPath,
+                inQueue: inQueue,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OfflineDeckCardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$LocalDb,
+      $OfflineDeckCardsTable,
+      OfflineDeckCard,
+      $$OfflineDeckCardsTableFilterComposer,
+      $$OfflineDeckCardsTableOrderingComposer,
+      $$OfflineDeckCardsTableAnnotationComposer,
+      $$OfflineDeckCardsTableCreateCompanionBuilder,
+      $$OfflineDeckCardsTableUpdateCompanionBuilder,
+      (
+        OfflineDeckCard,
+        BaseReferences<_$LocalDb, $OfflineDeckCardsTable, OfflineDeckCard>,
+      ),
+      OfflineDeckCard,
+      PrefetchHooks Function()
+    >;
 
 class $LocalDbManager {
   final _$LocalDb _db;
@@ -3246,4 +5078,8 @@ class $LocalDbManager {
       $$CachedQuizWordsTableTableManager(_db, _db.cachedQuizWords);
   $$PendingWordsTableTableManager get pendingWords =>
       $$PendingWordsTableTableManager(_db, _db.pendingWords);
+  $$OfflineDecksTableTableManager get offlineDecks =>
+      $$OfflineDecksTableTableManager(_db, _db.offlineDecks);
+  $$OfflineDeckCardsTableTableManager get offlineDeckCards =>
+      $$OfflineDeckCardsTableTableManager(_db, _db.offlineDeckCards);
 }

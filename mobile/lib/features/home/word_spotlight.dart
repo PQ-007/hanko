@@ -40,7 +40,7 @@ class _WordSpotlightState extends ConsumerState<WordSpotlight> {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, size: 16, color: HankoColors.seal),
+                Icon(Icons.auto_awesome, size: 16, color: context.hk.sealText),
                 const SizedBox(width: 6),
                 const Text(T.spotlightTitle, style: TextStyle(fontWeight: FontWeight.w600)),
                 if (deckName != null) ...[
@@ -87,7 +87,7 @@ class _WordSpotlightState extends ConsumerState<WordSpotlight> {
                         style: TextStyle(
                             fontSize: 44, fontWeight: FontWeight.w800, color: gradeColor(context.hk, g).withValues(alpha: 0.35))),
                     IconButton(
-                      icon: const Icon(Icons.volume_up_outlined, color: HankoColors.seal),
+                      icon: Icon(Icons.volume_up_outlined, color: context.hk.sealText),
                       onPressed: () => playWord(context, ref, w),
                     ),
                   ],

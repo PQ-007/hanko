@@ -16,6 +16,13 @@ final offlineReviewProvider = Provider<OfflineReview>(
   (ref) => OfflineReview(ref.watch(repositoryProvider), ref.watch(localDbProvider)),
 );
 
+/// Decks downloaded for offline review, by id. Invalidate after a download
+/// or removal.
+final offlineDecksProvider = FutureProvider<Map<String, OfflineDeck>>((ref) async {
+  final list = await ref.watch(localDbProvider).offlineDeckList();
+  return {for (final d in list) d.deckId: d};
+});
+
 /// Online-first review with an offline fallback.
 ///
 /// The design constraint from the project brief: do NOT port the extension's
@@ -32,10 +39,14 @@ final offlineReviewProvider = Provider<OfflineReview>(
 /// without double-counting the review. That property was built in Phase 0
 /// specifically so this layer could exist without inventing conflict rules.
 class OfflineReview {
-  const OfflineReview(this._repo, this._db);
+  OfflineReview(this._repo, this._db, {DateTime Function()? now}) : _now = now ?? DateTime.now;
 
   final Repository _repo;
   final LocalDb _db;
+  final DateTime Function() _now;
+
+  /// Every card of a deck in one call — practice_cards has no cap of its own.
+  static const _wholeDeck = 5000;
 
   /// Fetches from the server and refreshes the cache; falls back to the cached
   /// queue when the network is unavailable.
@@ -48,10 +59,50 @@ class OfflineReview {
       return (cards: cards, fromCache: false);
     } catch (e) {
       debugPrint('Queue fetch failed, falling back to cache: $e');
+      // A deck downloaded for offline review beats the last-fetched queue:
+      // it holds the whole deck, not just whatever was asked for last time.
+      if (deckId != null && await _db.offlineDeck(deckId) != null) {
+        return (cards: await offlineQueue(deckId), fromCache: true);
+      }
       final cached = await _db.cachedQueue();
       if (cached.isEmpty) rethrow; // nothing to show and no reason to hide why
       return (cards: cached.map(_fromCached).toList(), fromCache: true);
     }
+  }
+
+  /// Downloads [deckId] for offline review: every card (practice_cards), which
+  /// of them review_queue() serves right now, and the word list Monster Hunt
+  /// builds its options from. Returns how many cards were saved. Throws when
+  /// offline — there's nothing to download from.
+  Future<int> download(String deckId, String deckName) async {
+    final all = await _repo.practiceCards(deckId: deckId, limit: _wholeDeck);
+    final queued = {for (final c in await _repo.reviewQueue(deckId: deckId, limit: 500)) c.cardId};
+    await _db.saveOfflineDeck(
+      OfflineDecksCompanion.insert(deckId: deckId, name: deckName, downloadedAt: _now(), cardCount: all.length),
+      [for (final c in all) _toOffline(c, queued.contains(c.cardId))],
+    );
+    try {
+      await quizWords(); // refreshes the offline word list for the hunt
+    } catch (_) {}
+    return all.length;
+  }
+
+  Future<void> removeDownload(String deckId) => _db.removeOfflineDeck(deckId);
+
+  /// A downloaded deck's review queue, decided only from what the server last
+  /// said: cards already in review/learning whose server-set due date has
+  /// come, plus the new cards review_queue() itself was serving at download
+  /// (so the daily new-card cap holds). Answers waiting in the outbox are left
+  /// out — they're done until the server has scheduled them.
+  Future<List<QueueCard>> offlineQueue(String deckId) async {
+    final now = _now();
+    final answered = {for (final p in await _db.pending()) p.cardId};
+    final cards = (await _db.offlineDeckCardList(deckId))
+        .where((c) => !answered.contains(c.cardId))
+        .where((c) => c.inQueue || (c.state != 'new' && !c.dueAt.isAfter(now)))
+        .toList()
+      ..sort((a, b) => a.dueAt.compareTo(b.dueAt));
+    return cards.map(_fromOffline).toList();
   }
 
   /// Sends an answer, or queues it for replay if the send fails.
@@ -161,6 +212,43 @@ class OfflineReview {
     }
     return sent;
   }
+
+  static OfflineDeckCardsCompanion _toOffline(QueueCard c, bool inQueue) => OfflineDeckCardsCompanion.insert(
+        cardId: c.cardId,
+        wordId: c.wordId,
+        deckId: c.deckId,
+        template: c.template,
+        state: c.state,
+        learningStep: c.learningStep,
+        dueAt: c.dueAt,
+        intervalDays: c.intervalDays,
+        repetitions: c.repetitions,
+        easeFactor: c.easeFactor,
+        term: c.term,
+        reading: Value(c.reading),
+        meaning: Value(c.meaning),
+        meaningMn: Value(c.meaningMn),
+        audioPath: Value(c.audioPath),
+        inQueue: Value(inQueue),
+      );
+
+  static QueueCard _fromOffline(OfflineDeckCard c) => QueueCard(
+        cardId: c.cardId,
+        wordId: c.wordId,
+        deckId: c.deckId,
+        template: c.template,
+        state: c.state,
+        learningStep: c.learningStep,
+        dueAt: c.dueAt,
+        intervalDays: c.intervalDays,
+        repetitions: c.repetitions,
+        easeFactor: c.easeFactor,
+        term: c.term,
+        reading: c.reading,
+        meaning: c.meaning,
+        meaningMn: c.meaningMn,
+        audioPath: c.audioPath,
+      );
 
   static CachedCardsCompanion _toCompanion(QueueCard c, int position) =>
       CachedCardsCompanion.insert(

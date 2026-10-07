@@ -46,7 +46,7 @@ class _HeroPicker extends ConsumerWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: slug == current ? HankoColors.seal : context.hk.lineSoft,
+                      color: slug == current ? context.hk.seal : context.hk.lineSoft,
                       width: slug == current ? 2 : 1,
                     ),
                   ),

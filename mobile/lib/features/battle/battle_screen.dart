@@ -217,7 +217,7 @@ class _Arena extends StatelessWidget {
           // Fixed height, always present, so nothing below jumps between
           // questions.
           SizedBox(
-            height: 34,
+            height: 68,
             child: Center(child: _AnswerLine(c: c)),
           ),
           // Choice questions: the fighters take the space that's left and the
@@ -305,12 +305,12 @@ class _HpStrip extends StatelessWidget {
           height: 40,
           margin: const EdgeInsets.symmetric(horizontal: 10),
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [HankoColors.seal, HankoColors.sealDark],
+              colors: [context.hk.seal, context.hk.sealDark],
             ),
           ),
           child: const Text(
@@ -344,51 +344,142 @@ class _AnswerLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = c.lastAnswer;
     final f = c.flag;
-    // One line, shrunk to fit: the strip is a fixed 34px, so wrapping a long
-    // term and its reading onto a second line would just clip it.
-    return FittedBox(
-      fit: BoxFit.scaleDown,
+    final flag = f == null
+        ? null
+        : _FlagChip(
+            text: _flagText[f]!,
+            color: f == BattleFlag.victory
+                ? const Color(0xFF34D399)
+                : const Color(0xFFFBBF24),
+          );
+    if (a == null) return flag ?? const SizedBox.shrink();
+
+    // The word just answered: term, reading and meaning, big enough to read
+    // at a glance. Answering by meaning never shows how a word is pronounced,
+    // and after a miss this is where the right answer is spelled out — shown
+    // after, when it can't help.
+    final tone = a.correct ? const Color(0xFF34D399) : const Color(0xFFF87171);
+    final reading = a.reading != null && a.reading!.isNotEmpty && a.reading != a.term
+        ? a.reading
+        : null;
+    final card = Container(
+      padding: const EdgeInsets.fromLTRB(10, 7, 16, 7),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tone.withValues(alpha: 0.40)),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        spacing: 10,
         children: [
-          // The word just answered, with its reading — answering by meaning never
-          // shows how it's pronounced, so it's shown after, when it can't help.
-          if (a != null)
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: a.term),
-                  if (a.reading != null &&
-                      a.reading!.isNotEmpty &&
-                      a.reading != a.term)
-                    TextSpan(
-                      text: '  ${a.reading}',
-                      style: const TextStyle(fontWeight: FontWeight.w400),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+            child: Icon(
+              a.correct ? Icons.check_rounded : Icons.close_rounded,
+              size: 20,
+              color: const Color(0xFF1A1D22),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      a.term,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        height: 1.15,
+                        fontWeight: FontWeight.w700,
+                        color: _paper,
+                      ),
                     ),
-                ],
-              ),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: a.correct
-                    ? const Color(0xFF34D399)
-                    : const Color(0xFFF87171),
-              ),
+                    if (reading != null) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          reading,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFFBAE6FD),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (a.meaning.isNotEmpty)
+                  Text(
+                    a.meaning,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: _paper.withValues(alpha: 0.85),
+                    ),
+                  ),
+              ],
             ),
-          if (f != null)
-            Text(
-              _flagText[f]!,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-                color: f == BattleFlag.victory
-                    ? const Color(0xFF34D399)
-                    : const Color(0xFFFBBF24),
-              ),
-            ),
+          ),
         ],
+      ),
+    );
+
+    return TweenAnimationBuilder<double>(
+      // Re-keyed per answer so the pop-in replays even for the same word.
+      key: ObjectKey(a),
+      tween: Tween(begin: 0.9, end: 1),
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutBack,
+      builder: (context, v, child) => Opacity(
+        opacity: ((v - 0.9) * 10).clamp(0.0, 1.0),
+        child: Transform.scale(scale: v, child: child),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: card),
+          if (flag != null) ...[const SizedBox(width: 8), flag],
+        ],
+      ),
+    );
+  }
+}
+
+class _FlagChip extends StatelessWidget {
+  const _FlagChip({required this.text, required this.color});
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: color,
+        ),
       ),
     );
   }
@@ -929,7 +1020,7 @@ class _WriteQuestionState extends ConsumerState<_WriteQuestion> {
         // Prompt: reading big, meaning under it.
         Row(
           children: [
-            const Icon(Icons.draw_outlined, size: 18, color: HankoColors.seal),
+            Icon(Icons.draw_outlined, size: 18, color: context.hk.sealText),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -954,11 +1045,11 @@ class _WriteQuestionState extends ConsumerState<_WriteQuestion> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: i == _current
-                      ? HankoColors.seal.withValues(alpha: 0.12)
+                      ? context.hk.seal.withValues(alpha: 0.12)
                       : null,
                   border: Border.all(
                     color: i == _current
-                        ? (miss != null ? writingRed : HankoColors.seal)
+                        ? (miss != null ? writingRed : context.hk.seal)
                         : Colors.transparent,
                     width: 2,
                   ),

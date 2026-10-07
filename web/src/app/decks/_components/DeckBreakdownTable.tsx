@@ -4,7 +4,7 @@ import type { DeckWithCount, Word } from "@/lib/types";
 import { gradeFor } from "@/lib/srs";
 import { T } from "../_lib/strings";
 
-const MASTERED_FILL = "#0d366b"; // GRADE_COLOR.A — same ramp step as "fully mastered"
+const MASTERED_FILL = "var(--hk-grade-a, #0d366b)"; // GRADE_COLOR.A — same ramp step as "fully mastered"
 
 // Per-deck rollup: word count, due-now count, and a mastered-share meter
 // (A+B grades). The meter's unfilled track is a lighter step of the same

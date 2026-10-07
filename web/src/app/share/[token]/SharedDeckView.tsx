@@ -90,17 +90,28 @@ export default function SharedDeckView({
             <div className="mt-3">{cta}</div>
           </div>
 
-          <ul className="mt-6 divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-surface">
+          {/* The same flip cards as the owner's deck view (WordRow's grid), minus
+              the grade and the edit buttons: hover, tap or focus turns a card. */}
+          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
             {deck.words.map((w, i) => (
-              <li key={i} className="flex items-baseline gap-3 px-4 py-2.5">
-                <span className="text-lg font-bold">{w.term}</span>
-                {w.reading && w.reading !== w.term && <span className="text-sm text-ink-mute">{w.reading}</span>}
-                <span className="ml-auto truncate text-right text-sm text-ink-soft">
-                  {[w.meaning_mn, w.meaning].filter(Boolean).join(" · ")}
-                </span>
-              </li>
+              <div key={i} tabIndex={0} className="hk-flip h-40 outline-none sm:h-44" aria-label={w.term}>
+                <div className="hk-flip-inner">
+                  <div className="hk-flip-face flex flex-col items-center justify-center border border-line-soft bg-surface p-4 text-center">
+                    <div className="break-words text-2xl font-bold leading-tight text-ink sm:text-3xl">{w.term}</div>
+                    {w.reading && w.reading !== w.term && <div className="mt-1.5 text-sm text-ink-mute">{w.reading}</div>}
+                  </div>
+                  <div className="hk-flip-face hk-flip-back flex flex-col items-center justify-center border border-line bg-paper p-4 text-center">
+                    <div className="max-w-full truncate text-lg font-bold leading-tight text-ink">{w.term}</div>
+                    {w.reading && w.reading !== w.term && <div className="max-w-full truncate text-xs text-ink-mute">{w.reading}</div>}
+                    {w.meaning_mn && (
+                      <div className="mt-2 line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{w.meaning_mn}</div>
+                    )}
+                    {w.meaning && <div className="mt-1 line-clamp-2 break-words text-xs leading-snug text-ink-mute">{w.meaning}</div>}
+                  </div>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </main>
       )}
       </div>

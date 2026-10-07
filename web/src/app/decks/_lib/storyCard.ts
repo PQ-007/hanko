@@ -1,33 +1,44 @@
-// A full-screen, unbranded story image (Instagram / Facebook stories) drawn on a canvas
-// in the browser — no server, no package. Sized to the phone it's made on
-// (storySize), so it fills that screen edge to edge instead of the old fixed
-// 16:9 frame, which left bars on today's 19.5:9–20:9 phones. Two uses: "today's words" from the
-// stats page, and a shared deck's invitation from the deck share dialog.
+// A full-screen, unbranded story image (Instagram / Facebook stories) drawn on
+// a canvas in the browser — no server, no package. Sized to the phone it's made
+// on (storySize), so it fills that screen edge to edge. Two uses: "today's
+// words" from the stats page, and a shared deck's invitation from the deck
+// share dialog.
+//
+// Layout: a coloured header band (kicker, a headline that may take two lines,
+// and up to three big numbers), then the words as a two-column grid of cards
+// that grows to fill the screen — term large, reading under it, the meaning
+// wrapped onto two lines rather than cut off — then a "+N" pill and, for a
+// shared deck, the link.
 
 export interface StoryWord {
   term: string;
   reading: string | null;
-  meaning: string | null;
+  meaningMn: string | null;
+  meaningEn: string | null;
 }
+
+export type StoryStyle = "seal" | "dark" | "paper";
+export type StoryLang = "mn" | "en" | "both";
 
 export interface StoryCard {
   /** Small line over the heading, e.g. the date or "shared deck". */
   kicker: string;
   heading: string;
-  stats: string;
-  /** Optional line under the stats, e.g. a streak. */
-  badge?: string;
+  /** Big numbers under the heading: "15 / үг санасан". At most three. */
+  numbers?: { value: string; label: string }[];
   words: StoryWord[];
-  /** How many words there are in all; the rest show as "+N" after the list. */
+  /** How many words there are in all; the rest show as "+N" after the grid. */
   total?: number;
   moreLabel?: (n: number) => string;
   /** Where to go, printed at the bottom (a link sticker can't be drawn). */
   footer?: string;
+  style?: StoryStyle;
+  lang?: StoryLang;
 }
 
 export const STORY_W = 1080;
-/** Most words a card ever lists (fewer when the screen is short). */
-export const STORY_MAX_WORDS = 10;
+/** Most words a card ever shows (fewer when the screen is short). */
+export const STORY_MAX_WORDS = 12;
 
 /**
  * The image size for this device: 1080 wide, as tall as the screen's own
@@ -45,13 +56,92 @@ export function storySize(): { width: number; height: number } {
   return { width: STORY_W, height: Math.round(STORY_W * ratio) };
 }
 
-const PAPER = "#faf7f0";
-const PAPER_DIM = "#f1ebdd";
-const INK = "#1f2933";
-const INK_SOFT = "#5b6470";
-const SEAL = "#256abf";
-const SEAL_DARK = "#184f95";
-const LINE = "#e3dccb";
+interface Palette {
+  /** Whole-canvas background, top to bottom. */
+  bgTop: string;
+  bgBottom: string;
+  /** Header band: two-stop gradient, or null to draw the header straight on
+   *  the background (one continuous surface, no band seam). */
+  bandTop: string | null;
+  bandBottom: string | null;
+  bandText: string;
+  bandSoft: string;
+  /** The word cards. */
+  card: string;
+  cardLine: string;
+  term: string;
+  reading: string;
+  meaning: string;
+  accent: string;
+  pill: string;
+  pillText: string;
+  /** Corner decoration: a soft filled disc, or an ensō-like ring. */
+  deco: { kind: "disc" | "ring"; color: string };
+  /** Card drop shadow. */
+  shadow: string;
+}
+
+// Each style is one continuous surface — that's what made "dark" look right
+// and the other two look patched together (a blue band over a beige page; a
+// white-on-cream card that had no contrast or colour of its own).
+const PALETTES: Record<StoryStyle, Palette> = {
+  // Deep seal blue, frosted-glass cards, white type.
+  seal: {
+    bgTop: "#2c72cc",
+    bgBottom: "#0f3672",
+    bandTop: null,
+    bandBottom: null,
+    bandText: "#ffffff",
+    bandSoft: "rgba(255,255,255,0.72)",
+    card: "rgba(255,255,255,0.11)",
+    cardLine: "rgba(255,255,255,0.20)",
+    term: "#ffffff",
+    reading: "rgba(214,230,252,0.72)",
+    meaning: "rgba(255,255,255,0.94)",
+    accent: "#9fc6f7",
+    pill: "#ffffff",
+    pillText: "#184f95",
+    deco: { kind: "disc", color: "rgba(255,255,255,0.07)" },
+    shadow: "rgba(4,20,48,0.30)",
+  },
+  dark: {
+    bgTop: "#14181e",
+    bgBottom: "#14181e",
+    bandTop: "#0f1216",
+    bandBottom: "#1b2129",
+    bandText: "#f3f1ec",
+    bandSoft: "rgba(243,241,236,0.7)",
+    card: "#1f252e",
+    cardLine: "rgba(255,255,255,0.06)",
+    term: "#f3f1ec",
+    reading: "#9aa3ae",
+    meaning: "#d4d0c8",
+    accent: "#6fa3e6",
+    pill: "#2f6bb8",
+    pillText: "#ffffff",
+    deco: { kind: "disc", color: "rgba(255,255,255,0.06)" },
+    shadow: "rgba(0,0,0,0.10)",
+  },
+  // Warm washi paper with a vermilion seal accent (the hanko itself).
+  paper: {
+    bgTop: "#f8f2e6",
+    bgBottom: "#eee2cc",
+    bandTop: null,
+    bandBottom: null,
+    bandText: "#1f2933",
+    bandSoft: "#b8402c",
+    card: "#fffdf8",
+    cardLine: "rgba(120,90,50,0.13)",
+    term: "#1c232b",
+    reading: "#8c7f6c",
+    meaning: "#363d46",
+    accent: "#c8442f",
+    pill: "#c8442f",
+    pillText: "#fffaf2",
+    deco: { kind: "ring", color: "rgba(200,68,47,0.10)" },
+    shadow: "rgba(110,80,40,0.16)",
+  },
+};
 
 // Japanese system gothics after the text face: the canvas has no page fonts
 // of its own, and a Latin-only face would draw tofu for every kanji.
@@ -87,6 +177,61 @@ function clip(ctx: CanvasRenderingContext2D, text: string, width: number) {
   return t + "…";
 }
 
+/**
+ * Up to [maxLines] lines that fit [width] (as [measure] reports it), breaking
+ * at spaces — or inside a word that's longer than a whole line. If text is
+ * left over, the last line ends in "…". Pure, so storyCard.test.ts pins it.
+ */
+export function wrapLines(measure: (s: string) => number, text: string, width: number, maxLines: number): string[] {
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = "";
+  let i = 0;
+  let truncated = false;
+  while (i < tokens.length) {
+    const w = tokens[i];
+    const next = cur ? `${cur} ${w}` : w;
+    if (measure(next) <= width) {
+      cur = next;
+      i++;
+      continue;
+    }
+    if (cur) {
+      lines.push(cur);
+      cur = "";
+      if (lines.length === maxLines) {
+        truncated = true;
+        break;
+      }
+      continue;
+    }
+    // A single word wider than the line: take as many characters as fit.
+    const chars = [...w];
+    let part = "";
+    let j = 0;
+    while (j < chars.length && measure(part + chars[j]) <= width) part += chars[j++];
+    if (!part) part = chars[j++];
+    lines.push(part);
+    const rest = chars.slice(j).join("");
+    if (rest) tokens[i] = rest;
+    else i++;
+    if (lines.length === maxLines) {
+      truncated = i < tokens.length;
+      break;
+    }
+  }
+  if (cur) {
+    if (lines.length < maxLines) lines.push(cur);
+    else truncated = true;
+  }
+  if (truncated && lines.length) {
+    let last = lines[lines.length - 1];
+    while (last.length > 1 && measure(last + "…") > width) last = last.slice(0, -1);
+    lines[lines.length - 1] = last.replace(/[\s,;·]+$/, "") + "…";
+  }
+  return lines;
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -97,113 +242,193 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+function meaningOf(w: StoryWord, lang: StoryLang): string[] {
+  const mn = w.meaningMn?.trim() || null;
+  const en = w.meaningEn?.trim() || null;
+  if (lang === "mn") return [mn ?? en ?? ""].filter(Boolean);
+  if (lang === "en") return [en ?? mn ?? ""].filter(Boolean);
+  return [mn, en].filter((x): x is string => !!x);
+}
+
 export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
-  const W = ctx.canvas.width, H = ctx.canvas.height, M = 88;
+  const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
+  const p = PALETTES[card.style ?? "seal"];
+  const lang = card.lang ?? "mn";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
 
-  // Paper, with a soft seal-blue wash at the top.
-  ctx.fillStyle = PAPER;
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, p.bgTop);
+  bg.addColorStop(1, p.bgBottom);
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
-  const wash = ctx.createLinearGradient(0, 0, 0, 760);
-  wash.addColorStop(0, "rgba(37,106,191,0.16)");
-  wash.addColorStop(1, "rgba(37,106,191,0)");
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, 0, W, 760);
-  // Kicker, heading, stats. Unbranded on purpose: no logo, no app name.
-  let y = 260;
-  ctx.fillStyle = SEAL;
+
+  // ---- Header band ----
+  ctx.font = font(800, 92);
+  const headLines = wrapLines((s) => ctx.measureText(s).width, card.heading, W - 2 * M, 2);
+  const numbers = (card.numbers ?? []).slice(0, 3);
+  const bandH = 190 + 40 + headLines.length * 104 + (numbers.length ? 200 : 0) + 30;
+  if (p.bandTop && p.bandBottom) {
+    const band = ctx.createLinearGradient(0, 0, W, bandH);
+    band.addColorStop(0, p.bandTop);
+    band.addColorStop(1, p.bandBottom);
+    ctx.fillStyle = band;
+    ctx.fillRect(0, 0, W, bandH);
+  }
+  // Decoration in the corner — depth without a logo. The ring is open at the
+  // bottom-left, like a brushed ensō.
+  if (p.deco.kind === "disc") {
+    ctx.fillStyle = p.deco.color;
+    ctx.beginPath();
+    ctx.arc(W - 40, 120, 300, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-60, H - 160, 260, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = p.deco.color;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 46;
+    ctx.beginPath();
+    ctx.arc(W - 80, 210, 250, Math.PI * 0.85, Math.PI * 2.6);
+    ctx.stroke();
+    ctx.lineCap = "butt";
+  }
+
+  let y = 190;
+  ctx.fillStyle = p.bandSoft;
   ctx.font = font(700, 34);
   ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
-  y += 96;
-  const hs = fit(ctx, card.heading, 900, 92, 56, W - 2 * M);
-  ctx.fillStyle = INK;
-  ctx.font = font(900, hs);
-  ctx.fillText(clip(ctx, card.heading, W - 2 * M), M, y);
-  y += 72;
-  ctx.fillStyle = INK_SOFT;
-  ctx.font = font(600, 38);
-  ctx.fillText(clip(ctx, card.stats, W - 2 * M), M, y);
-  if (card.badge) {
-    y += 64;
-    ctx.font = font(700, 36);
-    const bw = Math.min(W - 2 * M, ctx.measureText(card.badge).width + 56);
-    ctx.fillStyle = "rgba(245,158,11,0.16)";
-    roundRect(ctx, M, y - 44, bw, 64, 32);
-    ctx.fill();
-    ctx.fillStyle = "#b45309";
-    ctx.fillText(clip(ctx, card.badge, bw - 56), M + 28, y);
+  y += 40;
+  ctx.fillStyle = p.bandText;
+  ctx.font = font(800, 92);
+  for (const line of headLines) {
+    y += 104;
+    ctx.fillText(line, M, y);
+  }
+  if (numbers.length) {
+    y += 60;
+    const colW = (W - 2 * M) / numbers.length;
+    numbers.forEach((n, i) => {
+      const x = M + i * colW;
+      ctx.fillStyle = p.bandText;
+      ctx.font = font(800, fit(ctx, n.value, 800, 96, 56, colW - 24));
+      ctx.fillText(n.value, x, y + 82);
+      ctx.fillStyle = p.bandSoft;
+      ctx.font = font(600, 30);
+      ctx.fillText(clip(ctx, n.label, colW - 24), x, y + 130);
+    });
   }
 
-  // The words, one card each.
-  // The words, one card each — as many as the screen fits, rows growing to
-  // fill a tall screen rather than leaving its bottom half empty.
-  const listTop = y + 70;
-  const footerTop = card.footer ? H - 230 : H - 120;
-  const gap = 22;
-  const MIN_ROW = 128, MAX_ROW = 180, MORE_H = 80;
-  const space = footerTop - listTop - MORE_H;
-  const fits = Math.max(1, Math.floor((space + gap) / (MIN_ROW + gap)));
-  const words = card.words.slice(0, Math.min(fits, STORY_MAX_WORDS));
-  const more = Math.max(0, (card.total ?? card.words.length) - words.length);
-  const rowH = Math.min(MAX_ROW, (space + (more ? 0 : MORE_H)) / Math.max(words.length, 1) - gap);
-  // A short list sits in the free space rather than hugging the heading.
-  const used = words.length * (rowH + gap) + (more ? MORE_H : 0);
-  let ry = listTop + Math.max(0, (footerTop - listTop - used) / 3);
-  for (const w of words) {
-    ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "rgba(31,41,51,0.08)";
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 6;
-    roundRect(ctx, M, ry, W - 2 * M, rowH, 28);
+  if (!p.bandTop) {
+    ctx.fillStyle = p.cardLine;
+    ctx.fillRect(M, bandH + 4, W - 2 * M, 2);
+  }
+
+  // ---- Word grid ----
+  const footerH = card.footer ? 150 : 0;
+  const top = bandH + 56;
+  const bottom = H - 70 - footerH;
+  const gap = 24;
+  const colW = (W - 2 * M - gap) / 2;
+  // Tall enough for term + reading + a two-line meaning (both languages when
+  // asked): fewer, readable tiles beat many truncated ones — the rest go in
+  // the "+N" pill.
+  const MIN_TILE = 300, MAX_TILE = 380, MORE_H = 110;
+  const total = card.total ?? card.words.length;
+  const roomRows = Math.max(1, Math.floor((bottom - top - MORE_H + gap) / (MIN_TILE + gap)));
+  const words = card.words.slice(0, Math.min(STORY_MAX_WORDS, roomRows * 2));
+  const rows = Math.ceil(words.length / 2);
+  const more = Math.max(0, total - words.length);
+  const tileH = Math.min(MAX_TILE, (bottom - top - (more ? MORE_H : 0) - (rows - 1) * gap) / Math.max(rows, 1));
+  const gridH = rows * tileH + (rows - 1) * gap;
+  // A short grid sits a little lower rather than hugging the band.
+  let gy = top + Math.max(0, (bottom - top - gridH - (more ? MORE_H : 0)) / 4);
+
+  words.forEach((w, i) => {
+    const x = M + (i % 2) * (colW + gap);
+    const ty = gy + Math.floor(i / 2) * (tileH + gap);
+    ctx.save();
+    ctx.shadowColor = p.shadow;
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = p.card;
+    roundRect(ctx, x, ty, colW, tileH, 30);
     ctx.fill();
-    ctx.shadowColor = "transparent";
-    ctx.strokeStyle = LINE;
+    ctx.restore();
+    ctx.strokeStyle = p.cardLine;
     ctx.lineWidth = 2;
+    roundRect(ctx, x, ty, colW, tileH, 30);
     ctx.stroke();
-    ctx.fillStyle = SEAL;
-    roundRect(ctx, M, ry, 12, rowH, 6);
+    // Accent tick, top-left.
+    ctx.fillStyle = p.accent;
+    roundRect(ctx, x + 34, ty + 34, 44, 8, 4);
     ctx.fill();
 
-    const pad = 44;
-    const termW = (W - 2 * M) * 0.46;
-    const ts = fit(ctx, w.term, 800, Math.min(64, rowH * 0.46), 34, termW);
-    const reading = w.reading && w.reading !== w.term ? w.reading : "";
-    const mid = ry + rowH / 2;
-    ctx.fillStyle = INK;
+    const pad = 34;
+    const inner = colW - 2 * pad;
+    let ly = ty + 34 + 22;
+    const ts = fit(ctx, w.term, 800, 72, 40, inner);
+    ctx.fillStyle = p.term;
     ctx.font = font(800, ts);
-    ctx.fillText(clip(ctx, w.term, termW), M + pad, reading ? mid + ts * 0.1 : mid + ts * 0.35);
+    ly += ts;
+    ctx.fillText(clip(ctx, w.term, inner), x + pad, ly);
+    const reading = w.reading && w.reading !== w.term ? w.reading : "";
     if (reading) {
-      ctx.fillStyle = INK_SOFT;
-      ctx.font = font(500, Math.min(30, rowH * 0.2));
-      ctx.fillText(clip(ctx, reading, termW), M + pad, mid + ts * 0.1 + Math.min(42, rowH * 0.3));
+      ctx.fillStyle = p.reading;
+      ctx.font = font(500, 30);
+      ly += 44;
+      ctx.fillText(clip(ctx, reading, inner), x + pad, ly);
     }
-    if (w.meaning) {
-      const mx = M + pad + termW + 24;
-      const mw = W - M - pad - mx;
-      ctx.fillStyle = INK;
-      ctx.font = font(600, Math.min(36, rowH * 0.25));
-      ctx.fillText(clip(ctx, w.meaning, mw), mx, mid + 12);
+    const meanings = meaningOf(w, lang);
+    if (meanings.length) {
+      ly += 14;
+      // Lines left in the tile, shared out: the first meaning gets up to two,
+      // the second (English, when both are shown) what's left, up to two.
+      let room = Math.max(1, Math.floor((ty + tileH - 30 - ly) / 40));
+      meanings.forEach((m, mi) => {
+        if (room <= 0) return;
+        const size = mi === 0 ? 32 : 28;
+        ctx.fillStyle = mi === 0 ? p.meaning : p.reading;
+        ctx.font = font(mi === 0 ? 600 : 500, size);
+        const take = Math.min(2, mi === 0 && meanings.length === 2 && room <= 2 ? 1 : room);
+        for (const line of wrapLines((s) => ctx.measureText(s).width, m, inner, take)) {
+          ly += 40;
+          ctx.fillText(line, x + pad, ly);
+          room--;
+        }
+      });
     }
-    ry += rowH + gap;
-  }
+  });
+
+  gy += gridH;
   if (more > 0) {
-    ctx.fillStyle = INK_SOFT;
-    ctx.font = font(700, 38);
+    const label = (card.moreLabel ?? ((n: number) => `+${n}`))(more);
+    ctx.font = font(800, 40);
+    const pw = ctx.measureText(label).width + 80;
+    ctx.fillStyle = p.pill;
+    roundRect(ctx, (W - pw) / 2, gy + 34, pw, 72, 36);
+    ctx.fill();
+    ctx.fillStyle = p.pillText;
     ctx.textAlign = "center";
-    ctx.fillText((card.moreLabel ?? ((n: number) => `+${n}`))(more), W / 2, ry + 44);
+    ctx.fillText(label, W / 2, gy + 84);
     ctx.textAlign = "left";
   }
 
-  // Footer: where to go (the deck link). Nothing at all without one.
+  // ---- Footer: where to go (the deck link). Nothing at all without one. ----
   if (!card.footer) return;
-  ctx.fillStyle = PAPER_DIM;
-  ctx.fillRect(0, footerTop + 40, W, H - footerTop - 40);
-  ctx.fillStyle = SEAL_DARK;
+  const fy = H - footerH - 40;
+  ctx.font = font(700, fit(ctx, card.footer, 700, 40, 24, W - 2 * M - 80));
+  const fw = Math.min(W - 2 * M, ctx.measureText(card.footer).width + 80);
+  ctx.fillStyle = p.card;
+  roundRect(ctx, (W - fw) / 2, fy, fw, 96, 48);
+  ctx.fill();
+  ctx.strokeStyle = p.cardLine;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = p.accent;
   ctx.textAlign = "center";
-  const fs = fit(ctx, card.footer, 700, 40, 24, W - 2 * M);
-  ctx.font = font(700, fs);
-  ctx.fillText(clip(ctx, card.footer, W - 2 * M), W / 2, footerTop + 140);
+  ctx.fillText(clip(ctx, card.footer, fw - 60), W / 2, fy + 62);
   ctx.textAlign = "left";
 }
 
@@ -219,7 +444,7 @@ export async function renderStoryCard(
     // A canvas doesn't trigger web-font loading on its own: ask for every
     // weight the card draws, with the letters that matter, before drawing.
     if (family) {
-      await Promise.all([500, 600, 700, 800, 900].map((w) => document.fonts.load(`${w} 40px ${family}`, "Өө Үү Aa")));
+      await Promise.all([500, 600, 700, 800].map((w) => document.fonts.load(`${w} 40px ${family}`, "Өө Үү Aa")));
     }
     await document.fonts?.ready;
   } catch {

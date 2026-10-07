@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* `dark:` follows the theme chosen in Тохиргоо (html[data-theme]), not only
+   the operating system's setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* ---------------------------------------------------------------------------
    Design tokens — washi paper + a blue accent.
 
@@ -57,6 +61,9 @@
    ink 13:1, ink-soft 7.6:1, ink-mute 5.2:1 on surface; white on seal 5.4:1. */
 html[data-theme="dark"] {
   color-scheme: dark;
+  /* The battle question card: a dim, warm "night parchment" instead of the
+     day one, so the light text on it stays readable. */
+  --hk-parchment: #2a2f37;
   --color-paper: #14171c;
   --color-paper-dim: #1c2027;
   --color-paper-deep: #262b33;
@@ -72,6 +79,64 @@ html[data-theme="dark"] {
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 28px rgba(0, 0, 0, 0.45);
 }
+/* Pale tints in dark mode. Alerts, pills and soft buttons use Tailwind's
+   50/100/200 shades (bg-red-50, border-amber-200…) — light pastels that glare
+   on dark paper. Redefined here as faint translucent tints of the same hue,
+   so every such surface blends in without per-component dark: classes. The
+   dark text shades that sit on them (600–800) become light ones; solid
+   buttons (bg-red-600 + white text) keep their colours, since only *text*
+   classes are remapped. */
+html[data-theme="dark"] {
+  --color-red-50: color-mix(in oklab, var(--color-red-400) 12%, transparent);
+  --color-red-100: color-mix(in oklab, var(--color-red-400) 20%, transparent);
+  --color-red-200: color-mix(in oklab, var(--color-red-400) 34%, transparent);
+  --color-amber-50: color-mix(in oklab, var(--color-amber-400) 12%, transparent);
+  --color-amber-100: color-mix(in oklab, var(--color-amber-400) 20%, transparent);
+  --color-amber-200: color-mix(in oklab, var(--color-amber-400) 34%, transparent);
+  --color-emerald-50: color-mix(in oklab, var(--color-emerald-400) 12%, transparent);
+  --color-emerald-100: color-mix(in oklab, var(--color-emerald-400) 20%, transparent);
+  --color-emerald-200: color-mix(in oklab, var(--color-emerald-400) 34%, transparent);
+  --color-sky-50: color-mix(in oklab, var(--color-sky-400) 12%, transparent);
+  --color-sky-100: color-mix(in oklab, var(--color-sky-400) 20%, transparent);
+  --color-sky-200: color-mix(in oklab, var(--color-sky-400) 34%, transparent);
+  --color-violet-50: color-mix(in oklab, var(--color-violet-400) 12%, transparent);
+  --color-violet-100: color-mix(in oklab, var(--color-violet-400) 20%, transparent);
+  --color-violet-200: color-mix(in oklab, var(--color-violet-400) 34%, transparent);
+  --color-rose-50: color-mix(in oklab, var(--color-rose-400) 12%, transparent);
+  --color-rose-100: color-mix(in oklab, var(--color-rose-400) 20%, transparent);
+  --color-rose-200: color-mix(in oklab, var(--color-rose-400) 34%, transparent);
+  --color-green-50: color-mix(in oklab, var(--color-green-400) 12%, transparent);
+  --color-green-100: color-mix(in oklab, var(--color-green-400) 20%, transparent);
+  --color-green-200: color-mix(in oklab, var(--color-green-400) 34%, transparent);
+  --color-orange-50: color-mix(in oklab, var(--color-orange-400) 12%, transparent);
+  --color-orange-100: color-mix(in oklab, var(--color-orange-400) 20%, transparent);
+  --color-orange-200: color-mix(in oklab, var(--color-orange-400) 34%, transparent);
+}
+html[data-theme="dark"] :is(.text-red-600, .text-red-700, .text-red-800) {
+  color: var(--color-red-300);
+}
+html[data-theme="dark"] :is(.text-amber-600, .text-amber-700, .text-amber-800) {
+  color: var(--color-amber-300);
+}
+html[data-theme="dark"] :is(.text-emerald-600, .text-emerald-700, .text-emerald-800) {
+  color: var(--color-emerald-300);
+}
+html[data-theme="dark"] :is(.text-sky-600, .text-sky-700, .text-sky-800) {
+  color: var(--color-sky-300);
+}
+html[data-theme="dark"] :is(.text-violet-600, .text-violet-700, .text-violet-800) {
+  color: var(--color-violet-300);
+}
+html[data-theme="dark"] :is(.text-rose-600, .text-rose-700, .text-rose-800) {
+  color: var(--color-rose-300);
+}
+html[data-theme="dark"] :is(.text-green-600, .text-green-700, .text-green-800) {
+  color: var(--color-green-300);
+}
+html[data-theme="dark"] :is(.text-orange-600, .text-orange-700, .text-orange-800) {
+  color: var(--color-orange-300);
+}
+
 /* The seal blue that works behind white button text is too dark to read as
    text on dark paper, so blue text gets its own lighter shade. */
 html[data-theme="dark"] .text-seal {
@@ -80,6 +145,66 @@ html[data-theme="dark"] .text-seal {
 html[data-theme="dark"] .text-seal-dark {
   color: #8db6ec;
 }
+/* Цэнхэр — the story image's seal blue (storyCard.ts "seal") as a whole-app
+   theme: a blue page that deepens downwards, lighter blue cards, white type,
+   deep-navy buttons. Rides on the dark theme (data-theme="dark" is set too),
+   so every dark: fix applies; only the tokens are re-tinted. */
+html[data-scheme="blue"] {
+  --hk-parchment: #2f6cc0;
+  --color-paper: #2563b8;
+  --color-paper-dim: #123f7c;
+  --color-paper-deep: #1b4f96;
+  --color-line: #5b8fd6;
+  --color-line-soft: #3f78c8;
+  --color-ink: #ffffff;
+  --color-ink-soft: #dbe8fb;
+  --color-ink-mute: #b3cbee;
+  --color-seal: #0f3a78;
+  --color-seal-dark: #0b2d5e;
+  --color-seal-tint: #3a74c4;
+  --color-surface: #2f6ec4;
+  /* The mastery / activity ramp runs dim → bright here, like mobile's: the
+     usual dark steps would vanish into a blue page. */
+  --hk-grade-f: #7fb0ee;
+  --hk-grade-d: #a6c9f5;
+  --hk-grade-c: #c9dffb;
+  --hk-grade-b: #e4effd;
+  --hk-grade-a: #ffffff;
+  --shadow-card: 0 1px 2px rgba(4, 20, 48, 0.25), 0 8px 24px rgba(4, 20, 48, 0.18);
+  --shadow-lift: 0 2px 4px rgba(4, 20, 48, 0.3), 0 12px 28px rgba(4, 20, 48, 0.4);
+}
+html[data-scheme="blue"] .text-seal,
+html[data-scheme="blue"] .text-seal-dark {
+  color: #d6e8ff;
+}
+
+/* Цайвар — the story image's washi paper (storyCard.ts "paper"), the default
+   theme: warm amber cream with white cards, and the accent is the hanko's
+   vermilion. */
+html[data-scheme="paper"] {
+  --hk-parchment: #f6ead2;
+  --color-paper: #f7eedd;
+  --color-paper-dim: #efe0c4;
+  --color-paper-deep: #e6d3b1;
+  --color-line: #dcc7a2;
+  --color-line-soft: #ecdfc6;
+  --color-ink: #1c232b;
+  --color-ink-soft: #5f5546;
+  --color-ink-mute: #75685a;
+  --color-seal: #c8442f;
+  --color-seal-dark: #a83623;
+  --color-seal-tint: #f6ddd6;
+  --color-surface: #ffffff;
+  /* The mastery / activity ramp (gradeColors.ts), in vermilion. */
+  --hk-grade-f: #efa898;
+  --hk-grade-d: #e07a63;
+  --hk-grade-c: #c8442f;
+  --hk-grade-b: #9e3322;
+  --hk-grade-a: #6e2116;
+  --shadow-card: 0 1px 2px rgba(110, 80, 40, 0.06), 0 4px 16px rgba(110, 80, 40, 0.08);
+  --shadow-lift: 0 2px 4px rgba(110, 80, 40, 0.07), 0 12px 28px rgba(110, 80, 40, 0.12);
+}
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);
@@ -140,6 +265,11 @@ body {
 .hk-btn-primary:hover {
   background: var(--color-seal-dark);
 }
+/* Dark-type themes: --color-paper is the dark page there, not a light
+   colour, so it can't double as the button's text. */
+html[data-theme="dark"] .hk-btn-primary {
+  color: #ffffff;
+}
 
 .hk-btn-primary:disabled {
   background: var(--color-ink-mute);
@@ -175,6 +305,14 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--color-seal);
   outline-offset: 2px;
+}
+
+/* Fields that draw their own focus ring: the outline above would be a second
+   rectangle around (or inside) it. .hk-input = the control itself shows focus
+   (border + ring); .hk-field = a wrapper (e.g. "@" + input) shows it. */
+.hk-input:focus-visible,
+.hk-field :is(input, select, textarea):focus-visible {
+  outline: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -703,7 +841,7 @@ textarea:focus-visible {
 }
 
 .hanko-parchment {
-  background: #f6efe1;
+  background: var(--hk-parchment, #f6efe1);
   border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.06),
@@ -744,4 +882,29 @@ button,
 [role="button"] {
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* App dialog (ui/Dialog.tsx): the box rises a little and the backdrop fades. */
+.hk-dialog-backdrop {
+  animation: hk-dialog-fade 140ms ease-out;
+}
+.hk-dialog {
+  animation: hk-dialog-rise 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes hk-dialog-fade {
+  from { opacity: 0; }
+}
+@keyframes hk-dialog-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+}
+
+/* Right-click menu (Sidebar). */
+.hk-menu {
+  animation: hk-dialog-fade 100ms ease-out;
+}
+
+/* Always-dark stages keep light text in dark mode too: the theme flips
+   --color-paper dark, which would put dark labels on the dark arena. */
+html[data-theme="dark"] .hk-arena {
+  --color-paper: #faf7f0;
 }

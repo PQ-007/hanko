@@ -45,12 +45,13 @@ class _RoutedApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Hanko',
       debugShowCheckedModeBanner: false,
-      theme: buildHankoTheme(Brightness.light),
-      darkTheme: buildHankoTheme(Brightness.dark),
-      themeMode: ref.watch(themeModeProvider),
+      theme: buildHankoTheme(Brightness.light, HankoPalette.paperTheme),
+      darkTheme: buildHankoTheme(Brightness.dark, t == AppTheme.blue ? HankoPalette.blue : HankoPalette.dark),
+      themeMode: t.mode,
       routerConfig: ref.watch(routerProvider),
     );
   }

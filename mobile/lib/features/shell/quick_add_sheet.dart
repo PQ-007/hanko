@@ -121,8 +121,8 @@ class _QuickAddState extends ConsumerState<_QuickAdd> {
                 ),
                 if (_added > 0)
                   Text('✓ ${T.quickAddedCount(_added)}',
-                      style: const TextStyle(
-                          color: HankoColors.seal, fontWeight: FontWeight.w600, fontSize: 12)),
+                      style: TextStyle(
+                          color: context.hk.sealText, fontWeight: FontWeight.w600, fontSize: 12)),
               ],
             ),
           ),

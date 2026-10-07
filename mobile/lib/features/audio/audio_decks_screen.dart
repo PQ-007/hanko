@@ -17,7 +17,8 @@ import '../decks/word_actions.dart';
 import 'audio_deck.dart';
 import 'deck_player.dart';
 
-final _audioDecksProvider = FutureProvider<List<AudioDeck>>(
+/// The MP3s built on this phone. Shared with the library, which lists them.
+final audioDecksProvider = FutureProvider<List<AudioDeck>>(
   (ref) => ref.watch(audioDeckStoreProvider).list(),
 );
 
@@ -73,7 +74,7 @@ class _AudioDecksScreenState extends ConsumerState<AudioDecksScreen> {
       } else if (built.skipped > 0) {
         toast(context, T.audioSkipped(built.skipped));
       }
-      ref.invalidate(_audioDecksProvider);
+      ref.invalidate(audioDecksProvider);
     } catch (e) {
       if (mounted) toast(context, '${T.audioDeckFailed} $e');
     } finally {
@@ -86,13 +87,13 @@ class _AudioDecksScreenState extends ConsumerState<AudioDecksScreen> {
     final player = ref.read(deckPlayerProvider);
     if (player.deck?.deckId == a.deckId) await player.close();
     await ref.read(audioDeckStoreProvider).delete(a.deckId);
-    ref.invalidate(_audioDecksProvider);
+    ref.invalidate(audioDecksProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final decks = ref.watch(decksProvider);
-    final audio = ref.watch(_audioDecksProvider).value ?? const <AudioDeck>[];
+    final audio = ref.watch(audioDecksProvider).value ?? const <AudioDeck>[];
     final byDeck = {for (final a in audio) a.deckId: a};
     final hero = ref.watch(heroProvider);
 
@@ -174,7 +175,7 @@ class _DeckRow extends StatelessWidget {
           children: [
             Icon(
               a == null ? Icons.headphones_outlined : Icons.headphones,
-              color: HankoColors.seal,
+              color: context.hk.sealText,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -544,7 +545,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen> {
                                   ),
                                   iconSize: 44,
                                   style: IconButton.styleFrom(
-                                    backgroundColor: HankoColors.seal,
+                                    backgroundColor: context.hk.seal,
                                   ),
                                 ),
                                 IconButton(

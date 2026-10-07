@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/offline_review.dart';
 import '../../core/providers.dart';
 import '../../core/repository.dart';
 import '../../core/strings.dart';
@@ -14,6 +15,7 @@ import '../decks/word_editor.dart';
 import '../shell/action_sheet.dart';
 import '../stats/grade_bars.dart';
 import 'deck_actions.dart';
+import 'deck_share_sheet.dart';
 
 /// One deck: its words, the grade chart doubling as a filter, and the deck's
 /// actions (web DeckHeader.tsx + DeckDetail.tsx).
@@ -48,6 +50,8 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Kept loaded so the ⋯ menu knows whether this deck is downloaded.
+    ref.watch(offlineDecksProvider);
     final decks = ref.watch(decksProvider);
     final words = ref.watch(deckWordsProvider(widget.deckId));
     final hero = ref.watch(heroProvider);
@@ -83,16 +87,32 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
                   await moveDeck(context, ref, deck);
                 case 'txt':
                   await exportDeckTxt(context, ref, deck);
+                case 'share':
+                  await showDeckShareSheet(context, deck);
+                case 'offline':
+                  await downloadDeckOffline(context, ref, deck);
+                case 'offlineRemove':
+                  await removeDeckOffline(context, ref, deck);
                 case 'delete':
                   if (await deleteDeck(context, ref, deck) && context.mounted) context.pop();
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text(T.rename)),
-              PopupMenuItem(value: 'move', child: Text(T.moveTo)),
-              PopupMenuItem(value: 'txt', child: Text(T.exportTxt)),
-              PopupMenuItem(value: 'delete', child: Text(T.delete)),
-            ],
+            itemBuilder: (_) {
+              final downloaded = ref.read(offlineDecksProvider).value?.containsKey(deck.id) ?? false;
+              return [
+                const PopupMenuItem(value: 'share', child: Text(T.shareDeck)),
+                PopupMenuItem(
+                  value: 'offline',
+                  child: Text(downloaded ? T.offlineRefresh : T.offlineDownload),
+                ),
+                if (downloaded) const PopupMenuItem(value: 'offlineRemove', child: Text(T.offlineRemove)),
+                const PopupMenuDivider(),
+                const PopupMenuItem(value: 'rename', child: Text(T.rename)),
+                const PopupMenuItem(value: 'move', child: Text(T.moveTo)),
+                const PopupMenuItem(value: 'txt', child: Text(T.exportTxt)),
+                const PopupMenuItem(value: 'delete', child: Text(T.delete)),
+              ];
+            },
           ),
         ],
       ),
@@ -189,7 +209,7 @@ class _WordTile extends ConsumerWidget {
     return ListTile(
       leading: IconButton(
         tooltip: T.playAudio,
-        icon: const Icon(Icons.volume_up_outlined, color: HankoColors.seal),
+        icon: Icon(Icons.volume_up_outlined, color: context.hk.sealText),
         onPressed: () => playWord(context, ref, word),
       ),
       title: Row(

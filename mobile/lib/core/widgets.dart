@@ -14,7 +14,7 @@ class ProgressRing extends StatelessWidget {
     required this.label,
     this.size = 96,
     this.stroke = 9,
-    this.color = HankoColors.seal,
+    this.color,
     this.centerText,
   });
 
@@ -22,7 +22,8 @@ class ProgressRing extends StatelessWidget {
   final String label;
   final double size;
   final double stroke;
-  final Color color;
+  /// Defaults to the theme's accent.
+  final Color? color;
   final String? centerText;
 
   @override
@@ -37,7 +38,7 @@ class ProgressRing extends StatelessWidget {
           builder: (context, value, _) => SizedBox.square(
             dimension: size,
             child: CustomPaint(
-              painter: _RingPainter(value / 100, stroke, color, context.hk.sealTint),
+              painter: _RingPainter(value / 100, stroke, color ?? context.hk.seal, context.hk.sealTint),
               child: Center(
                 child: Text(
                   centerText ?? '${value.round()}%',
@@ -133,6 +134,68 @@ class SectionCard extends StatelessWidget {
             child,
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Hanko's mark — the open ensō from the app icon and the web favicon,
+/// painted (no asset) so it stays crisp at any size. Same path as the web's
+/// "practice" icon: an 8-unit circle on a 24 grid, left open at the top right.
+class EnsoMark extends StatelessWidget {
+  const EnsoMark({super.key, this.size = 28, this.color = Colors.white});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _EnsoPainter(color));
+}
+
+class _EnsoPainter extends CustomPainter {
+  _EnsoPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 24;
+    final path = Path()
+      ..moveTo(17.6 * s, 5.6 * s)
+      ..arcToPoint(Offset(20 * s, 11.2 * s), radius: Radius.circular(8 * s), largeArc: true, clockwise: false);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.6 * s
+        ..strokeCap = StrokeCap.square,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_EnsoPainter old) => old.color != color;
+}
+
+/// A person's picture — their uploaded or Google photo (https only), else the
+/// first letter of their name on the seal tint. Used for you (home, settings)
+/// and for friends, so everyone looks the same everywhere.
+class UserAvatar extends StatelessWidget {
+  const UserAvatar({super.key, required this.name, this.image, this.radius = 20});
+  final String name;
+  final String? image;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final img = image;
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: context.hk.sealTint,
+      foregroundImage: img != null && img.startsWith('https://') ? NetworkImage(img) : null,
+      child: Text(
+        name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+        style: TextStyle(color: context.hk.sealText, fontWeight: FontWeight.w800, fontSize: radius * 0.8),
       ),
     );
   }

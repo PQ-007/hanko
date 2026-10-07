@@ -3,10 +3,11 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { safeNext } from "@/lib/safeNext";
 
 function LoginInner() {
   const params = useSearchParams();
-  const next = params.get("next") ?? "/decks";
+  const next = safeNext(params.get("next"));
   const error = params.get("error");
   const [loading, setLoading] = useState(false);
 

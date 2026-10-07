@@ -189,7 +189,7 @@ export default function DeckDashboard() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={T.search}
-              className="w-full rounded-control border border-line bg-surface py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none focus:ring-2 focus:ring-seal-tint"
+              className="w-full rounded-control border border-line bg-surface py-2.5 pl-9 pr-4 text-sm shadow-sm focus:border-seal focus:outline-none hk-input focus:ring-2 focus:ring-seal-tint"
             />
           </div>
           <button

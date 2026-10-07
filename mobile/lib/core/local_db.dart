@@ -95,14 +95,57 @@ class PendingWords extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [PendingAnswers, CachedCards, CachedQuizWords, PendingWords])
+/// Decks downloaded for offline review (schema v4): what was downloaded and
+/// when. The cards themselves are in [OfflineDeckCards].
+class OfflineDecks extends Table {
+  TextColumn get deckId => text().named('deck_id')();
+  TextColumn get name => text()();
+  DateTimeColumn get downloadedAt => dateTime().named('downloaded_at')();
+  IntColumn get cardCount => integer().named('card_count')();
+
+  @override
+  Set<Column> get primaryKey => {deckId};
+}
+
+/// Every card of a downloaded deck, as the server last described it. Like
+/// [CachedCards] this is a snapshot, replaced wholesale on each download or
+/// refresh and never merged: due dates and states come from the server, and
+/// answers given offline still go through the outbox to review_card(), which
+/// does the actual scheduling when the phone is back online.
+///
+/// [inQueue] marks the cards that review_queue() itself returned at download
+/// time — the only *new* cards served offline, so the daily new-card cap the
+/// server applied is respected without being re-implemented here.
+class OfflineDeckCards extends Table {
+  TextColumn get cardId => text().named('card_id')();
+  TextColumn get wordId => text().named('word_id')();
+  TextColumn get deckId => text().named('deck_id')();
+  TextColumn get template => text()();
+  TextColumn get state => text()();
+  IntColumn get learningStep => integer().named('learning_step')();
+  DateTimeColumn get dueAt => dateTime().named('due_at')();
+  IntColumn get intervalDays => integer().named('interval_days')();
+  IntColumn get repetitions => integer()();
+  RealColumn get easeFactor => real().named('ease_factor')();
+  TextColumn get term => text()();
+  TextColumn get reading => text().nullable()();
+  TextColumn get meaning => text().nullable()();
+  TextColumn get meaningMn => text().named('meaning_mn').nullable()();
+  TextColumn get audioPath => text().named('audio_path').nullable()();
+  BoolColumn get inQueue => boolean().named('in_queue').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {cardId};
+}
+
+@DriftDatabase(tables: [PendingAnswers, CachedCards, CachedQuizWords, PendingWords, OfflineDecks, OfflineDeckCards])
 class LocalDb extends _$LocalDb {
   LocalDb() : super(driftDatabase(name: 'hanko'));
 
   LocalDb.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -115,6 +158,11 @@ class LocalDb extends _$LocalDb {
           }
           // v2 → v3: the camera capture's offline word outbox.
           if (from < 3) await m.createTable(pendingWords);
+          // v3 → v4: decks downloaded for offline review.
+          if (from < 4) {
+            await m.createTable(offlineDecks);
+            await m.createTable(offlineDeckCards);
+          }
         },
       );
 
@@ -158,4 +206,30 @@ class LocalDb extends _$LocalDb {
 
   Future<void> clearWords(Iterable<String> ids) =>
       (delete(pendingWords)..where((t) => t.id.isIn(ids))).go();
+
+  /// Replaces a downloaded deck's snapshot (cards and its header) in one go.
+  Future<void> saveOfflineDeck(OfflineDecksCompanion deck, List<OfflineDeckCardsCompanion> cards) async {
+    final id = deck.deckId.value;
+    await transaction(() async {
+      await (delete(offlineDeckCards)..where((t) => t.deckId.equals(id))).go();
+      await batch((b) => b.insertAll(offlineDeckCards, cards, mode: InsertMode.insertOrReplace));
+      await into(offlineDecks).insert(deck, mode: InsertMode.insertOrReplace);
+    });
+  }
+
+  Future<List<OfflineDeck>> offlineDeckList() =>
+      (select(offlineDecks)..orderBy([(t) => OrderingTerm(expression: t.name)])).get();
+
+  Future<OfflineDeck?> offlineDeck(String deckId) =>
+      (select(offlineDecks)..where((t) => t.deckId.equals(deckId))).getSingleOrNull();
+
+  Future<List<OfflineDeckCard>> offlineDeckCardList(String deckId) =>
+      (select(offlineDeckCards)..where((t) => t.deckId.equals(deckId))).get();
+
+  Future<void> removeOfflineDeck(String deckId) async {
+    await transaction(() async {
+      await (delete(offlineDeckCards)..where((t) => t.deckId.equals(deckId))).go();
+      await (delete(offlineDecks)..where((t) => t.deckId.equals(deckId))).go();
+    });
+  }
 }

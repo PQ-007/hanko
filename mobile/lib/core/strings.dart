@@ -30,6 +30,14 @@ class T {
   static const building = 'Бэлдэж байна…';
   static const exportFailed = 'Экспорт амжилтгүй';
   static const delete = 'Устгах';
+  static const ok = 'За';
+  static const deleteDeckTitle = 'Багц устгах уу?';
+  static const deleteFolderTitle = 'Хавтас устгах уу?';
+  static const deleteWordTitle = 'Үг устгах уу?';
+  static String deleteWordBody(String t) => '“$t” энэ багцаас устгагдана.';
+  static const removeFriendTitle = 'Найзаас хасах уу?';
+  static String removeFriendBody(String h) =>
+      '@$h таны найзын жагсаалтаас хасагдана. Дахин найзлахын тулд хүсэлт илгээх хэрэгтэй.';
   static const term = 'Үг (ж: 勉強)';
   static const reading = 'Дуудлага';
   static const lookingUp = 'Хайж байна…';
@@ -251,7 +259,7 @@ class T {
   // ---- Mobile only -------------------------------------------------------
   static const navHome = 'Нүүр';
   static const navStats = 'Статистик';
-  static const navPvp = 'Найзууд';
+  static const navPvp = 'Тулаан';
   static const navLibrary = 'Сан';
 
   // Friends, leaderboard, XP/ELO (0026)
@@ -415,7 +423,56 @@ class T {
   static const huntDescMobile =
       'Утгыг нь сонгох, ханзаар нь бичих асуултаар дайсантай тулалдана. Бичвэл илүү хүчтэй цохино.';
   // Audio decks
+  // Offline decks.
+  // Public deck link (0028), same as the web's.
+  static const shareDeck = 'Хуваалцах';
+  // Story images (ports of the web's storyCard strings).
+  static const shareStoryImage = 'Story зураг';
+  static const shareTodayTitle = 'Өнөөдрийн үгс';
+  static const shareTodayEmpty = 'Өнөөдөр зөв хариулсан үг алга байна — эхлээд давтаад ирээрэй.';
+  static const shareImageShare = 'Хуваалцах';
+  static String shareImageHint(int w, int h) =>
+      'Утасны дэлгэцийн хэмжээтэй ($w×$h) — Instagram, Facebook story-д бүтэн дүүрнэ.';
+  static const storyTodayHeading = 'Өнөөдөр сурсан үгс';
+  static String storyMore(int n) => '+$n үг';
+  static const storyNumRecalled = 'үг санасан';
+  static const storyNumAdded = 'шинэ үг';
+  static const storyNumStreak = 'өдөр дараалан';
+  static const storyNumWords = 'үг · бүртгэлгүй тоглоно';
+  static const storyStyleLabel = 'Загвар';
+  static const storyStyleSeal = 'Цэнхэр';
+  static const storyStyleDark = 'Бараан';
+  static const storyStylePaper = 'Цайвар';
+  static const storyLangLabel = 'Утга';
+  static const storyLangMn = 'Монгол';
+  static const storyLangEn = 'English';
+  static const storyLangBoth = 'Хоёул';
+  static const sharedBy = 'Хуваалцсан багц';
+  static const shareDeckTitle = 'Багцыг хуваалцах';
+  static const shareDeckDesc = 'Холбоосыг авсан хэн ч бүртгэлгүйгээр үгсийг харж, хөтөч дээр давтаж тоглож чадна. Таны нэр, давтлагын түүх харагдахгүй. Холбоос 24 цаг хүчинтэй.';
+  static const shareLinkOn = 'Холбоос идэвхтэй';
+  static const shareLinkEnable = 'Холбоос үүсгэх';
+  static const shareLinkDisable = 'Холбоосыг хаах';
+  static const shareLinkDisableHint = '24 цагийн дараа өөрөө хаагдана. Хаавал шууд ажиллахаа болино; дахин нээвэл шинэ холбоос үүснэ.';
+  static const shareCopy = 'Хуулах';
+  static const shareCopied = 'Холбоосыг хууллаа';
+  static const shareSend = 'Илгээх';
+  static const shareFailed = 'Хуваалцах тохиргоо хадгалагдсангүй.';
+  static String shareTimeLeft(Duration d) =>
+      d.inMinutes >= 60 ? '${d.inHours} ц ${d.inMinutes % 60} мин үлдсэн' : '${d.inMinutes.clamp(1, 59)} мин үлдсэн';
+  static const avatarChange = 'Зураг солих';
+  static const avatarRemove = 'Арилгах';
+  static const avatarFailed = 'Зургийг хадгалж чадсангүй.';
+  static const offlineDownload = 'Офлайнд татах';
+  static const offlineRefresh = 'Офлайн хуулбар шинэчлэх';
+  static const offlineRemove = 'Офлайн хуулбар устгах';
+  static const offlineDownloading = 'Багцыг татаж байна…';
+  static String offlineReady(int n) => '$n карт офлайнд бэлэн. Интернэтгүй үед ч давтаж болно.';
+  static const offlineDownloadFailed = 'Татаж чадсангүй — интернэт холболтоо шалгана уу.';
+  static const offlineRemoved = 'Офлайн хуулбарыг устгалаа.';
+  static const offlineBadge = 'офлайн';
   static const audioTitle = 'Аудио багц';
+  static const audioManage = 'Бүгд';
   static const audioIntro = 'Багцаа MP3 болгоод алхаж, явж байхдаа сонсоорой. Япон үг, дараа нь англи утга нь уншигдана.';
   static const audioMnNote = 'Монгол утгыг дуугаар уншуулах боломжгүй тул тоглуулагч дээр бичгээр харагдана.';
   static const audioCreate = 'Үүсгэх';
@@ -443,8 +500,10 @@ class T {
   static const settings = 'Тохиргоо';
   static const appearance = 'Харагдах байдал';
   static const themeSystem = 'Утасны дагуу';
-  static const themeLight = 'Цайвар';
+  static const themeLight = 'Цагаан';
   static const themeDark = 'Бараан';
+  static const themeBlue = 'Цэнхэр';
+  static const themePaper = 'Цайвар';
   static const signOut = 'Гарах';
   static const privacy = 'Нууцлалын бодлого';
   static const reminder = 'Өдөр тутмын сануулга';
