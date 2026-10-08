@@ -17,6 +17,13 @@ const deckSelect = $('deckSelect');
 const newDeckRow = $('newDeckRow');
 
 termEl.textContent = term;
+
+// Same theme as the popup (and the app): applied now and on any change.
+HankoUI.mount(document);
+$('mark').innerHTML = HankoUI.ENSO;
+$('speakIco').innerHTML = HankoUI.ICONS.speak;
+$('saveKey').textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘↵' : 'Ctrl↵';
+HankoUI.watch((name) => HankoUI.apply(document.documentElement, name));
 document.title = term ? `Хадгалах: ${term}` : 'Үг хадгалах';
 
 // The English value last translated (so blurring unchanged text doesn't
@@ -49,6 +56,17 @@ async function init() {
 
   deckSelect.addEventListener('change', () => {
     newDeckRow.classList.toggle('visible', deckSelect.value === '__new__');
+    checkDuplicate();
+  });
+  checkDuplicate();
+
+  $('speak').addEventListener('click', () => HankoUI.speak(readingEl.value.trim() || term, $('speak')));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.close();
+    else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      onSave();
+    }
   });
 
   $('addDeck').addEventListener('click', async () => {
@@ -57,6 +75,7 @@ async function init() {
     const deck = await createDeck(name);
     await populateDeckSelect(deck.id);
     newDeckRow.classList.remove('visible');
+    checkDuplicate();
   });
 
   $('cancel').addEventListener('click', () => window.close());
@@ -79,6 +98,7 @@ async function init() {
       if (r.word && r.word !== term) {
         term = r.word; // use the dictionary form (普通形)
         termEl.textContent = term;
+        checkDuplicate();
       }
       if (r.reading) readingEl.value = r.reading;
       if (r.meaning) {
@@ -90,7 +110,15 @@ async function init() {
   });
 }
 
+// Say so up front when the word is already in the chosen deck.
+async function checkDuplicate() {
+  const id = deckSelect.value;
+  $('dup').classList.toggle('visible', !!id && id !== '__new__' && (await isDuplicate(id, term)));
+}
+
+let saving = false;
 async function onSave() {
+  if (saving) return;
   let deckId = deckSelect.value;
   if (deckId === '__new__') {
     const name = $('newDeckName').value.trim() || 'Нэргүй багц';
@@ -98,11 +126,19 @@ async function onSave() {
     deckId = deck.id;
   }
   if (!deckId) return;
+  saving = true;
 
   // The word may already be in the chosen deck — let the user decide.
   if (await isDuplicate(deckId, term)) {
-    const ok = confirm(`“${term}” энэ багцад аль хэдийн бүртгэгдсэн байна. Дахин нэмэх үү?`);
-    if (!ok) return;
+    const ok = await HankoUI.confirm($('app'), {
+      title: 'Давхардсан үг',
+      body: `“${term}” энэ багцад аль хэдийн байна. Дахин нэмэх үү?`,
+      confirmLabel: 'Дахин нэмэх',
+    });
+    if (!ok) {
+      saving = false;
+      return;
+    }
   }
 
   await saveWord({
@@ -114,7 +150,9 @@ async function onSave() {
   });
 
   // Brief confirmation, then close the window.
-  document.body.innerHTML = '<div class="saved">Хадгаллаа ✓</div>';
+  const deckName = [...deckSelect.options].find((o) => o.value === deckId)?.textContent || '';
+  $('app').innerHTML = `<div class="saved"><span class="hk-mark">${HankoUI.ENSO}</span><div class="hk-toast"></div></div>`;
+  $('app').querySelector('.hk-toast').textContent = deckName && deckName !== '+ Шинэ багц…' ? `“${deckName}”-д хадгаллаа ✓` : 'Хадгаллаа ✓';
   setTimeout(() => window.close(), 600);
 }
 

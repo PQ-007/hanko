@@ -460,6 +460,10 @@ web `/decks/writing`): pick words or kanji, then trace → some strokes → from
 memory per new kanji, then the whole word (`lesson.ts` ports `lesson.dart`,
 same cases). Answers log as `drill` and learned kanji go to `learned_kanji`
 (0026). On the web, a kanji with no stroke data falls back to self-judging.
+A lesson teaches **at most 10 new kanji** (owner's call): `lessonSize()` in
+`lesson.ts` / `lesson.dart` (same cases in both tests) takes words in order
+until the next would pass 10 kanji not yet learned, capped at 10 words, and
+always at least one word; the rest of the selection becomes the next lesson.
 
 Mobile's review sheet is three modes — Monster Hunt, classic cards, kanji
 writing — plus a leech-rescue link shown only when leeches exist. Speed round
@@ -779,8 +783,28 @@ Two traps found doing this:
   rules in the same file were added. Build `--release` **and launch it on a
   device** after adding any ML Kit or native plugin; debug builds don't
   shrink, so they show neither problem.
-- The extension has **no build step** — edits to `src/sync.js` must be copied
-  verbatim into both `chrome/` and `firefox/`.
+- The extension has **no build step** — edits to `src/sync.js` and
+  `src/ui.js` must be copied verbatim into both `chrome/` and `firefox/`, and
+  every other file except `manifest.json` is identical in the two folders.
+  `bash src/package.sh` copies the `src/` files in, refuses to zip if the
+  folders drift, and writes `web-ext-artifacts/hanko-{chrome,firefox}-<v>.zip`.
+- **Extension look (1.2.0):** popup, save window and in-page panel share
+  `src/ui.js` (`HankoUI`): the same three themes as the app (Цайвар /
+  Бараан / Цэнхэр, same token values), picked in the popup header and stored
+  as `hankoTheme` in `storage.local`; the background swaps the toolbar icon
+  (`icons/<theme>-<size>.png`) on the same storage change. No
+  `confirm()`/`alert()` — `HankoUI.confirm(container, …)` draws a themed
+  dialog (inside the panel's shadow root on web pages). Use `--hk-danger` for
+  red text and `--hk-danger-solid` for red buttons; on Цэнхэр the text red is a
+  pale pink that white button text can't sit on.
+- **Extension 1.3.0:** the toolbar badge is the due count — `VocabSync.refreshDue()`
+  calls `due_summary()` (same number as the web dashboard) after every sync and
+  stores `dueNow`; the background redraws the badge off that storage change.
+  The popup has a today card (due count → web review), search across all decks,
+  inline word edit, and delete with undo (`HankoUI.snack`; the sync waits ~4s
+  so an undo never reaches the server). `HankoUI.speak()` uses the browser's
+  Japanese voice, else Google TTS, which 400s on any Referer — extension pages
+  that play it carry `<meta name="referrer" content="no-referrer">`.
 - Never commit `config.js` or `.env.local`. The publishable key is safe to ship;
   RLS is what protects the data, so any new table needs its policies written in
   the same migration.

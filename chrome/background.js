@@ -9,7 +9,7 @@
 // in the Chrome service worker we pull them in via importScripts.
 if (typeof importScripts === 'function') {
   try {
-    importScripts('config.js', 'sync.js');
+    importScripts('config.js', 'sync.js', 'ui.js');
   } catch (e) {
     // ignore — sync just stays disabled if these can't load
   }
@@ -18,7 +18,44 @@ if (typeof importScripts === 'function') {
 const ctx = typeof browser !== 'undefined' ? browser : chrome;
 const SYNC_ALARM = 'vocab-sync';
 
-console.log('Vocab Decks background loaded');
+console.log('Hanko background loaded');
+
+// The toolbar icon follows the theme picked in the popup (ui.js): Цайвар's
+// vermilion ensō by default, Бараан's charcoal or Цэнхэр's blue.
+function applyToolbarIcon(name) {
+  const action = ctx.action || ctx.browserAction;
+  if (!action || !globalThis.HankoUI) return;
+  try {
+    Promise.resolve(action.setIcon({ path: HankoUI.iconPaths(name) })).catch(() => {});
+  } catch (e) {
+    // a missing icon only means the default stays
+  }
+}
+if (globalThis.HankoUI) HankoUI.watch(applyToolbarIcon);
+
+// The toolbar badge shows how many cards are due right now (due_summary(),
+// the web dashboard's own number), in the theme's accent. Driven by
+// storage.local.dueNow, which VocabSync.refreshDue() writes from here, the
+// popup or after a save — so whichever surface refreshed it, the badge follows.
+const BADGE_COLORS = { paper: '#c8442f', dark: '#2f6bb8', blue: '#0f3a78' };
+async function applyBadge() {
+  const action = ctx.action || ctx.browserAction;
+  if (!action || !action.setBadgeText) return;
+  const { dueNow, hankoTheme } = await ctx.storage.local.get(['dueNow', 'hankoTheme']);
+  const text = typeof dueNow === 'number' && dueNow > 0 ? (dueNow > 999 ? '999+' : String(dueNow)) : '';
+  try {
+    await action.setBadgeText({ text });
+    await action.setBadgeBackgroundColor({ color: BADGE_COLORS[hankoTheme] || BADGE_COLORS.paper });
+    if (action.setBadgeTextColor) await action.setBadgeTextColor({ color: '#ffffff' });
+    await action.setTitle({ title: text ? `Hanko — давтах ${dueNow} карт` : 'Hanko' });
+  } catch (e) {
+    // a badge is decoration; never let it break the worker
+  }
+}
+ctx.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes.dueNow || changes.hankoTheme)) applyBadge();
+});
+applyBadge();
 
 // Create the right-click menu. removeAll first so re-running (on install,
 // browser startup, or an event-page wake) never errors on a duplicate id —
@@ -58,12 +95,19 @@ ctx.runtime.onInstalled.addListener(() => {
     // alarms may be unavailable; popup-open sync still works.
   }
 });
-if (ctx.runtime.onStartup) ctx.runtime.onStartup.addListener(createMenus);
+if (ctx.runtime.onStartup) {
+  ctx.runtime.onStartup.addListener(() => {
+    createMenus();
+    backgroundSync(); // fresh due count as soon as the browser opens
+  });
+}
 createMenus();
 
 function backgroundSync() {
   if (globalThis.VocabSync && VocabSync.configured()) {
-    VocabSync.fullSync().catch((err) => console.warn('Background sync failed:', err));
+    VocabSync.fullSync()
+      .catch((err) => console.warn('Background sync failed:', err))
+      .then(() => VocabSync.refreshDue());
   }
 }
 
@@ -235,14 +279,42 @@ async function lookupWord(term) {
   const word = jp.word || entry.slug || reading || '';
 
   const senses = entry.senses || [];
-  const meaning = senses
-    .slice(0, 3)
-    .map((s) => (s.english_definitions || []).join(', '))
-    .filter(Boolean)
-    .join('; ');
+  const meaning = compactGloss(
+    senses
+      .slice(0, 3)
+      .map((s) => (s.english_definitions || []).join(', '))
+      .join('; ')
+  );
 
   const mongolian = await translateToMongolian(meaning);
   return { word, reading, meaning, mongolian };
+}
+
+// A short, duplicate-free meaning: notes in brackets dropped, each item once,
+// at most 3 items and about 40 characters. Copy of compactGloss in
+// web/src/lib/gloss.ts (and mobile/lib/core/dictionary.dart) — keep in step.
+function stripNotes(text) {
+  return text
+    .replace(/\([^()]*\)|（[^（）]*）|\[[^\]]*\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function compactGloss(text) {
+  const seen = new Set();
+  const items = [];
+  let length = 0;
+  for (const raw of text.split(/[,;、，；\n]/)) {
+    const item = stripNotes(raw).replace(/^[\s.:-]+|[\s.:-]+$/g, '');
+    const key = item.toLowerCase();
+    if (!item || seen.has(key)) continue;
+    seen.add(key);
+    if (items.length && length + 2 + item.length > 40) break;
+    items.push(item);
+    length += (items.length > 1 ? 2 : 0) + item.length;
+    if (items.length === 3) break;
+  }
+  return items.join(', ');
 }
 
 // English -> Mongolian via the website's /api/translate proxy (keeps the

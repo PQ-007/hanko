@@ -419,6 +419,8 @@ class T {
   static const writingLearnedLegend = '✓ — сурсан ханз';
   static String writingStartLesson(int n) => 'Хичээл эхлэх ($n үг)';
   static String writingKanjiSelected(int k, int w) => '$k ханз → $w үг';
+  static String writingSplitHint(int n, int per) =>
+      '$n шинэ ханз сонгосон — нэг хичээлд $per хүртэл, үлдсэнийг дараагийн хичээлд.';
   static const writingBackToPick = 'Өөр үг сонгох';
   static const huntDescMobile =
       'Утгыг нь сонгох, ханзаар нь бичих асуултаар дайсантай тулалдана. Бичвэл илүү хүчтэй цохино.';

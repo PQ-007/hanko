@@ -55,6 +55,13 @@ class _WritingSetupState extends ConsumerState<WritingSetup> {
 
   bool _hasNew(Word w) => kanjiOf(w.term).any((k) => !_learned.contains(k));
 
+  /// New kanji (not learned yet) across [words], each counted once.
+  int _newIn(List<Word> words) => {
+        for (final w in words)
+          for (final k in kanjiOf(w.term))
+            if (!_learned.contains(k)) k,
+      }.length;
+
   List<Word> _chosen(List<Word> words) => _view == _View.words
       ? words.where((w) => _words.contains(w.id)).toList()
       : wordsForKanji(_kanji, words, (w) => w.term);
@@ -206,6 +213,16 @@ class _WritingSetupState extends ConsumerState<WritingSetup> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Lessons teach at most 10 new kanji each (lessonSize).
+                    if (_newIn(chosen) > newKanjiPerLesson)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          T.writingSplitHint(_newIn(chosen), newKanjiPerLesson),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: context.hk.inkMute),
+                        ),
+                      ),
                     if (_view == _View.kanji && _kanji.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),

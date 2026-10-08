@@ -21,9 +21,31 @@ class LessonStep {
       char == null ? '${kind.name}#$wordIndex' : '${kind.name}:$char';
 }
 
-/// Words per lesson: long enough to feel like a session, short enough that
-/// the three-step ladder for each new kanji doesn't drag.
-const wordsPerLesson = 5;
+/// At most this many new kanji are taught in one lesson.
+const newKanjiPerLesson = 10;
+
+/// And at most this many words, so revising known kanji doesn't run on.
+const wordsPerLesson = 10;
+
+/// How many of `terms[from…]` the next lesson takes: words in order until the
+/// next one would push the new kanji (not [learned], not already in this
+/// lesson) past [newKanjiPerLesson], or the lesson has [wordsPerLesson]
+/// words. Always at least one word, so a single word with more new kanji than
+/// the cap still gets its lesson. A port of `lessonSize` in lesson.ts.
+int lessonSize(List<String> terms, int from, {Set<String> learned = const {}}) {
+  final fresh = <String>{};
+  var n = 0;
+  for (var i = from; i < terms.length && n < wordsPerLesson; i++) {
+    final add = {
+      for (final k in kanjiOf(terms[i]))
+        if (!learned.contains(k) && !fresh.contains(k)) k,
+    };
+    if (n > 0 && fresh.length + add.length > newKanjiPerLesson) break;
+    fresh.addAll(add);
+    n++;
+  }
+  return n;
+}
 
 /// The kanji in [term] in order, kana and other characters left out.
 List<String> kanjiOf(String term) => [

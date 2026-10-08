@@ -1,7 +1,12 @@
+import { compactGloss, stripNotes } from "./gloss.ts";
+
 // English -> Mongolian translation via the unofficial Google Translate endpoint
 // (same one used for TTS). No API key required; "mn" is supported. Runs
 // server-side only. Results are cached in-memory; meaning_mn is also persisted
 // in the DB, so each word is only ever translated once.
+//
+// The output is compacted (compactGloss, see gloss.ts), like the English it is
+// translated from.
 
 const cache = new Map<string, string>();
 
@@ -12,7 +17,7 @@ export async function translateToMongolian(text: string): Promise<string> {
 
   const url =
     "https://translate.googleapis.com/translate_a/single" +
-    `?client=gtx&sl=auto&tl=mn&dt=t&q=${encodeURIComponent(word)}`;
+    `?client=gtx&sl=auto&tl=mn&dt=t&q=${encodeURIComponent(stripNotes(word) || word)}`;
   const res = await fetch(url, {
     headers: {
       "User-Agent":
@@ -30,24 +35,8 @@ export async function translateToMongolian(text: string): Promise<string> {
     .join("")
     .trim();
 
-  // Dictionary meanings are synonym lists ("careful, cautious, prudent") and
-  // Google often maps several synonyms to the same Mongolian word, yielding
-  // "болгоомжтой, болгоомжтой, …" — keep each item once.
-  if (word.includes(",")) result = dedupeList(result);
+  result = compactGloss(result);
 
   if (result) cache.set(word, result);
   return result;
-}
-
-function dedupeList(text: string): string {
-  const parts = text.split(",").map((s) => s.trim()).filter(Boolean);
-  if (parts.length < 2) return text;
-  const seen = new Set<string>();
-  const unique = parts.filter((p) => {
-    const key = p.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  return unique.join(", ");
 }

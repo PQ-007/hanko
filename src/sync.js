@@ -50,6 +50,8 @@ const VocabSync = (() => {
   async function signOut() {
     await ctx.storage.local.remove([
       "session",
+      "dueNow",
+      "dueAt",
       "lastSyncedAt",
       "lastPushedAt",
       "lastPulledAt",
@@ -352,7 +354,28 @@ const VocabSync = (() => {
     return { signedIn: true, configured: configured(), email, userId: sub };
   }
 
-  return { fullSync, signIn, signOut, status, configured, storeSession };
+  // Cards a review session started now would serve — due_summary().due_now,
+  // the same number the web dashboard shows, caps and day cutoff included.
+  // Stored as dueNow (for the popup) and returned; null when signed out or
+  // unreachable, and the last known count is then left alone.
+  async function refreshDue() {
+    if (!configured()) return null;
+    const token = await validAccessToken();
+    if (!token) {
+      await ctx.storage.local.remove(["dueNow"]);
+      return null;
+    }
+    try {
+      const rows = await rest("rpc/due_summary", { method: "POST", token, body: {} });
+      const due = Number(rows?.[0]?.due_now ?? 0);
+      await ctx.storage.local.set({ dueNow: due, dueAt: Date.now() });
+      return due;
+    } catch {
+      return null;
+    }
+  }
+
+  return { fullSync, signIn, signOut, status, configured, storeSession, refreshDue };
 })();
 
 globalThis.VocabSync = VocabSync;

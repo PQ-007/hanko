@@ -376,6 +376,8 @@ export const T = {
   writingPickNone: "Цэвэрлэх",
   writingLearnedLegend: "✓ — сурсан ханз",
   writingStartLesson: (n: number) => `Хичээл эхлэх (${n} үг)`,
+  writingSplitHint: (n: number, per: number) =>
+    `${n} шинэ ханз сонгосон — нэг хичээлд ${per} хүртэл, үлдсэнийг дараагийн хичээлд.`,
   writingKanjiSelected: (k: number, w: number) => `${k} ханз → ${w} үг`,
   writingNoKanji: "Ханзтай үг алга байна.",
   writingPreparing: "Хичээл бэлдэж байна…",

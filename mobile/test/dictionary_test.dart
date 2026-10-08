@@ -20,7 +20,7 @@ Word w({required String term, String? reading, String? meaning, String? mn, Date
 
 void main() {
   group('parseJisho', () {
-    test('takes the dictionary form, reading and first three senses', () {
+    test('takes the dictionary form, reading and a compacted meaning', () {
       final r = parseJisho({
         'data': [
           {
@@ -39,7 +39,7 @@ void main() {
       });
       expect(r.word, '担う');
       expect(r.reading, 'になう');
-      expect(r.meaning, "to carry on one's shoulder; to bear, to shoulder; to take responsibility");
+      expect(r.meaning, "to carry on one's shoulder, to bear");
     });
 
     test('a kana-only word falls back to the slug, then the reading', () {
@@ -151,6 +151,29 @@ void main() {
       expect(parseTranslation(null, source: 'x'), '');
       expect(parseTranslation([], source: 'x'), '');
     });
+  });
+
+    // Same cases as web/src/lib/gloss.test.ts.
+  group('compactGloss', () {
+    final cases = {
+      'болгоомжтой, болгоомжтой, болгоомжтой; болгоомжтой': 'болгоомжтой',
+      'хүүхэд; хүүхэд; залуу': 'хүүхэд, залуу',
+      'идэх; амьдрах (жишээ нь цалин); амьдрах': 'идэх, амьдрах',
+      'хариуцах, хариуцах; (ажил) хийх': 'хариуцах, хийх',
+      'мөрөн дээрээ авч явах; үүрэх, мөрөн дээрээ тавих; хариуцлага хүлээх':
+          'мөрөн дээрээ авч явах, үүрэх',
+      'нэг, хоёр, гурав, дөрөв': 'нэг, хоёр, гурав',
+      'муур': 'муур',
+      "to carry on one's shoulder; to bear, to shoulder; to take responsibility":
+          "to carry on one's shoulder, to bear",
+      'child; kid, Child; youngster': 'child, kid, youngster',
+      'to eat; to live on (e.g. a salary); to live off': 'to eat, to live on, to live off',
+      ' ; , ': '',
+    };
+    cases.forEach((input, want) {
+      test(input, () => expect(compactGloss(input), want));
+    });
+    test('stripNotes', () => expect(stripNotes('to live on (e.g. a salary)'), 'to live on'));
   });
 
   group('deck .txt export matches the web route', () {
