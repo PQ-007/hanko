@@ -31,6 +31,7 @@ Future<void> showStorySheet(
 
 const _optsStyle = 'hanko.story.style';
 const _optsLang = 'hanko.story.lang';
+const _optsLayout = 'hanko.story.layout';
 
 class _StorySheet extends StatefulWidget {
   const _StorySheet({required this.title, required this.card, required this.fileName, required this.emptyText});
@@ -46,6 +47,10 @@ class _StorySheet extends StatefulWidget {
 class _StorySheetState extends State<_StorySheet> {
   StoryStyle _style = StoryStyle.seal;
   StoryLang _lang = StoryLang.mn;
+  StoryLayout _layout = StoryLayout.grid;
+
+  /// Which word Spotlight/Quiz show (and the quiz's answer slot): "another word".
+  int _seed = 0;
   StoryCard? _card;
   bool _loading = true;
   bool _failed = false;
@@ -66,6 +71,7 @@ class _StorySheetState extends State<_StorySheet> {
       final prefs = await SharedPreferences.getInstance();
       _style = StoryStyle.values.asNameMap()[prefs.getString(_optsStyle)] ?? _style;
       _lang = StoryLang.values.asNameMap()[prefs.getString(_optsLang)] ?? _lang;
+      _layout = StoryLayout.values.asNameMap()[prefs.getString(_optsLayout)] ?? _layout;
     } catch (_) {}
     try {
       _card = await widget.card;
@@ -79,29 +85,37 @@ class _StorySheetState extends State<_StorySheet> {
 
   ui.Size get _size => storySize(MediaQuery.of(context).size);
 
+  bool get _quizOk => _card != null && buildStoryQuiz(_card!.words, _lang, 0) != null;
+
+  /// The layout actually drawn: Quiz falls back to Grid when there aren't
+  /// four words with meanings.
+  StoryLayout get _drawn => _layout == StoryLayout.quiz && !_quizOk ? StoryLayout.grid : _layout;
+
   Future<void> _render() async {
     final card = _card;
     if (card == null) return;
     final id = ++_renderId;
     final size = _size;
     try {
-      final png = await renderStoryCard(card, size, _style, _lang);
+      final png = await renderStoryCard(card, size, _style, _lang, layout: _drawn, seed: _seed);
       if (mounted && id == _renderId) setState(() => _png = png);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
   }
 
-  Future<void> _pick({StoryStyle? style, StoryLang? lang}) async {
+  Future<void> _pick({StoryStyle? style, StoryLang? lang, StoryLayout? layout}) async {
     setState(() {
       _style = style ?? _style;
       _lang = lang ?? _lang;
+      _layout = layout ?? _layout;
     });
     _render();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_optsStyle, _style.name);
       await prefs.setString(_optsLang, _lang.name);
+      await prefs.setString(_optsLayout, _layout.name);
     } catch (_) {}
   }
 
@@ -159,6 +173,49 @@ class _StorySheetState extends State<_StorySheet> {
             ),
           ),
           const SizedBox(height: 16),
+          Text(T.storyLayoutLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: hk.inkSoft)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (final (i, (l, label)) in const [
+                (StoryLayout.grid, T.storyLayoutGrid),
+                (StoryLayout.list, T.storyLayoutList),
+                (StoryLayout.spotlight, T.storyLayoutSpotlight),
+                (StoryLayout.quiz, T.storyLayoutQuiz),
+              ].indexed) ...[
+                if (i > 0) const SizedBox(width: 6),
+                Expanded(
+                  child: _LayoutTile(
+                    layout: l,
+                    label: label,
+                    selected: _drawn == l,
+                    enabled: l != StoryLayout.quiz || _quizOk,
+                    onTap: () => _pick(layout: l),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (_layout == StoryLayout.quiz && !_quizOk)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(T.storyQuizNeedsWords,
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: hk.inkMute)),
+            ),
+          if ((_drawn == StoryLayout.spotlight || _drawn == StoryLayout.quiz) && _card!.words.length > 1)
+            Center(
+              child: TextButton.icon(
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text(T.storyNextWord),
+                style: TextButton.styleFrom(foregroundColor: hk.sealText),
+                onPressed: () {
+                  setState(() => _seed++);
+                  _render();
+                },
+              ),
+            ),
+          const SizedBox(height: 10),
           _Row(
             label: T.storyStyleLabel,
             child: Wrap(
@@ -253,4 +310,91 @@ class _Row extends StatelessWidget {
       ],
     );
   }
+}
+
+/// One layout choice: a tiny drawing of the layout and its name.
+class _LayoutTile extends StatelessWidget {
+  const _LayoutTile({
+    required this.layout,
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+  final StoryLayout layout;
+  final String label;
+  final bool selected, enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hk = context.hk;
+    final fg = selected ? hk.ink : hk.inkSoft;
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? hk.sealTint : null,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: selected ? hk.seal : hk.line),
+          ),
+          child: Column(
+            children: [
+              CustomPaint(size: const Size(16, 24), painter: _GlyphPainter(layout, fg)),
+              const SizedBox(height: 4),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The same little layout drawings as the web picker (StoryImagePanel).
+class _GlyphPainter extends CustomPainter {
+  _GlyphPainter(this.layout, this.color);
+  final StoryLayout layout;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 18, size.height / 28);
+    final line = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final fill = Paint()..color = color.withValues(alpha: 0.6);
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(0.5, 0.5, 17, 27), const Radius.circular(3)), line);
+    void box(double x, double y, double w, double h) =>
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), const Radius.circular(1)), fill);
+    switch (layout) {
+      case StoryLayout.grid:
+        for (final y in [6.0, 13.0, 20.0]) {
+          box(3, y, 5.5, 5);
+          box(9.5, y, 5.5, 5);
+        }
+      case StoryLayout.list:
+        for (final y in [6.0, 11.0, 16.0, 21.0]) {
+          box(3, y, 12, 3.5);
+        }
+      case StoryLayout.spotlight:
+        box(3, 8, 12, 13);
+      case StoryLayout.quiz:
+        box(3, 4, 12, 7);
+        for (final y in [13.0, 16.5, 20.0, 23.5]) {
+          box(3, y, 12, 2.3);
+        }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GlyphPainter old) => old.layout != layout || old.color != color;
 }

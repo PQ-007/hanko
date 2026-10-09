@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   const deck = await fetchSharedDeck(token);
   if (!deck) return { title: T.sharedBy, robots: { index: false } };
   const title = deck.name;
-  const description = `${T.sharedWords(deck.words.length)} · ${T.sharedPitch}`;
+  const description = T.sharedWords(deck.words.length);
   return {
     title,
     description,

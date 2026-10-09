@@ -601,12 +601,13 @@ hides a user's numbers even from friends.
 
 - **`/share/<token>`** (`web/src/app/share/`) is outside `/decks`, so the
   proxy never sends a visitor to /login. Anyone with the link sees the deck's
-  words and can play Monster Hunt or flip cards with **no account and nothing
-  saved**: `_lib/trial.ts` is a local stand-in for `usePracticeSession`
-  (pinned by `trial.test.ts`), and the real arena runs on it — `BattleArena.tsx`
-  exports `Arena`, which takes any `ArenaSession`. A signed-in visitor can copy
+  words and can practise them as flip cards with **no account and nothing
+  saved** (`_lib/trial.ts`, pinned by `trial.test.ts`). **No Monster Hunt and
+  no sign-up pitch** on share surfaces (owner's call) — not on the page, the
+  trial or the expired-link page. A visitor who is already signed in can copy
   the deck (`copy_shared_deck`; the copy gets fresh `new` cards, never the
-  owner's history).
+  owner's history). `BattleArena.tsx` still exports `Arena` over any
+  `ArenaSession`, but nothing outside the hunt uses it now.
 - What a link exposes is decided in one place, `shared_deck()`: deck name +
   term/reading/meaning/meaning_mn, max 500 words. No owner, no ids, no SRS
   state. Tokens are 128 random bits and **expire 24 hours after issue**
@@ -670,10 +671,16 @@ Two traps found doing this:
   `set_deck_share` link as the web, built on `Config.webUrl` (dart-define
   `WEB_URL`, default `https://hanko-amber.vercel.app`) — the only use of the
   web's address on the phone; the app still never calls that server.
-- **Story images** (web, `_lib/storyCard.ts`): header band with up to three
-  big numbers, a two-column word grid (fewer, taller tiles; meanings wrap to
-  two lines via the tested `wrapLines`), a "+N" pill; three styles and
-  Монгол / English / Хоёул meanings, remembered per browser.
+- **Story images** (web `_lib/storyCard.ts`, mobile `story_card.dart`): four
+  layouts — **Тор** (header + two-column grid + "+N"), **Жагсаалт** (one word
+  per row), **Нэг үг** (one word, huge) and **Асуулт** (a multiple-choice quiz
+  for Instagram viewers: the word, four lettered meanings, the answer upside
+  down at the bottom). The quiz comes from `buildStoryQuiz()` — deterministic
+  in a seed, built from the card's own words, null under four distinct
+  meanings (the picker then disables Quiz) — pinned by the same cases in
+  `storyCard.test.ts` and `story_card_test.dart`. "Өөр үг" bumps the seed for
+  Нэг үг / Асуулт. Three styles, Монгол / English / Хоёул, and the layout
+  are remembered per browser / per phone.
 - **Mobile offline decks** (Drift schema v4: `OfflineDecks`,
   `OfflineDeckCards`): "Офлайнд татах" in a deck's menu saves every card
   (practice_cards), flags which ones review_queue() was serving, refreshes

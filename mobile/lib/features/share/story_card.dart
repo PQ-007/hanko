@@ -4,14 +4,21 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 
+import '../../core/strings.dart';
+
 // A full-screen, unbranded story image (Instagram / Facebook stories) drawn on
-// the phone — a port of web/src/app/decks/_lib/storyCard.ts, same layout,
-// same three styles, same numbers. Two uses: "today's words" from Home, and a
-// shared deck's invitation from the deck share sheet.
+// the phone — a port of web/src/app/decks/_lib/storyCard.ts: same four
+// layouts, same three styles, same numbers. Two uses: "today's words" from
+// Home, and a shared deck's invitation from the deck share sheet.
 //
-// Layout: a header (kicker, a headline that may take two lines, up to three
-// big numbers), then the words as a two-column grid of cards that grows to
-// fill the screen, then a "+N" pill.
+// Layouts (StoryLayout):
+//   grid       header (kicker, headline, up to three big numbers), a two-column
+//              grid of word tiles, a "+N" pill
+//   list       the same header, one word per full-width row
+//   spotlight  one word, huge — "word of the day"
+//   quiz       a multiple-choice question for the story's viewers: the word,
+//              four lettered meanings (buildStoryQuiz), the answer printed
+//              small and upside down at the bottom
 
 class StoryWord {
   const StoryWord({required this.term, this.reading, this.meaningMn, this.meaningEn});
@@ -24,6 +31,8 @@ class StoryWord {
 enum StoryStyle { seal, dark, paper }
 
 enum StoryLang { mn, en, both }
+
+enum StoryLayout { grid, list, spotlight, quiz }
 
 class StoryNumber {
   const StoryNumber(this.value, this.label);
@@ -228,6 +237,44 @@ List<String> _meaningsOf(StoryWord w, StoryLang lang) {
   };
 }
 
+/// The one meaning a quiz option shows: Mongolian first unless English is asked.
+String _quizMeaning(StoryWord w, StoryLang lang) {
+  final mn = w.meaningMn?.trim() ?? '', en = w.meaningEn?.trim() ?? '';
+  return lang == StoryLang.en ? (en.isNotEmpty ? en : mn) : (mn.isNotEmpty ? mn : en);
+}
+
+class StoryQuiz {
+  const StoryQuiz(this.word, this.options, this.answer);
+  final StoryWord word;
+  final List<String> options;
+
+  /// Index of the right option (0–3 = A–D).
+  final int answer;
+}
+
+/// A four-option question from the card's own words, deterministic in [seed]
+/// so the preview and the shared image match. The word is `candidates[seed %
+/// n]`; the wrong options are the next words' meanings in order (skipping
+/// repeats of the right one); the right one sits in slot `(3·seed + 1) % 4`.
+/// Null when fewer than four words have a distinct meaning. A port of
+/// `buildStoryQuiz` in storyCard.ts, pinned by the same cases.
+StoryQuiz? buildStoryQuiz(List<StoryWord> words, StoryLang lang, int seed) {
+  final cands = [for (final w in words) if (_quizMeaning(w, lang).isNotEmpty) w];
+  final n = cands.length;
+  if (n < 4) return null;
+  final s = seed.abs();
+  final q = s % n;
+  final right = _quizMeaning(cands[q], lang);
+  final wrong = <String>[];
+  for (var j = 1; j < n && wrong.length < 3; j++) {
+    final m = _quizMeaning(cands[(q + j) % n], lang);
+    if (m != right && !wrong.contains(m)) wrong.add(m);
+  }
+  if (wrong.length < 3) return null;
+  final answer = (3 * s + 1) % 4;
+  return StoryQuiz(cands[q], [...wrong]..insert(answer, right), answer);
+}
+
 /// Text on a canvas the way a 2D context draws it: positioned by its
 /// alphabetic baseline, measured by its advance width.
 class _Ink {
@@ -278,7 +325,15 @@ class _Ink {
 RRect _rr(double x, double y, double w, double h, double r) =>
     RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), Radius.circular(r));
 
-void drawStoryCard(Canvas canvas, ui.Size size, StoryCard card, StoryStyle style, StoryLang lang) {
+void drawStoryCard(
+  Canvas canvas,
+  ui.Size size,
+  StoryCard card,
+  StoryStyle style,
+  StoryLang lang, {
+  StoryLayout layout = StoryLayout.grid,
+  int seed = 0,
+}) {
   final W = size.width, H = size.height;
   const M = 72.0;
   final p = _palettes[style]!;
@@ -288,6 +343,15 @@ void drawStoryCard(Canvas canvas, ui.Size size, StoryCard card, StoryStyle style
     Rect.fromLTWH(0, 0, W, H),
     Paint()..shader = ui.Gradient.linear(Offset.zero, Offset(0, H), [p.bgTop, p.bgBottom]),
   );
+
+  if (layout == StoryLayout.spotlight) return _spotlight(canvas, ink, size, card, p, lang, seed);
+  if (layout == StoryLayout.quiz) {
+    final quiz = buildStoryQuiz(card.words, lang, seed);
+    // Too few words for four options: the spotlight of the same word instead.
+    return quiz == null
+        ? _spotlight(canvas, ink, size, card, p, lang, seed)
+        : _quiz(canvas, ink, size, card, p, quiz);
+  }
 
   // ---- Header ----
   final headLines = wrapLines((s) => ink.width(s, 92, FontWeight.w800), card.heading, W - 2 * M, 2);
@@ -299,25 +363,7 @@ void drawStoryCard(Canvas canvas, ui.Size size, StoryCard card, StoryStyle style
       Paint()..shader = ui.Gradient.linear(Offset.zero, Offset(W, bandH), [p.bandTop!, p.bandBottom!]),
     );
   }
-  // Decoration in the corner — depth without a logo. The ring is open at the
-  // bottom-left, like a brushed ensō.
-  if (!p.decoRing) {
-    final paint = Paint()..color = p.deco;
-    canvas.drawCircle(Offset(W - 40, 120), 300, paint);
-    canvas.drawCircle(Offset(-60, H - 160), 260, paint);
-  } else {
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(W - 80, 210), radius: 250),
-      math.pi * 0.85,
-      math.pi * 1.75,
-      false,
-      Paint()
-        ..color = p.deco
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 46
-        ..strokeCap = StrokeCap.round,
-    );
-  }
+  _deco(canvas, size, p);
 
   var y = 190.0;
   ink.draw(ink.clip(card.kicker.toUpperCase(), 34, FontWeight.w700, W - 2 * M), M, y, 34,
@@ -341,6 +387,8 @@ void drawStoryCard(Canvas canvas, ui.Size size, StoryCard card, StoryStyle style
   if (p.bandTop == null) {
     canvas.drawRect(Rect.fromLTWH(M, bandH + 4, W - 2 * M, 2), Paint()..color = p.cardLine);
   }
+
+  if (layout == StoryLayout.list) return _list(canvas, ink, size, card, p, lang, bandH);
 
   // ---- Word grid ----
   final top = bandH + 56;
@@ -416,19 +464,254 @@ void drawStoryCard(Canvas canvas, ui.Size size, StoryCard card, StoryStyle style
   }
 
   gy += gridH;
-  if (more > 0) {
-    final label = (card.moreLabel ?? (n) => '+$n')(more);
-    final pw = ink.width(label, 40, FontWeight.w800) + 80;
-    canvas.drawRRect(_rr((W - pw) / 2, gy + 34, pw, 72, 36), Paint()..color = p.pill);
-    ink.draw(label, W / 2, gy + 84, 40, FontWeight.w800, p.pillText, align: 0.5);
+  if (more > 0) _morePill(canvas, ink, size, p, card, more, gy);
+}
+
+// Decoration in the corner — depth without a logo. The ring is open at the
+// bottom-left, like a brushed ensō.
+void _deco(Canvas canvas, ui.Size size, _Palette p) {
+  final W = size.width, H = size.height;
+  if (!p.decoRing) {
+    final paint = Paint()..color = p.deco;
+    canvas.drawCircle(Offset(W - 40, 120), 300, paint);
+    canvas.drawCircle(Offset(-60, H - 160), 260, paint);
+  } else {
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(W - 80, 210), radius: 250),
+      math.pi * 0.85,
+      math.pi * 1.75,
+      false,
+      Paint()
+        ..color = p.deco
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 46
+        ..strokeCap = StrokeCap.round,
+    );
   }
 }
 
+void _morePill(Canvas canvas, _Ink ink, ui.Size size, _Palette p, StoryCard card, int more, double y) {
+  final W = size.width;
+  final label = (card.moreLabel ?? (n) => '+$n')(more);
+  final pw = ink.width(label, 40, FontWeight.w800) + 80;
+  canvas.drawRRect(_rr((W - pw) / 2, y + 34, pw, 72, 36), Paint()..color = p.pill);
+  ink.draw(label, W / 2, y + 84, 40, FontWeight.w800, p.pillText, align: 0.5);
+}
+
+/// A card-coloured rounded box with the palette's shadow and hairline.
+void _panel(Canvas canvas, _Palette p, double x, double y, double w, double h, double r) {
+  final box = _rr(x, y, w, h, r);
+  canvas.drawRRect(
+    box.shift(const Offset(0, 8)),
+    Paint()
+      ..color = p.shadow
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15),
+  );
+  canvas.drawRRect(box, Paint()..color = p.card);
+  canvas.drawRRect(
+    box,
+    Paint()
+      ..color = p.cardLine
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2,
+  );
+}
+
+String _readingOf(StoryWord w) =>
+    (w.reading != null && w.reading!.isNotEmpty && w.reading != w.term) ? w.reading! : '';
+
+// ---- list: one word per full-width row ----
+void _list(Canvas canvas, _Ink ink, ui.Size size, StoryCard card, _Palette p, StoryLang lang, double bandH) {
+  final W = size.width, H = size.height;
+  const M = 72.0, gap = 20.0, moreH = 110.0, minRow = 180.0, maxRow = 230.0;
+  final top = bandH + 56, bottom = H - 70;
+  final total = card.total ?? card.words.length;
+  final room = math.max(1, ((bottom - top - moreH + gap) / (minRow + gap)).floor());
+  final words = card.words.take(math.min(storyMaxWords, room)).toList();
+  final more = math.max(0, total - words.length);
+  final rowH = math.min(
+    maxRow,
+    (bottom - top - (more > 0 ? moreH : 0) - (words.length - 1) * gap) / math.max(words.length, 1),
+  );
+  final listH = words.length * rowH + (words.length - 1) * gap;
+  var y = top + math.max(0, (bottom - top - listH - (more > 0 ? moreH : 0)) / 4);
+  const pad = 36.0;
+  final inner = W - 2 * M - 2 * pad;
+  // The word on the left, its meaning on the right — long meanings get the
+  // larger share.
+  final leftW = (inner * 0.4).roundToDouble(), rightX = M + pad + leftW + 28, rightW = inner - leftW - 28;
+
+  for (final w in words) {
+    _panel(canvas, p, M, y, W - 2 * M, rowH, 28);
+    canvas.drawRRect(_rr(M, y + 28, 8, rowH - 56, 4), Paint()..color = p.accent);
+
+    final reading = _readingOf(w);
+    final ts = ink.fit(w.term, FontWeight.w800, 76, 40, leftW);
+    final blockH = ts + (reading.isNotEmpty ? 48 : 0);
+    var ly = y + (rowH - blockH) / 2 + ts * 0.85;
+    ink.draw(ink.clip(w.term, ts, FontWeight.w800, leftW), M + pad, ly, ts, FontWeight.w800, p.term);
+    if (reading.isNotEmpty) {
+      ly += 48;
+      ink.draw(ink.clip(reading, 30, FontWeight.w500, leftW), M + pad, ly, 30, FontWeight.w500, p.reading);
+    }
+
+    final meanings = _meaningsOf(w, lang);
+    final lines = <(String, double, FontWeight, Color)>[];
+    var budget = math.max(1, ((rowH - 40) / 42).floor());
+    for (final (mi, m) in meanings.indexed) {
+      if (budget <= 0) break;
+      final sz = mi == 0 ? 34.0 : 28.0;
+      final wt = mi == 0 ? FontWeight.w600 : FontWeight.w500;
+      final take = math.min(mi == 0 && meanings.length == 2 ? math.max(1, budget - 1) : budget, 3);
+      for (final t in wrapLines((s) => ink.width(s, sz, wt), m, rightW, take)) {
+        lines.add((t, sz, wt, mi == 0 ? p.meaning : p.reading));
+        budget--;
+      }
+    }
+    var my = y + (rowH - lines.length * 42) / 2 + 32;
+    for (final (t, sz, wt, c) in lines) {
+      ink.draw(t, rightX, my, sz, wt, c);
+      my += 42;
+    }
+    y += rowH + gap;
+  }
+  if (more > 0) _morePill(canvas, ink, size, p, card, more, y - gap);
+}
+
+/// Kicker + a smaller heading at the top of spotlight/quiz; returns the last
+/// baseline.
+double _topLines(_Ink ink, ui.Size size, _Palette p, String kicker, String heading, double hs, double lh) {
+  const M = 72.0;
+  final W = size.width;
+  var y = 200.0;
+  ink.draw(ink.clip(kicker.toUpperCase(), 34, FontWeight.w700, W - 2 * M), M, y, 34, FontWeight.w700, p.bandSoft);
+  for (final line in wrapLines((s) => ink.width(s, hs, FontWeight.w800), heading, W - 2 * M, 2)) {
+    y += lh;
+    ink.draw(line, M, y, hs, FontWeight.w800, p.bandText);
+  }
+  return y;
+}
+
+// ---- spotlight: one word, huge ----
+void _spotlight(Canvas canvas, _Ink ink, ui.Size size, StoryCard card, _Palette p, StoryLang lang, int seed) {
+  final W = size.width, H = size.height;
+  const M = 72.0;
+  _deco(canvas, size, p);
+  if (card.words.isEmpty) return;
+  final w = card.words[seed.abs() % card.words.length];
+  final y = _topLines(ink, size, p, card.kicker, card.heading, 60, 74);
+
+  final cardTop = y + 90, cardBottom = H - 230;
+  _panel(canvas, p, M, cardTop, W - 2 * M, cardBottom - cardTop, 48);
+  final inner = W - 2 * M - 120;
+  final ts = ink.fit(w.term, FontWeight.w800, 280, 110, inner);
+  final reading = _readingOf(w);
+  final meanings = _meaningsOf(w, lang);
+  final m1 = meanings.isNotEmpty
+      ? wrapLines((s) => ink.width(s, 52, FontWeight.w600), meanings[0], inner, 3)
+      : const <String>[];
+  final m2 = meanings.length > 1
+      ? wrapLines((s) => ink.width(s, 40, FontWeight.w500), meanings[1], inner, 2)
+      : const <String>[];
+  // Below the word: its descent (~0.25·size) plus a clear gap before the reading.
+  final readGap = (ts * 0.25).roundToDouble() + 76;
+  final blockH = ts + (reading.isNotEmpty ? readGap : 0) + 70 + m1.length * 66 +
+      (m2.isNotEmpty ? 20 + m2.length * 52 : 0);
+  var cy = cardTop + (cardBottom - cardTop - blockH) / 2 + ts * 0.88;
+  ink.draw(w.term, W / 2, cy, ts, FontWeight.w800, p.term, align: 0.5);
+  if (reading.isNotEmpty) {
+    cy += readGap;
+    final rs = ink.fit(reading, FontWeight.w600, 56, 32, inner);
+    ink.draw(reading, W / 2, cy, rs, FontWeight.w600, p.accent, align: 0.5);
+  }
+  cy += 40;
+  canvas.drawRRect(_rr(W / 2 - 40, cy, 80, 8, 4), Paint()..color = p.accent);
+  cy += 30 + 52;
+  for (final l in m1) {
+    ink.draw(l, W / 2, cy, 52, FontWeight.w600, p.meaning, align: 0.5);
+    cy += 66;
+  }
+  if (m2.isNotEmpty) {
+    cy += 6;
+    for (final l in m2) {
+      ink.draw(l, W / 2, cy, 40, FontWeight.w500, p.reading, align: 0.5);
+      cy += 52;
+    }
+  }
+
+  final nums = card.numbers.take(3).map((x) => '${x.value} ${x.label}').join('  ·  ');
+  if (nums.isNotEmpty) {
+    final ns = ink.fit(nums, FontWeight.w700, 36, 24, W - 2 * M);
+    ink.draw(nums, W / 2, H - 130, ns, FontWeight.w700, p.bandSoft, align: 0.5);
+  }
+}
+
+// ---- quiz: a multiple-choice question for the viewers ----
+void _quiz(Canvas canvas, _Ink ink, ui.Size size, StoryCard card, _Palette p, StoryQuiz quiz) {
+  final W = size.width, H = size.height;
+  const M = 72.0, letters = ['A', 'B', 'C', 'D'];
+  _deco(canvas, size, p);
+  final y = _topLines(ink, size, p, card.kicker, T.storyQuizPrompt, 64, 78);
+
+  // The question card and four options, as one block centred between the
+  // prompt and the answer line, as large as the space allows.
+  final reading = _readingOf(quiz.word);
+  const gap = 26.0, between = 56.0;
+  final areaTop = y + 60, areaBottom = H - 200;
+  final avail = areaBottom - areaTop;
+  final qH = math.min(reading.isNotEmpty ? 520.0 : 440.0, (avail * 0.36).roundToDouble());
+  final oH = math.min(210.0, (avail - qH - between - 3 * gap) / 4);
+  final blockH = qH + between + 4 * oH + 3 * gap;
+  final qTop = areaTop + math.max(0, (avail - blockH) / 2);
+
+  _panel(canvas, p, M, qTop, W - 2 * M, qH, 44);
+  final inner = W - 2 * M - 100;
+  final ts = ink.fit(quiz.word.term, FontWeight.w800, 230, 90, inner);
+  final readGap = (ts * 0.25).roundToDouble() + 64;
+  final wordH = ts * 0.75 + (reading.isNotEmpty ? readGap : 0);
+  final termY = qTop + (qH - wordH) / 2 + ts * 0.75;
+  ink.draw(quiz.word.term, W / 2, termY, ts, FontWeight.w800, p.term, align: 0.5);
+  if (reading.isNotEmpty) {
+    final rs = ink.fit(reading, FontWeight.w600, 54, 30, inner);
+    ink.draw(reading, W / 2, termY + readGap, rs, FontWeight.w600, p.accent, align: 0.5);
+  }
+
+  final oTop = qTop + qH + between;
+  final textX = M + 160, textW = W - 2 * M - 160 - 44;
+  final badge = math.min(46.0, oH / 2 - 16);
+  for (final (i, opt) in quiz.options.indexed) {
+    final oy = oTop + i * (oH + gap);
+    _panel(canvas, p, M, oy, W - 2 * M, oH, math.min(44, oH / 2));
+    canvas.drawCircle(Offset(M + 84, oy + oH / 2), badge, Paint()..color = p.pill);
+    ink.draw(letters[i], M + 84, oy + oH / 2 + 15, 44, FontWeight.w800, p.pillText, align: 0.5);
+    final lines = wrapLines((s) => ink.width(s, 42, FontWeight.w600), opt, textW, oH > 140 ? 2 : 1);
+    var ty = oy + (oH - lines.length * 52) / 2 + 38;
+    for (final l in lines) {
+      ink.draw(l, textX, ty, 42, FontWeight.w600, p.meaning);
+      ty += 52;
+    }
+  }
+
+  // The answer, small and upside down — turn the phone to check.
+  canvas.save();
+  canvas.translate(W / 2, H - 120);
+  canvas.rotate(math.pi);
+  ink.draw('${T.storyQuizAnswer}: ${letters[quiz.answer]}', 0, 0, 32, FontWeight.w700, p.bandSoft, align: 0.5);
+  canvas.restore();
+}
+
 /// The card as PNG bytes.
-Future<Uint8List> renderStoryCard(StoryCard card, ui.Size size, StoryStyle style, StoryLang lang) async {
+Future<Uint8List> renderStoryCard(
+  StoryCard card,
+  ui.Size size,
+  StoryStyle style,
+  StoryLang lang, {
+  StoryLayout layout = StoryLayout.grid,
+  int seed = 0,
+}) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder, Offset.zero & size);
-  drawStoryCard(canvas, size, card, style, lang);
+  drawStoryCard(canvas, size, card, style, lang, layout: layout, seed: seed);
   final picture = recorder.endRecording();
   final image = await picture.toImage(size.width.round(), size.height.round());
   try {

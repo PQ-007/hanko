@@ -449,6 +449,15 @@ class T {
   static const storyLangMn = 'Монгол';
   static const storyLangEn = 'English';
   static const storyLangBoth = 'Хоёул';
+  static const storyLayoutLabel = 'Хэлбэр';
+  static const storyLayoutGrid = 'Тор';
+  static const storyLayoutList = 'Жагсаалт';
+  static const storyLayoutSpotlight = 'Нэг үг';
+  static const storyLayoutQuiz = 'Асуулт';
+  static const storyNextWord = 'Өөр үг';
+  static const storyQuizPrompt = 'Энэ үг ямар утгатай вэ?';
+  static const storyQuizAnswer = 'Хариулт';
+  static const storyQuizNeedsWords = 'Асуулт хийхэд утгатай 4+ үг хэрэгтэй';
   static const sharedBy = 'Хуваалцсан багц';
   static const shareDeckTitle = 'Багцыг хуваалцах';
   static const shareDeckDesc = 'Холбоосыг авсан хэн ч бүртгэлгүйгээр үгсийг харж, хөтөч дээр давтаж тоглож чадна. Таны нэр, давтлагын түүх харагдахгүй. Холбоос 24 цаг хүчинтэй.';

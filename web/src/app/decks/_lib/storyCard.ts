@@ -2,13 +2,17 @@
 // a canvas in the browser — no server, no package. Sized to the phone it's made
 // on (storySize), so it fills that screen edge to edge. Two uses: "today's
 // words" from the stats page, and a shared deck's invitation from the deck
-// share dialog.
+// share dialog. mobile/lib/features/share/story_card.dart is a port.
 //
-// Layout: a coloured header band (kicker, a headline that may take two lines,
-// and up to three big numbers), then the words as a two-column grid of cards
-// that grows to fill the screen — term large, reading under it, the meaning
-// wrapped onto two lines rather than cut off — then a "+N" pill and, for a
-// shared deck, the link.
+// Four layouts (StoryLayout):
+//   grid       header (kicker, headline, up to three big numbers), then a
+//              two-column grid of word tiles and a "+N" pill
+//   list       the same header, one word per full-width row — more meaning
+//              shows per word
+//   spotlight  one word, huge, with its reading and meaning — "word of the day"
+//   quiz       a multiple-choice question for the story's viewers: the word,
+//              four lettered meanings (buildStoryQuiz), and the answer printed
+//              small and upside down at the bottom
 
 export interface StoryWord {
   term: string;
@@ -19,6 +23,8 @@ export interface StoryWord {
 
 export type StoryStyle = "seal" | "dark" | "paper";
 export type StoryLang = "mn" | "en" | "both";
+export type StoryLayout = "grid" | "list" | "spotlight" | "quiz";
+export const STORY_LAYOUTS: StoryLayout[] = ["grid", "list", "spotlight", "quiz"];
 
 export interface StoryCard {
   /** Small line over the heading, e.g. the date or "shared deck". */
@@ -34,6 +40,13 @@ export interface StoryCard {
   footer?: string;
   style?: StoryStyle;
   lang?: StoryLang;
+  layout?: StoryLayout;
+  /** Which word spotlight/quiz use, and the quiz's answer slot — bump it for
+   *  "another word". */
+  seed?: number;
+  /** Quiz copy: the question line and the label of the upside-down answer. */
+  quizPrompt?: string;
+  quizAnswer?: string;
 }
 
 export const STORY_W = 1080;
@@ -250,6 +263,47 @@ function meaningOf(w: StoryWord, lang: StoryLang): string[] {
   return [mn, en].filter((x): x is string => !!x);
 }
 
+/** The one meaning a quiz option shows: Mongolian first unless English is asked. */
+function quizMeaning(w: StoryWord, lang: StoryLang): string {
+  const mn = w.meaningMn?.trim() || "";
+  const en = w.meaningEn?.trim() || "";
+  return lang === "en" ? en || mn : mn || en;
+}
+
+export interface StoryQuiz {
+  word: StoryWord;
+  options: string[];
+  /** Index of the right option (0–3 = A–D). */
+  answer: number;
+}
+
+/**
+ * A four-option question from the card's own words, deterministic in `seed`
+ * so the preview and the shared image are the same. The word is
+ * `candidates[seed % n]`; the wrong options are the next words' meanings in
+ * order (skipping repeats of the right one); the right one sits in slot
+ * `(3·seed + 1) % 4`. Null when fewer than four words have a distinct meaning.
+ * Pure — storyCard.test.ts and mobile's story_card_test.dart pin the same cases.
+ */
+export function buildStoryQuiz(words: StoryWord[], lang: StoryLang, seed: number): StoryQuiz | null {
+  const cands = words.filter((w) => quizMeaning(w, lang));
+  const n = cands.length;
+  if (n < 4) return null;
+  const s = Math.abs(Math.trunc(seed));
+  const q = s % n;
+  const right = quizMeaning(cands[q], lang);
+  const wrong: string[] = [];
+  for (let j = 1; j < n && wrong.length < 3; j++) {
+    const m = quizMeaning(cands[(q + j) % n], lang);
+    if (m !== right && !wrong.includes(m)) wrong.push(m);
+  }
+  if (wrong.length < 3) return null;
+  const answer = (3 * s + 1) % 4;
+  const options = [...wrong];
+  options.splice(answer, 0, right);
+  return { word: cands[q], options, answer };
+}
+
 export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
   const p = PALETTES[card.style ?? "seal"];
@@ -263,6 +317,14 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
+  const layout = card.layout ?? "grid";
+  if (layout === "spotlight") return drawSpotlight(ctx, card, p, lang);
+  if (layout === "quiz") {
+    const quiz = buildStoryQuiz(card.words, lang, card.seed ?? 0);
+    // Too few words for four options: the spotlight of the same word instead.
+    return quiz ? drawQuiz(ctx, card, p, quiz) : drawSpotlight(ctx, card, p, lang);
+  }
+
   // ---- Header band ----
   ctx.font = font(800, 92);
   const headLines = wrapLines((s) => ctx.measureText(s).width, card.heading, W - 2 * M, 2);
@@ -275,25 +337,7 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
     ctx.fillStyle = band;
     ctx.fillRect(0, 0, W, bandH);
   }
-  // Decoration in the corner — depth without a logo. The ring is open at the
-  // bottom-left, like a brushed ensō.
-  if (p.deco.kind === "disc") {
-    ctx.fillStyle = p.deco.color;
-    ctx.beginPath();
-    ctx.arc(W - 40, 120, 300, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(-60, H - 160, 260, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    ctx.strokeStyle = p.deco.color;
-    ctx.lineCap = "round";
-    ctx.lineWidth = 46;
-    ctx.beginPath();
-    ctx.arc(W - 80, 210, 250, Math.PI * 0.85, Math.PI * 2.6);
-    ctx.stroke();
-    ctx.lineCap = "butt";
-  }
+  drawDeco(ctx, p);
 
   let y = 190;
   ctx.fillStyle = p.bandSoft;
@@ -324,6 +368,8 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
     ctx.fillStyle = p.cardLine;
     ctx.fillRect(M, bandH + 4, W - 2 * M, 2);
   }
+
+  if (layout === "list") return drawList(ctx, card, p, lang, bandH);
 
   // ---- Word grid ----
   const footerH = card.footer ? 150 : 0;
@@ -402,18 +448,7 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   });
 
   gy += gridH;
-  if (more > 0) {
-    const label = (card.moreLabel ?? ((n: number) => `+${n}`))(more);
-    ctx.font = font(800, 40);
-    const pw = ctx.measureText(label).width + 80;
-    ctx.fillStyle = p.pill;
-    roundRect(ctx, (W - pw) / 2, gy + 34, pw, 72, 36);
-    ctx.fill();
-    ctx.fillStyle = p.pillText;
-    ctx.textAlign = "center";
-    ctx.fillText(label, W / 2, gy + 84);
-    ctx.textAlign = "left";
-  }
+  if (more > 0) drawMorePill(ctx, p, card, more, gy);
 
   // ---- Footer: where to go (the deck link). Nothing at all without one. ----
   if (!card.footer) return;
@@ -430,6 +465,279 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   ctx.textAlign = "center";
   ctx.fillText(clip(ctx, card.footer, fw - 60), W / 2, fy + 62);
   ctx.textAlign = "left";
+}
+
+// Decoration in the corner — depth without a logo. The ring is open at the
+// bottom-left, like a brushed ensō.
+function drawDeco(ctx: CanvasRenderingContext2D, p: Palette) {
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  if (p.deco.kind === "disc") {
+    ctx.fillStyle = p.deco.color;
+    ctx.beginPath();
+    ctx.arc(W - 40, 120, 300, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-60, H - 160, 260, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = p.deco.color;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 46;
+    ctx.beginPath();
+    ctx.arc(W - 80, 210, 250, Math.PI * 0.85, Math.PI * 2.6);
+    ctx.stroke();
+    ctx.lineCap = "butt";
+  }
+}
+
+function drawMorePill(ctx: CanvasRenderingContext2D, p: Palette, card: StoryCard, more: number, y: number) {
+  const W = ctx.canvas.width;
+  const label = (card.moreLabel ?? ((n: number) => `+${n}`))(more);
+  ctx.font = font(800, 40);
+  const pw = ctx.measureText(label).width + 80;
+  ctx.fillStyle = p.pill;
+  roundRect(ctx, (W - pw) / 2, y + 34, pw, 72, 36);
+  ctx.fill();
+  ctx.fillStyle = p.pillText;
+  ctx.textAlign = "center";
+  ctx.fillText(label, W / 2, y + 84);
+  ctx.textAlign = "left";
+}
+
+/** A card-coloured rounded box with the palette's shadow and hairline. */
+function panel(ctx: CanvasRenderingContext2D, p: Palette, x: number, y: number, w: number, h: number, r: number) {
+  ctx.save();
+  ctx.shadowColor = p.shadow;
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = p.card;
+  roundRect(ctx, x, y, w, h, r);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = p.cardLine;
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, w, h, r);
+  ctx.stroke();
+}
+
+/** Lines of text centred on cx, the first baseline at y; returns the y after. */
+function centred(ctx: CanvasRenderingContext2D, lines: string[], cx: number, y: number, lineH: number) {
+  ctx.textAlign = "center";
+  for (const l of lines) {
+    ctx.fillText(l, cx, y);
+    y += lineH;
+  }
+  ctx.textAlign = "left";
+  return y;
+}
+
+// ---- list: one word per full-width row ----
+function drawList(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, lang: StoryLang, bandH: number) {
+  const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
+  const top = bandH + 56, bottom = H - 70;
+  const gap = 20, MORE_H = 110, MIN_ROW = 180, MAX_ROW = 230;
+  const total = card.total ?? card.words.length;
+  const room = Math.max(1, Math.floor((bottom - top - MORE_H + gap) / (MIN_ROW + gap)));
+  const words = card.words.slice(0, Math.min(STORY_MAX_WORDS, room));
+  const more = Math.max(0, total - words.length);
+  const rowH = Math.min(MAX_ROW, (bottom - top - (more ? MORE_H : 0) - (words.length - 1) * gap) / Math.max(words.length, 1));
+  const listH = words.length * rowH + (words.length - 1) * gap;
+  let y = top + Math.max(0, (bottom - top - listH - (more ? MORE_H : 0)) / 4);
+  const pad = 36, inner = W - 2 * M - 2 * pad;
+  // The word on the left, its meaning on the right: a column split that
+  // gives long meanings the larger share.
+  const leftW = Math.round(inner * 0.4), rightX = M + pad + leftW + 28, rightW = inner - leftW - 28;
+
+  for (const w of words) {
+    panel(ctx, p, M, y, W - 2 * M, rowH, 28);
+    ctx.fillStyle = p.accent;
+    roundRect(ctx, M, y + 28, 8, rowH - 56, 4);
+    ctx.fill();
+
+    const reading = w.reading && w.reading !== w.term ? w.reading : "";
+    const ts = fit(ctx, w.term, 800, 76, 40, leftW);
+    const blockH = ts + (reading ? 48 : 0);
+    let ly = y + (rowH - blockH) / 2 + ts * 0.85;
+    ctx.fillStyle = p.term;
+    ctx.font = font(800, ts);
+    ctx.fillText(clip(ctx, w.term, leftW), M + pad, ly);
+    if (reading) {
+      ctx.fillStyle = p.reading;
+      ctx.font = font(500, 30);
+      ly += 48;
+      ctx.fillText(clip(ctx, reading, leftW), M + pad, ly);
+    }
+
+    const meanings = meaningOf(w, lang);
+    const lines: { text: string; size: number; weight: number; color: string }[] = [];
+    let budget = Math.max(1, Math.floor((rowH - 40) / 42));
+    meanings.forEach((m, mi) => {
+      if (budget <= 0) return;
+      const size = mi === 0 ? 34 : 28, weight = mi === 0 ? 600 : 500;
+      ctx.font = font(weight, size);
+      const take = Math.min(mi === 0 && meanings.length === 2 ? Math.max(1, budget - 1) : budget, 3);
+      for (const t of wrapLines((s) => ctx.measureText(s).width, m, rightW, take)) {
+        lines.push({ text: t, size, weight, color: mi === 0 ? p.meaning : p.reading });
+        budget--;
+      }
+    });
+    let my = y + (rowH - lines.length * 42) / 2 + 32;
+    for (const l of lines) {
+      ctx.fillStyle = l.color;
+      ctx.font = font(l.weight, l.size);
+      ctx.fillText(l.text, rightX, my);
+      my += 42;
+    }
+    y += rowH + gap;
+  }
+  if (more > 0) drawMorePill(ctx, p, card, more, y - gap);
+}
+
+// ---- spotlight: one word, huge ----
+function drawSpotlight(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, lang: StoryLang) {
+  const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
+  drawDeco(ctx, p);
+  const n = card.words.length;
+  if (!n) return;
+  const w = card.words[Math.abs(Math.trunc(card.seed ?? 0)) % n];
+
+  // Top: kicker and the heading, smaller than the other layouts' — the word
+  // is the headline here.
+  let y = 200;
+  ctx.fillStyle = p.bandSoft;
+  ctx.font = font(700, 34);
+  ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
+  ctx.fillStyle = p.bandText;
+  ctx.font = font(800, 60);
+  for (const line of wrapLines((s) => ctx.measureText(s).width, card.heading, W - 2 * M, 2)) {
+    y += 74;
+    ctx.fillText(line, M, y);
+  }
+
+  // The word, centred in what's left, on one big card.
+  const cardTop = y + 90, cardBottom = H - 230;
+  panel(ctx, p, M, cardTop, W - 2 * M, cardBottom - cardTop, 48);
+  const inner = W - 2 * M - 120;
+  const ts = fit(ctx, w.term, 800, 280, 110, inner);
+  const reading = w.reading && w.reading !== w.term ? w.reading : "";
+  const meanings = meaningOf(w, lang);
+  ctx.font = font(600, 52);
+  const m1 = meanings[0] ? wrapLines((s) => ctx.measureText(s).width, meanings[0], inner, 3) : [];
+  ctx.font = font(500, 40);
+  const m2 = meanings[1] ? wrapLines((s) => ctx.measureText(s).width, meanings[1], inner, 2) : [];
+  // Below the word: its descent (~0.25·size) plus a clear gap before the reading.
+  const readGap = Math.round(ts * 0.25) + 76;
+  const blockH = ts + (reading ? readGap : 0) + 70 + m1.length * 66 + (m2.length ? 20 + m2.length * 52 : 0);
+  let cy = cardTop + (cardBottom - cardTop - blockH) / 2 + ts * 0.88;
+  ctx.fillStyle = p.term;
+  ctx.font = font(800, ts);
+  centred(ctx, [w.term], W / 2, cy, 0);
+  if (reading) {
+    cy += readGap;
+    ctx.fillStyle = p.accent;
+    ctx.font = font(600, fit(ctx, reading, 600, 56, 32, inner));
+    centred(ctx, [reading], W / 2, cy, 0);
+  }
+  cy += 40;
+  ctx.fillStyle = p.accent;
+  roundRect(ctx, W / 2 - 40, cy, 80, 8, 4);
+  ctx.fill();
+  cy += 30 + 52;
+  ctx.fillStyle = p.meaning;
+  ctx.font = font(600, 52);
+  cy = centred(ctx, m1, W / 2, cy, 66);
+  if (m2.length) {
+    ctx.fillStyle = p.reading;
+    ctx.font = font(500, 40);
+    centred(ctx, m2, W / 2, cy + 20 - 14, 52);
+  }
+
+  // Bottom: the numbers as one quiet line.
+  const nums = (card.numbers ?? []).slice(0, 3).map((x) => `${x.value} ${x.label}`).join("  ·  ");
+  if (nums) {
+    ctx.fillStyle = p.bandSoft;
+    ctx.font = font(700, fit(ctx, nums, 700, 36, 24, W - 2 * M));
+    centred(ctx, [nums], W / 2, H - 130, 0);
+  }
+}
+
+// ---- quiz: a multiple-choice question for the viewers ----
+function drawQuiz(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, quiz: StoryQuiz) {
+  const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
+  drawDeco(ctx, p);
+  const LETTERS = ["A", "B", "C", "D"];
+
+  let y = 200;
+  ctx.fillStyle = p.bandSoft;
+  ctx.font = font(700, 34);
+  ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
+  ctx.fillStyle = p.bandText;
+  ctx.font = font(800, 64);
+  for (const line of wrapLines((s) => ctx.measureText(s).width, card.quizPrompt ?? "?", W - 2 * M, 2)) {
+    y += 78;
+    ctx.fillText(line, M, y);
+  }
+
+  // The question card and four options, as one block centred between the
+  // prompt and the answer line, as large as the space allows.
+  const reading = quiz.word.reading && quiz.word.reading !== quiz.word.term ? quiz.word.reading : "";
+  const areaTop = y + 60, areaBottom = H - 200, gap = 26, between = 56;
+  const avail = areaBottom - areaTop;
+  const qH = Math.min(reading ? 520 : 440, Math.round(avail * 0.36));
+  const oH = Math.min(210, (avail - qH - between - 3 * gap) / 4);
+  const blockH = qH + between + 4 * oH + 3 * gap;
+  const qTop = areaTop + Math.max(0, (avail - blockH) / 2);
+
+  panel(ctx, p, M, qTop, W - 2 * M, qH, 44);
+  const inner = W - 2 * M - 100;
+  const ts = fit(ctx, quiz.word.term, 800, 230, 90, inner);
+  const readGap = Math.round(ts * 0.25) + 64;
+  const wordH = ts * 0.75 + (reading ? readGap : 0);
+  const termY = qTop + (qH - wordH) / 2 + ts * 0.75;
+  ctx.fillStyle = p.term;
+  ctx.font = font(800, ts);
+  centred(ctx, [quiz.word.term], W / 2, termY, 0);
+  if (reading) {
+    ctx.fillStyle = p.accent;
+    ctx.font = font(600, fit(ctx, reading, 600, 54, 30, inner));
+    centred(ctx, [reading], W / 2, termY + readGap, 0);
+  }
+
+  const oTop = qTop + qH + between;
+  const textX = M + 160, textW = W - 2 * M - 160 - 44;
+  const badge = Math.min(46, oH / 2 - 16);
+  quiz.options.forEach((opt, i) => {
+    const oy = oTop + i * (oH + gap);
+    panel(ctx, p, M, oy, W - 2 * M, oH, Math.min(44, oH / 2));
+    // Letter badge.
+    ctx.fillStyle = p.pill;
+    ctx.beginPath();
+    ctx.arc(M + 84, oy + oH / 2, badge, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = p.pillText;
+    ctx.font = font(800, 44);
+    centred(ctx, [LETTERS[i]], M + 84, oy + oH / 2 + 15, 0);
+    // Option text, up to two lines.
+    ctx.font = font(600, 42);
+    const lines = wrapLines((s) => ctx.measureText(s).width, opt, textW, oH > 140 ? 2 : 1);
+    ctx.fillStyle = p.meaning;
+    let ty = oy + (oH - lines.length * 52) / 2 + 38;
+    for (const l of lines) {
+      ctx.fillText(l, textX, ty);
+      ty += 52;
+    }
+  });
+
+  // The answer, small and upside down — turn the phone to check.
+  const answer = `${card.quizAnswer ?? "Answer"}: ${LETTERS[quiz.answer]}`;
+  ctx.save();
+  ctx.translate(W / 2, H - 120);
+  ctx.rotate(Math.PI);
+  ctx.fillStyle = p.bandSoft;
+  ctx.font = font(700, 32);
+  ctx.textAlign = "center";
+  ctx.fillText(answer, 0, 0);
+  ctx.restore();
 }
 
 /** The card as a PNG. Waits for fonts so the first render isn't in a fallback face. */
