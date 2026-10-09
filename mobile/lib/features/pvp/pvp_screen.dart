@@ -17,6 +17,33 @@ import '../duel/duel_api.dart';
 import '../duel/duel_rules.dart';
 import '../duel/duel_screen.dart';
 import '../duel/opponent.dart';
+import '../duel/remote_launch.dart';
+
+/// A friend to challenge, set from elsewhere (the friends tab's "Тулах"):
+/// the lobby picks it up, sends the invitation and shows the waiting room.
+final pendingDuelChallengeProvider = NotifierProvider<PendingChallenge, FriendLite?>(PendingChallenge.new);
+
+class PendingChallenge extends Notifier<FriendLite?> {
+  @override
+  FriendLite? build() => null;
+
+  // ignore: use_setters_to_change_properties
+  void set(FriendLite? f) => state = f;
+}
+
+/// Challenges waiting for me (0030), polled — the app has no push. Shared by
+/// the lobby and the app-wide banner.
+final duelInvitesProvider = StreamProvider.autoDispose<List<DuelInvite>>((ref) async* {
+  final api = ref.watch(duelApiProvider);
+  while (true) {
+    try {
+      yield await api.invites();
+    } catch (_) {
+      yield const [];
+    }
+    await Future<void>.delayed(const Duration(seconds: 12));
+  }
+});
 
 /// The duel lobby (web DuelLobby.tsx), the Тулаан section of the friends tab: a bot at three levels with no network
 /// at all, or a friend by invite code (PVP.md: no queue — with a handful of
@@ -31,6 +58,71 @@ class DuelLobbyView extends ConsumerStatefulWidget {
 class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
   final _code = TextEditingController();
   MatchRow? _lobby;
+  List<FriendLite> _friends = const [];
+
+  /// Who the open invitation is to (the waiting room says so).
+  String? _invitee;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(duelApiProvider).friends().then((f) {
+      if (mounted) setState(() => _friends = f);
+    }, onError: (_) {});
+    // A challenge chosen on the friends tab before this tab existed.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takePending());
+  }
+
+  void _takePending() {
+    final f = ref.read(pendingDuelChallengeProvider);
+    if (f == null || !mounted) return;
+    ref.read(pendingDuelChallengeProvider.notifier).set(null);
+    _invite(f);
+  }
+
+  Future<void> _invite(FriendLite f) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final m = await ref.read(duelApiProvider).inviteFriend(f.userId, ref.read(heroProvider));
+      if (!mounted) return;
+      setState(() {
+        _lobby = m;
+        _invitee = f.label;
+      });
+      _waitForGuest(m.id);
+    } catch (_) {
+      if (mounted) setState(() => _error = T.duelInviteFailed);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _accept(DuelInvite inv) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final m = await ref.read(duelApiProvider).acceptInvite(inv.matchId, ref.read(heroProvider));
+      if (!mounted) return;
+      _startRemote(m);
+    } catch (_) {
+      if (mounted) setState(() => _error = T.duelInviteAcceptFailed);
+    } finally {
+      ref.invalidate(duelInvitesProvider);
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _decline(DuelInvite inv) async {
+    try {
+      await ref.read(duelApiProvider).declineInvite(inv.matchId);
+    } catch (_) {}
+    ref.invalidate(duelInvitesProvider);
+  }
   bool _busy = false;
   String? _error;
   Timer? _poll;
@@ -160,23 +252,12 @@ class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
 
   void _startRemote(MatchRow m) {
     _stopWaiting();
-    final api = ref.read(duelApiProvider);
-    final me = api.userId;
-    final isHost = m.hostId == me;
-    final opponentId = isHost ? m.guestId : m.hostId;
-    if (opponentId == null) return;
-    setState(() => _lobby = null);
-    _openDuel(
-      () => RemoteOpponent(
-        api: api,
-        matchId: m.id,
-        opponentId: opponentId,
-        name: T.multiplayerTitle,
-        slug: (isHost ? m.guestCharacter : m.hostCharacter) ?? 'knight',
-        baselineMs: isHost ? m.guestBaselineMs : m.hostBaselineMs,
-      ),
-      matchId: m.id,
-    );
+    setState(() {
+      _lobby = null;
+      _invitee = null;
+    });
+    // Loads who the opponent is and your record, then opens on the intro.
+    openRemoteDuel(context, ref, m);
   }
 
   void _openDuel(OpponentDriver Function() make, {String? matchId}) {
@@ -195,6 +276,10 @@ class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(pendingDuelChallengeProvider, (_, next) {
+      if (next != null) _takePending();
+    });
+    final invites = ref.watch(duelInvitesProvider).value ?? const <DuelInvite>[];
     final hero = ref.watch(heroProvider);
     final words = ref.watch(allWordsProvider).value;
     final tooFew = words != null && words.length < minWordsForBattle;
@@ -245,6 +330,50 @@ class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
             style: TextStyle(color: context.hk.inkSoft),
           ),
         ] else ...[
+          if (invites.isNotEmpty && lobby == null) ...[
+            const SizedBox(height: 16),
+            Text(T.duelInvitesTitle, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final inv in invites) ...[
+              Card(
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: context.hk.seal, width: 1.5),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [
+                        Icon(Icons.sports_kabaddi, color: context.hk.sealText),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            inv.rematch ? T.duelRematchFrom(inv.label) : T.duelInviteFrom(inv.label),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 10),
+                      Row(children: [
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _busy ? null : () => _accept(inv),
+                            child: const Text(T.duelInviteAccept),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(onPressed: () => _decline(inv), child: const Text(T.duelInviteDecline)),
+                      ]),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
           const SizedBox(height: 16),
           Text(
             T.duelBotSection,
@@ -286,7 +415,21 @@ class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
+                child: lobby.invitedId != null
+                    ? Column(children: [
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 12),
+                        Text(
+                          _invitee != null ? T.duelInviteSentTo(_invitee!) : T.duelWaitingGuest,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(T.duelInviteSentDesc,
+                            textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: context.hk.inkMute)),
+                        TextButton(onPressed: _cancelLobby, child: const Text(T.duelCancel)),
+                      ])
+                    : Column(
                   children: [
                     const Text(T.duelCodeLabel),
                     SelectableText(
@@ -334,6 +477,41 @@ class _DuelLobbyViewState extends ConsumerState<DuelLobbyView> {
               ),
             )
           else ...[
+            Text(T.duelInviteFriendSection,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.hk.inkSoft)),
+            const SizedBox(height: 6),
+            if (_friends.isEmpty)
+              Text(T.duelNoFriends, style: TextStyle(fontSize: 12, color: context.hk.inkMute))
+            else
+              Card(
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    for (final (i, f) in _friends.indexed) ...[
+                      if (i > 0) const Divider(height: 1),
+                      ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: context.hk.sealTint,
+                          child: Text(
+                            f.label.replaceAll('@', '').characters.first.toUpperCase(),
+                            style: TextStyle(color: context.hk.sealText, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        title: Text(f.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: f.name != null && f.handle != null ? Text('@${f.handle}') : null,
+                        trailing: FilledButton.tonalIcon(
+                          onPressed: _busy ? null : () => _invite(f),
+                          icon: const Icon(Icons.sports_kabaddi, size: 16),
+                          label: const Text(T.duelInviteBtn),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _busy ? null : _create,
               icon: const Icon(Icons.add),

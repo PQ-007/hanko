@@ -254,6 +254,33 @@ class T {
   static const duelLeaveDesc = 'Гарвал энэ тулаанд ялагдсанд тооцогдоно.';
   static const duelLeave = 'Гарах';
   static const duelStay = 'Үргэлжлүүлэх';
+  // Friend invites, face-to-face record, rematch (0030) — strings.ts.
+  static const duelInviteFriendSection = 'Найзаа урих';
+  static const duelPickFriend = 'Найзаа сонгоод тулаанд урь — код хэрэггүй.';
+  static const duelNoFriends = 'Найз алга байна. Найзууд хэсгээс найзаа нэмээрэй.';
+  static const duelInviteBtn = 'Урих';
+  static String duelInviteSentTo(String name) => '$name-г хүлээж байна…';
+  static const duelInviteSentDesc = 'Урилга илгээгдлээ. Найз тань хүлээн авахад тулаан шууд эхэлнэ.';
+  static const duelInviteFailed = 'Урилга илгээж чадсангүй.';
+  static const duelInvitesTitle = 'Ирсэн урилга';
+  static String duelInviteFrom(String name) => '$name тантай тулахыг урьж байна';
+  static String duelRematchFrom(String name) => '$name дахин тулахыг хүсч байна';
+  static const duelInviteAccept = 'Хүлээн авах';
+  static const duelInviteDecline = 'Татгалзах';
+  static const duelInviteAcceptFailed = 'Урилга хүчингүй болсон байна.';
+  static const duelRecTitle = 'Нүүр тулсан бичлэг';
+  static String duelRecGames(int n) => '$n тоглолт';
+  static const duelRecFirst = 'Анхны тулаан';
+  static const duelRecFirstDesc = 'Та хоёрын нүүр тулсан бичлэг эндээс эхэлнэ.';
+  static String duelRecSummary(int w, int l, int d) => '$w хожил · $l хожигдол${d > 0 ? ' · $d тэнцээ' : ''}';
+  static const duelIntroKicker = 'Нүүр тулах тулаан';
+  static String duelIntroStarting(int n) => '$n секундын дараа эхэлнэ…';
+  static const duelIntroGo = 'Эхэллээ!';
+  static String duelRematchWaiting(String name) => '$name-г хүлээж байна…';
+  static const duelRematchCancel = 'Болих';
+  static String duelRematchIncoming(String name) => '$name дахин тулах гэж байна';
+  static const duelRematchFailed = 'Дахин тулаан үүсгэж чадсангүй.';
+  static const duelChallenge = 'Тулах';
   static const duelOnlineUnavailable = 'Онлайн тулаан одоогоор боломжгүй (сервер бэлэн биш эсвэл интернэт алга).';
 
   // ---- Mobile only -------------------------------------------------------

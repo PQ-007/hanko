@@ -3,27 +3,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/repository.dart';
 import 'package:mobile/features/duel/duel_controller.dart';
 import 'package:mobile/features/duel/duel_rules.dart';
+import 'package:mobile/features/duel/duel_shared.dart';
 import 'package:mobile/features/duel/opponent.dart';
 import 'package:mobile/models/queue_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FakeRepo extends Repository {
   FakeRepo()
-      : super(SupabaseClient('http://localhost', 'k', authOptions: const AuthClientOptions(autoRefreshToken: false)));
+    : super(SupabaseClient('http://localhost', 'k', authOptions: const AuthClientOptions(autoRefreshToken: false)));
   final logged = <Map<String, Object?>>[];
+  int practiceCalls = 0;
 
   @override
-  Future<List<QueueCard>> practiceCards({String? deckId, int limit = 60}) async => [
-        for (var i = 0; i < 5; i++)
-          QueueCard(cardId: 'c$i', wordId: 'w$i', deckId: 'd', template: 'recognition', state: 'review',
-              learningStep: 0, dueAt: DateTime(2026), intervalDays: 3, repetitions: 2, easeFactor: 2.5,
-              term: '語$i', reading: 'ご$i', meaningMn: 'мн$i'),
-      ];
+  Future<List<QueueCard>> practiceCards({String? deckId, int limit = 60}) async {
+    practiceCalls++;
+    return [
+      for (var i = 0; i < 5; i++)
+        QueueCard(
+          cardId: 'c$i',
+          wordId: 'w$i',
+          deckId: 'd',
+          template: 'recognition',
+          state: 'review',
+          learningStep: 0,
+          dueAt: DateTime(2026),
+          intervalDays: 3,
+          repetitions: 2,
+          easeFactor: 2.5,
+          term: '語$i',
+          reading: 'ご$i',
+          meaningMn: 'мн$i',
+        ),
+    ];
+  }
 
   @override
   Future<List<QuizWordRow>> quizWords() async => [
-        for (var i = 0; i < 6; i++) (id: 'w$i', term: '語$i', reading: 'ご$i', meaning: 'm$i', meaningMn: 'мн$i'),
-      ];
+    for (var i = 0; i < 6; i++) (id: 'w$i', term: '語$i', reading: 'ご$i', meaning: 'm$i', meaningMn: 'мн$i'),
+  ];
 
   @override
   Future<Map<String, dynamic>> reviewCard({
@@ -51,8 +68,10 @@ class FixedBot extends OpponentDriver {
   @override
   int? get baselineMs => 4000;
   @override
-  Future<DuelAnswer?> answerFor(int roundNo, int durationMs, RoundCancel cancel) =>
-      Future.delayed(Duration(milliseconds: never ? durationMs : ms), () => never ? null : DuelAnswer(correct: correct, elapsedMs: ms));
+  Future<DuelAnswer?> answerFor(int roundNo, int durationMs, RoundCancel cancel) => Future.delayed(
+    Duration(milliseconds: never ? durationMs : ms),
+    () => never ? null : DuelAnswer(correct: correct, elapsedMs: ms),
+  );
 }
 
 /// A real opponent whose app went away: no answers, and after three rounds
@@ -182,6 +201,53 @@ void main() {
       final round = c.roundNo;
       async.elapse(const Duration(seconds: 30));
       expect(c.roundNo, round, reason: 'no more rounds after they left');
+      c.dispose();
+    });
+  });
+
+  test('a planned question set is what both players answer (0030)', () {
+    fakeAsync((async) {
+      final repo = FakeRepo();
+      final clock = async.getClock(DateTime(2026));
+      final c = DuelController(
+        repo: repo,
+        opponent: FixedBot(),
+        hero: 'knight',
+        yourBaselineMs: 4000,
+        rand: () => 0.5,
+        now: () => clock.now().millisecondsSinceEpoch,
+        questions: parseQuestions([
+          {
+            'term': '猫',
+            'reading': 'ねこ',
+            'options': ['нохой', 'муур', 'загас', 'шувуу'],
+            'answer': 1,
+          },
+          {
+            'term': '犬',
+            'reading': 'いぬ',
+            'options': ['нохой', 'муур', 'загас', 'шувуу'],
+            'answer': 0,
+          },
+        ]),
+        cardForTerm: (term) async => 'mine-$term',
+      )..load();
+      async.flushMicrotasks();
+
+      expect(c.shared, isTrue);
+      expect(c.term, '猫');
+      expect(c.quiz!.map((o) => o.answerText), ['нохой', 'муур', 'загас', 'шувуу'], reason: "the server's order");
+      expect(c.quiz!.indexWhere((o) => o.correct), 1);
+      expect(repo.practiceCalls, 0, reason: 'no own-deck fetch when the words come with the match');
+
+      answerRight(c);
+      async.flushMicrotasks();
+      // Logged against MY card for that word, as battle — never scheduled.
+      expect(repo.logged.single, {'card': 'mine-猫', 'rating': 'good', 'source': 'battle'});
+
+      async.elapse(const Duration(milliseconds: 15000));
+      expect(c.roundNo, 2);
+      expect(c.term, '犬');
       c.dispose();
     });
   });

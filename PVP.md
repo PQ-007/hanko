@@ -353,6 +353,11 @@ own card for round N from their own `practice_cards()` fetch. The schedule is
 *timing*, shared; the *content* is per-player, and that is what keeps a
 200-word deck fair against a 2,000-word one.
 
+> **Superseded by `0030_duel_friends.sql`.** The owner wanted both players on
+> identical questions, so the server now plans the whole question set at match
+> start (`matches.questions`): shared words first, then each library in turn.
+> Timing is still issued per round exactly as above. See CLAUDE.md 3.2.
+
 **Done when:** an answer on one screen moves the HP bar on the other within a
 few hundred ms, and a refresh mid-match rejoins at the correct round.
 

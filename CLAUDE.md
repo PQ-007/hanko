@@ -522,10 +522,40 @@ Two things a future session must not "tidy up":
   wired through it is unplayable on exactly the day you have finished your
   reviews.
 
+**Friends, identical questions, record, rematch (`0030_duel_friends.sql`,
+web + mobile).** Owner's call, reversing the "own deck" rule below for PvP:
+- **Both players answer the same questions.** When a match starts,
+  `duel_start()` → `duel_plan_questions()` plans all of its rounds once and
+  stores them on `matches.questions` (`[{term, reading, options[4], answer}]`):
+  words both players have *with the same meaning* first, then each library in
+  turn, options drawn from both. Clients read it (`sharedQuestions.ts` /
+  `duel_shared.dart`, same cases) and fall back to their own deck only for a
+  match with no set (bots, pre-0030 rows). The answer index is readable by
+  both — no new hole, clients already self-report `correct`. A shared answer
+  is logged against the player's *own* card for that term, if any.
+- **Invites:** `invite_to_duel(friend)` (friends only, idempotent for 10 min),
+  `duel_invites()`, `accept_duel_invite()`, `decline_duel_invite()`;
+  `join_match` refuses a code for someone else's invitation. Web: lobby
+  friend list + an app-wide toast (`DuelInviteToast`, Realtime + 20 s poll);
+  the friends page links `?invite=<id>`. Mobile: lobby friend list, a
+  "Тулах" button on friend tiles, and an app-wide banner (`AppShell`, 12 s
+  poll — there is no push).
+- **Record:** an intro before every PvP match (`DuelIntro` / `_Intro`, 4.5 s)
+  shows names and your face-to-face record — score, a result bar, the last
+  five as chips — via `headToHead()`; the result screen shows it again with
+  this match counted. Names come from `duel_opponent()` (handle always,
+  name/picture for friends only, like 0027).
+- **Rematch:** `duel_rematch(match)` is idempotent and symmetric — first
+  press creates the invitation, the other player's press starts it — with the
+  old match row locked so simultaneous presses serialise.
+- Verified against Postgres 16 as `authenticated`: non-friend invites,
+  someone else's invitation by id or by code, and direct calls to the
+  planners are refused; re-running the migration is safe.
+
 - Two players (or player vs. bot), each with an HP bar; center timer and a
   multiple-choice question box
-- Each round both players are quizzed **from their own deck**, not a shared pool
-  — keeps fights fair across mismatched deck sizes
+- ~~Each round both players are quizzed from their own deck~~ — superseded by
+  0030 above for PvP; bot duels still draw from your own deck
 - Speed-scaled damage, measured against the player's own historical average from
   `review_log.duration_ms` (this is why 0.4 exists)
 - Wrong answer = no damage, or a brief self-penalty

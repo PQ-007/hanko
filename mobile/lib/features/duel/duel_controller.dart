@@ -10,6 +10,7 @@ import '../../models/queue_card.dart';
 import '../battle/rules.dart';
 import '../battle/sprites.dart' show attackPose, maxAttackTier;
 import 'duel_rules.dart';
+import 'duel_shared.dart';
 import 'opponent.dart';
 
 const _uuid = Uuid();
@@ -40,9 +41,13 @@ class DuelController extends ChangeNotifier {
     required this.yourBaselineMs,
     this.deckId,
     this.rand = defaultRand,
+    this.questions,
+    this.introDelay = Duration.zero,
+    this.cardForTerm,
     int Function() now = _wallClockMs,
     // ignore: prefer_initializing_formals
-  }) : _now = now;
+  }) : _now = now,
+       introDone = introDelay == Duration.zero;
 
   final Repository repo;
   final OpponentDriver opponent;
@@ -51,6 +56,24 @@ class DuelController extends ChangeNotifier {
   final Rand rand;
   final int? yourBaselineMs;
   final int Function() _now;
+
+  /// The question set the server planned (0030): both players answer these.
+  /// Null for a bot, or a match from before 0030 — then each player draws
+  /// from their own deck.
+  final List<SharedQuestion>? questions;
+
+  /// How long the pre-fight screen (names + record) holds before round 1.
+  final Duration introDelay;
+  bool introDone;
+
+  /// Your own card for a shared question's word, to log the answer against.
+  final Future<String?> Function(String term)? cardForTerm;
+
+  bool get shared => questions != null;
+  SharedQuestion? get sharedQuestion => shared ? questionFor(questions!, roundNo) : null;
+
+  /// The word being asked this round.
+  String? get term => sharedQuestion?.term ?? card?.term;
 
   List<QueueCard>? cards;
   List<QuizWord>? words;
@@ -83,11 +106,25 @@ class DuelController extends ChangeNotifier {
   /// An opponent who left (stopped answering for several rounds) loses.
   DuelOutcome get outcome => opponent.left ? DuelOutcome.won : duelOutcome(state);
   int get durationMs => roundDurationMs(roundNo);
-  QueueCard? get card => (cards?.isNotEmpty ?? false) ? cards![(roundNo - 1) % cards!.length] : null;
-  bool get notEnoughWords => words != null && words!.length < minWordsForBattle;
+  QueueCard? get card => !shared && (cards?.isNotEmpty ?? false) ? cards![(roundNo - 1) % cards!.length] : null;
+  bool get notEnoughWords => !shared && words != null && words!.length < minWordsForBattle;
   bool get ready => quiz != null;
 
   Future<void> load() async {
+    // Only a real intro waits: a zero-length timer would still push round 1
+    // back a tick, which a bot match has no reason to pay.
+    final intro = introDelay > Duration.zero ? Future<void>.delayed(introDelay) : null;
+    if (shared) {
+      words = const [];
+      cards = const [];
+      _notify();
+      if (intro != null) await intro;
+      if (_disposed) return;
+      introDone = true;
+      _startRound();
+      _notify();
+      return;
+    }
     try {
       final rows = await repo.quizWords();
       words = [
@@ -101,27 +138,33 @@ class DuelController extends ChangeNotifier {
       cards ??= const [];
     }
     if (_disposed) return;
+    if (intro != null) await intro;
+    if (_disposed) return;
+    introDone = true;
     if (!notEnoughWords && card != null) _startRound();
     _notify();
   }
 
   void _startRound() {
     final c = card;
-    if (c == null || words == null) return;
+    final q = sharedQuestion;
+    if (q == null && (c == null || words == null)) return;
     _answered = false;
     yourPick = null;
     timedOut = false;
     opponentAnswered = false;
     phase = DuelPhase.question;
-    quiz = buildQuiz(
-      wordId: c.wordId,
-      term: c.term,
-      reading: c.reading,
-      meaning: c.meaning,
-      meaningMn: c.meaningMn,
-      allWords: words!,
-      rand: rand,
-    );
+    quiz = q != null
+        ? quizFor(q)
+        : buildQuiz(
+            wordId: c!.wordId,
+            term: c.term,
+            reading: c.reading,
+            meaning: c.meaning,
+            meaningMn: c.meaningMn,
+            allWords: words!,
+            rand: rand,
+          );
     _startedAt = _now();
     remainingMs = durationMs;
     _tick?.cancel();
@@ -165,6 +208,13 @@ class DuelController extends ChangeNotifier {
     yourPick = option;
     final answer = DuelAnswer(correct: option.correct, elapsedMs: _elapsed);
     _yours?.complete(answer);
+    final q = sharedQuestion;
+    if (q != null) {
+      // The server's question: logged against your own card for that word if
+      // you have one (for XP and your answer-time baseline), never scheduled.
+      unawaited(_logShared(q.term, option.correct, answer.elapsedMs));
+      unawaited(opponent.submit(roundNo, answer, null).catchError((_) {}));
+    }
     final played = card;
     if (played != null) {
       // Logged, never scheduled — 'battle' is review_card()'s log-only branch.
@@ -182,6 +232,22 @@ class DuelController extends ChangeNotifier {
     }
     HapticFeedback.selectionClick();
     _notify();
+  }
+
+  Future<void> _logShared(String term, bool correct, int ms) async {
+    try {
+      final id = await cardForTerm?.call(term);
+      if (id == null) return;
+      await repo.reviewCard(
+        cardId: id,
+        rating: correct ? 'good' : 'again',
+        logId: _uuid.v4(),
+        durationMs: ms,
+        source: 'battle',
+      );
+    } catch (_) {
+      // A dropped log costs a row of analytics, not the match.
+    }
   }
 
   void _closeRound(DuelAnswer? you, DuelAnswer? them) {
