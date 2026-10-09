@@ -20,7 +20,10 @@ export interface LessonStep {
   char?: string;
 }
 
-export const WORDS_PER_LESSON = 5;
+/** At most this many new kanji are taught in one lesson. */
+export const NEW_KANJI_PER_LESSON = 10;
+/** And at most this many words, so revising known kanji doesn't run on. */
+export const WORDS_PER_LESSON = 10;
 
 export function kanjiOf(term: string): string[] {
   return [...term].filter(hasKanji);
@@ -85,4 +88,24 @@ export function wordsForKanji<T>(kanji: string[], words: T[], termOf: (w: T) => 
     if (w !== undefined) out.push(w);
   }
   return out;
+}
+
+/**
+ * How many of terms[from…] the next lesson takes: words in order until the
+ * next one would push the new kanji (not learned, not already in this lesson)
+ * past NEW_KANJI_PER_LESSON, or the lesson has WORDS_PER_LESSON words. Always
+ * at least one word, so a single word with more new kanji than the cap still
+ * gets its lesson instead of blocking the queue.
+ */
+export function lessonSize(terms: string[], from: number, learned: Set<string> = new Set()): number {
+  const fresh = new Set<string>();
+  let n = 0;
+  for (let i = from; i < terms.length && n < WORDS_PER_LESSON; i++) {
+    const add = kanjiOf(terms[i]).filter((k) => !learned.has(k) && !fresh.has(k));
+    const unique = new Set(add);
+    if (n > 0 && fresh.size + unique.size > NEW_KANJI_PER_LESSON) break;
+    unique.forEach((k) => fresh.add(k));
+    n++;
+  }
+  return n;
 }

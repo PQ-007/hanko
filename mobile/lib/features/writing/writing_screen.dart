@@ -59,7 +59,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   String? _status;
   String? _error;
 
-  /// Every practisable word; lessons take [wordsPerLesson] at a time.
+  /// Every practisable word; each lesson takes [lessonSize] of them.
   List<Word> _pool = const [];
   Map<String, String> _cardIds = const {};
 
@@ -103,7 +103,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
 
   // ---- Setup -----------------------------------------------------------------
 
-  /// Starts lessons over [words], in order, [wordsPerLesson] at a time.
+  /// Starts lessons over [words], in order, at most 10 new kanji at a time.
   Future<void> _begin(List<Word> words) async {
     setState(() {
       _picking = false;
@@ -140,7 +140,9 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   }
 
   Future<void> _startLesson() async {
-    final words = _pool.skip(_offset).take(wordsPerLesson).toList();
+    // At most 10 new kanji per lesson (lessonSize); the rest wait.
+    final size = lessonSize([for (final w in _pool) w.term], _offset, learned: _learned);
+    final words = _pool.skip(_offset).take(size).toList();
     _offset += words.length;
     if (mounted) setState(() => _status = T.writingPreparing);
     final kanji = {for (final w in words) ...kanjiOf(w.term)};

@@ -1,10 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, RotateCcw } from "@/ui/icons";
+import { ArrowLeft, Loader2, RotateCcw } from "@/ui/icons";
 import { T } from "../../../_lib/strings";
+import type { HeadToHead } from "../../../_lib/social";
 import FighterSprite from "../../battle/_components/FighterSprite";
 import type { DuelOutcome, DuelState, ResolvedRound } from "../_lib/duel";
+import type { MatchRow } from "../_lib/match";
+import { loadRecord, recordTotal } from "../_lib/record";
+import { useRematch } from "../_lib/useRematch";
+import H2HRecord from "./H2HRecord";
+
+/** What the result screen needs to show a person-vs-person ending. */
+export interface OnlineResult {
+  matchId: string;
+  meId: string;
+  opponentId: string;
+  /** Your record BEFORE this match (it is added to once the match is written). */
+  before: HeadToHead | null;
+  onRematchStarted: (match: MatchRow) => void;
+}
 
 // Derived here rather than tracked during the match, the same way
 // BattleResult reads the raw event log: the arena should not carry state that
@@ -46,6 +62,7 @@ export default function DuelResult({
   onRematch,
   exitHref,
   opponentLeft = false,
+  online,
 }: {
   outcome: DuelOutcome;
   rounds: ResolvedRound[];
@@ -57,6 +74,8 @@ export default function DuelResult({
   exitHref: string;
   /** The win came from the other player leaving, not from the fight. */
   opponentLeft?: boolean;
+  /** Set for a match against a person: record, and a rematch that asks them. */
+  online?: OnlineResult;
 }) {
   const { correct, damage, bestStreak } = summarise(rounds);
 
@@ -126,20 +145,123 @@ export default function DuelResult({
           <Tile label={T.duelResultDamage} value={damage} />
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-          {onRematch && (
-            <button onClick={onRematch} className="hk-btn hk-btn-primary px-5 py-2.5 text-sm">
-              <RotateCcw size={15} /> {T.duelRematch}
-            </button>
-          )}
-          <Link
-            href={exitHref}
-            className="hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10"
-          >
-            <ArrowLeft size={15} /> {T.exitBattle}
-          </Link>
-        </div>
+        {online ? (
+          <OnlineEnd online={online} hero={hero} opponentName={opponentName} exitHref={exitHref} />
+        ) : (
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            {onRematch && (
+              <button onClick={onRematch} className="hk-btn hk-btn-primary px-5 py-2.5 text-sm">
+                <RotateCcw size={15} /> {T.duelRematch}
+              </button>
+            )}
+            <ExitLink href={exitHref} />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function ExitLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10"
+    >
+      <ArrowLeft size={15} /> {T.exitBattle}
+    </Link>
+  );
+}
+
+/**
+ * The ending of a match against a person: your record with them (this match
+ * included, once it has been written — the last round's resolve_round is what
+ * finishes it, so it is polled for a moment), and the "again" button.
+ */
+function OnlineEnd({
+  online,
+  hero,
+  opponentName,
+  exitHref,
+}: {
+  online: OnlineResult;
+  hero: string;
+  opponentName: string;
+  exitHref: string;
+}) {
+  const [record, setRecord] = useState<HeadToHead | null>(online.before);
+  const wanted = online.before ? recordTotal(online.before) + 1 : 1;
+
+  useEffect(() => {
+    let cancelled = false;
+    let tries = 0;
+    const load = async () => {
+      const r = await loadRecord(online.meId, online.opponentId);
+      if (cancelled) return;
+      if (recordTotal(r) >= wanted || tries >= 6) setRecord(r);
+      else {
+        tries++;
+        setTimeout(load, 1200);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [online.meId, online.opponentId, wanted]);
+
+  const { state, failed, request, cancel } = useRematch({
+    matchId: online.matchId,
+    meId: online.meId,
+    hero,
+    onStarted: online.onRematchStarted,
+  });
+
+  return (
+    <>
+      {record && <H2HRecord record={record} youName={T.duelYou} themName={opponentName} compact />}
+
+      {state === "incoming" && (
+        <p className="text-center text-sm font-semibold text-amber-200">{T.duelRematchIncoming(opponentName)}</p>
+      )}
+      {failed && <p className="text-center text-xs text-red-300">{T.duelRematchFailed}</p>}
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+        {state === "waiting" ? (
+          <>
+            <span className="hk-btn cursor-default bg-white/10 px-5 py-2.5 text-sm text-paper/80">
+              <Loader2 size={15} className="animate-spin" /> {T.duelRematchWaiting(opponentName)}
+            </span>
+            <button
+              onClick={cancel}
+              className="hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10"
+            >
+              {T.duelRematchCancel}
+            </button>
+            <ExitLink href={exitHref} />
+          </>
+        ) : (
+          <>
+            <button
+              onClick={request}
+              disabled={state === "sending"}
+              className="hk-btn hk-btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
+            >
+              {state === "sending" ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+              {state === "incoming" ? T.duelInviteAccept : T.duelRematch}
+            </button>
+            {state === "incoming" && (
+              <button
+                onClick={cancel}
+                className="hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10"
+              >
+                {T.duelInviteDecline}
+              </button>
+            )}
+            <ExitLink href={exitHref} />
+          </>
+        )}
+      </div>
+    </>
   );
 }

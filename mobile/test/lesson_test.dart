@@ -81,4 +81,32 @@ void main() {
     expect(wordsForKanji(['中', '食'], words, (w) => w), ['連中', '食べる']);
     expect(wordsForKanji(['猫'], words, (w) => w), isEmpty);
   });
+
+  // Same cases as lesson.test.ts (web).
+  group('lessonSize', () {
+    const pairs = ['学校', '先生', '電車', '会社', '時間', '新聞'];
+
+    test('stops before passing 10 new kanji', () {
+      expect(lessonSize(pairs, 0), 5); // 5 × 2 = 10; the 6th would make 12
+      expect(lessonSize(pairs, 5), 1); // the rest is the next lesson
+    });
+
+    test("kanji already learned don't count", () {
+      expect(lessonSize(pairs, 0, learned: {'学', '校', '先', '生'}), 6);
+    });
+
+    test('a kanji repeated across words counts once', () {
+      expect(lessonSize(['学校', '学生', '校長'], 0), 3);
+    });
+
+    test('one word over the cap still gets a lesson', () {
+      expect(lessonSize(['一二三四五六七八九十百', '学校'], 0), 1);
+    });
+
+    test('at most 10 words even when nothing is new', () {
+      final terms = List.filled(12, '学校');
+      expect(lessonSize(terms, 0, learned: {'学', '校'}), 10);
+      expect(lessonSize(const [], 0), 0);
+    });
+  });
 }

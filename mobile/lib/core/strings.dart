@@ -254,6 +254,33 @@ class T {
   static const duelLeaveDesc = 'Гарвал энэ тулаанд ялагдсанд тооцогдоно.';
   static const duelLeave = 'Гарах';
   static const duelStay = 'Үргэлжлүүлэх';
+  // Friend invites, face-to-face record, rematch (0030) — strings.ts.
+  static const duelInviteFriendSection = 'Найзаа урих';
+  static const duelPickFriend = 'Найзаа сонгоод тулаанд урь — код хэрэггүй.';
+  static const duelNoFriends = 'Найз алга байна. Найзууд хэсгээс найзаа нэмээрэй.';
+  static const duelInviteBtn = 'Урих';
+  static String duelInviteSentTo(String name) => '$name-г хүлээж байна…';
+  static const duelInviteSentDesc = 'Урилга илгээгдлээ. Найз тань хүлээн авахад тулаан шууд эхэлнэ.';
+  static const duelInviteFailed = 'Урилга илгээж чадсангүй.';
+  static const duelInvitesTitle = 'Ирсэн урилга';
+  static String duelInviteFrom(String name) => '$name тантай тулахыг урьж байна';
+  static String duelRematchFrom(String name) => '$name дахин тулахыг хүсч байна';
+  static const duelInviteAccept = 'Хүлээн авах';
+  static const duelInviteDecline = 'Татгалзах';
+  static const duelInviteAcceptFailed = 'Урилга хүчингүй болсон байна.';
+  static const duelRecTitle = 'Нүүр тулсан бичлэг';
+  static String duelRecGames(int n) => '$n тоглолт';
+  static const duelRecFirst = 'Анхны тулаан';
+  static const duelRecFirstDesc = 'Та хоёрын нүүр тулсан бичлэг эндээс эхэлнэ.';
+  static String duelRecSummary(int w, int l, int d) => '$w хожил · $l хожигдол${d > 0 ? ' · $d тэнцээ' : ''}';
+  static const duelIntroKicker = 'Нүүр тулах тулаан';
+  static String duelIntroStarting(int n) => '$n секундын дараа эхэлнэ…';
+  static const duelIntroGo = 'Эхэллээ!';
+  static String duelRematchWaiting(String name) => '$name-г хүлээж байна…';
+  static const duelRematchCancel = 'Болих';
+  static String duelRematchIncoming(String name) => '$name дахин тулах гэж байна';
+  static const duelRematchFailed = 'Дахин тулаан үүсгэж чадсангүй.';
+  static const duelChallenge = 'Тулах';
   static const duelOnlineUnavailable = 'Онлайн тулаан одоогоор боломжгүй (сервер бэлэн биш эсвэл интернэт алга).';
 
   // ---- Mobile only -------------------------------------------------------
@@ -419,6 +446,8 @@ class T {
   static const writingLearnedLegend = '✓ — сурсан ханз';
   static String writingStartLesson(int n) => 'Хичээл эхлэх ($n үг)';
   static String writingKanjiSelected(int k, int w) => '$k ханз → $w үг';
+  static String writingSplitHint(int n, int per) =>
+      '$n шинэ ханз сонгосон — нэг хичээлд $per хүртэл, үлдсэнийг дараагийн хичээлд.';
   static const writingBackToPick = 'Өөр үг сонгох';
   static const huntDescMobile =
       'Утгыг нь сонгох, ханзаар нь бичих асуултаар дайсантай тулалдана. Бичвэл илүү хүчтэй цохино.';
@@ -447,6 +476,15 @@ class T {
   static const storyLangMn = 'Монгол';
   static const storyLangEn = 'English';
   static const storyLangBoth = 'Хоёул';
+  static const storyLayoutLabel = 'Хэлбэр';
+  static const storyLayoutGrid = 'Тор';
+  static const storyLayoutList = 'Жагсаалт';
+  static const storyLayoutSpotlight = 'Нэг үг';
+  static const storyLayoutQuiz = 'Асуулт';
+  static const storyNextWord = 'Өөр үг';
+  static const storyQuizPrompt = 'Энэ үг ямар утгатай вэ?';
+  static const storyQuizAnswer = 'Хариулт';
+  static const storyQuizNeedsWords = 'Асуулт хийхэд утгатай 4+ үг хэрэгтэй';
   static const sharedBy = 'Хуваалцсан багц';
   static const shareDeckTitle = 'Багцыг хуваалцах';
   static const shareDeckDesc = 'Холбоосыг авсан хэн ч бүртгэлгүйгээр үгсийг харж, хөтөч дээр давтаж тоглож чадна. Таны нэр, давтлагын түүх харагдахгүй. Холбоос 24 цаг хүчинтэй.';

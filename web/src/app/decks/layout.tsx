@@ -4,6 +4,7 @@ import HeaderNav from "./_components/HeaderNav";
 import EnsureTimezone from "./_components/EnsureTimezone";
 import TabBar from "./_components/TabBar";
 import PageTitle from "./_components/PageTitle";
+import DuelInviteToast from "./_components/DuelInviteToast";
 import { T } from "./_lib/strings";
 import { Settings2 } from "@/ui/icons";
 
@@ -62,6 +63,7 @@ export default async function DecksLayout({
         {children}
       </main>
       <TabBar />
+      <DuelInviteToast />
     </div>
   );
 }

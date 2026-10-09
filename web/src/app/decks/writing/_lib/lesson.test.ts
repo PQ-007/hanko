@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kanjiInOrder, kanjiOf, kanjiPositions, partialStrokes, planLesson, wordsForKanji } from "./lesson.ts";
+import { kanjiInOrder, kanjiOf, kanjiPositions, lessonSize, partialStrokes, planLesson, wordsForKanji } from "./lesson.ts";
 
 // The same cases as mobile's lesson_test.dart.
 const plan = (terms: string[], learned: string[] = []) =>
@@ -42,4 +42,30 @@ test("positions, the partial count, the kanji grid and kanji -> words", () => {
   const words = ["連帯", "連中", "中心", "食べる"];
   assert.deepEqual(wordsForKanji(["連", "帯"], words, (w) => w), ["連帯"]);
   assert.deepEqual(wordsForKanji(["中", "食"], words, (w) => w), ["連中", "食べる"]);
+});
+
+// lessonSize — same cases as lesson_test.dart.
+const pairs = ["学校", "先生", "電車", "会社", "時間", "新聞"];
+
+test("lessonSize: stops before passing 10 new kanji", () => {
+  assert.equal(lessonSize(pairs, 0), 5); // 5 × 2 = 10; the 6th would make 12
+  assert.equal(lessonSize(pairs, 5), 1); // the rest is the next lesson
+});
+
+test("lessonSize: kanji already learned don't count", () => {
+  assert.equal(lessonSize(pairs, 0, new Set(["学", "校", "先", "生"])), 6);
+});
+
+test("lessonSize: a kanji repeated across words counts once", () => {
+  assert.equal(lessonSize(["学校", "学生", "校長"], 0), 3);
+});
+
+test("lessonSize: one word over the cap still gets a lesson", () => {
+  assert.equal(lessonSize(["一二三四五六七八九十百", "学校"], 0), 1);
+});
+
+test("lessonSize: at most 10 words even when nothing is new", () => {
+  const terms = Array.from({ length: 12 }, () => "学校");
+  assert.equal(lessonSize(terms, 0, new Set(["学", "校"])), 10);
+  assert.equal(lessonSize([], 0), 0);
 });

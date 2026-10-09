@@ -341,6 +341,11 @@ function Avatar({ name, image, size = 40 }: { name: string; image: string | null
   );
 }
 
+/** Challenge a friend directly (0030): the duel lobby sends the invitation. */
+function duelInviteHref(userId: string, name: string) {
+  return `/decks/review/duel?invite=${encodeURIComponent(userId)}&name=${encodeURIComponent(name)}`;
+}
+
 function ActivityCard({ row: r, onRemove }: { row: FriendRow; onRemove?: () => void }) {
   const xp = r.xp_total ?? 0;
   const lv = levelFor(xp);
@@ -363,8 +368,13 @@ function ActivityCard({ row: r, onRemove }: { row: FriendRow; onRemove?: () => v
               .join(" · ")}
           </p>
         </div>
-        {!r.is_me && r.shares && (
-          <Link href="/decks/review/duel" className="hk-btn px-2.5 py-1 text-xs" title={T.socialChallenge}>
+        {!r.is_me && (
+          <Link
+            href={duelInviteHref(r.user_id, name)}
+            className="hk-btn px-2.5 py-1 text-xs"
+            title={T.socialChallenge}
+            aria-label={T.socialChallenge}
+          >
             <Swords size={13} />
           </Link>
         )}
@@ -637,7 +647,10 @@ function DuelLog({
     <div className={box}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-ink">{T.socialDuelsWith(entry.name)}</p>
-        <Link href="/decks/review/duel" className="flex items-center gap-1 text-xs font-semibold text-seal hover:underline">
+        <Link
+          href={duelInviteHref(entry.userId, entry.name)}
+          className="flex items-center gap-1 text-xs font-semibold text-seal hover:underline"
+        >
           <Swords size={13} /> {T.socialChallenge}
         </Link>
       </div>

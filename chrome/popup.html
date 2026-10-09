@@ -1,38 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="mn">
 <head>
 <meta charset="UTF-8" />
+<!-- Google's TTS (the fallback voice in HankoUI.speak) refuses requests that
+     carry a Referer. -->
+<meta name="referrer" content="no-referrer" />
 <title>Hanko</title>
 <link rel="stylesheet" href="popup.css" />
 </head>
-<body>
-  <header>
-    <h1>Hanko</h1>
-    <p class="subtitle">Хадгалсан үгс — Anki-д бэлэн.</p>
-    <div id="accountBar" class="account-bar">
-      <span id="accountStatus" class="account-status">Нэвтрээгүй</span>
-      <button id="authBtn" class="secondary">Нэвтрэх</button>
+<body class="hk">
+  <div id="app" class="app">
+    <header class="top">
+      <span class="hk-mark" id="mark"></span>
+      <div class="brand">
+        <h1>Hanko</h1>
+        <div class="account">
+          <span id="accountStatus" class="account-status">Нэвтрээгүй</span>
+          <button id="authBtn" class="link-btn">Нэвтрэх</button>
+        </div>
+      </div>
+      <button id="syncBtn" class="hk-btn hk-ghost hk-icon-btn sync-btn" title="Синк хийх" aria-label="Синк хийх" hidden>
+        <span class="hk-ico" data-icon="sync"></span>
+      </button>
+      <div id="themePick" class="theme-pick" role="radiogroup" aria-label="Загвар"></div>
+    </header>
+
+    <!-- Today: cards due now (signed in), or why to sign in (signed out). -->
+    <section id="today" class="today" hidden></section>
+
+    <div class="search">
+      <span class="hk-ico" data-icon="search"></span>
+      <input id="search" type="search" placeholder="Үг хайх…" aria-label="Үг хайх" autocomplete="off" />
+      <kbd>/</kbd>
     </div>
-  </header>
 
-  <div class="deck-bar">
-    <select id="deckSelect"></select>
-    <button id="newDeckBtn" class="secondary" title="Шинэ багц үүсгэх">+ Багц</button>
+    <div class="deck-bar" id="deckBar">
+      <select id="deckSelect" class="hk-field" aria-label="Багц"></select>
+      <button id="newDeckBtn" class="hk-btn hk-quiet hk-icon-btn" title="Шинэ багц" aria-label="Шинэ багц">
+        <span class="hk-ico" data-icon="plus"></span>
+      </button>
+    </div>
+
+    <form id="newDeckForm" class="new-deck-form hidden">
+      <input id="newDeckName" class="hk-field" type="text" placeholder="Шинэ багцын нэр" />
+      <button id="confirmNewDeck" type="submit" class="hk-btn hk-primary">Нэмэх</button>
+    </form>
+
+    <div id="listMeta" class="list-meta"></div>
+    <main id="wordList" class="words"></main>
+
+    <footer class="bottom">
+      <button id="openWebBtn" class="hk-btn hk-primary grow">
+        Вэб дээр нээх
+        <span class="hk-ico" data-icon="external" style="width:14px;height:14px"></span>
+      </button>
+      <button id="deleteDeckBtn" class="hk-btn hk-ghost hk-icon-btn hk-danger-text" title="Багц устгах" aria-label="Багц устгах">
+        <span class="hk-ico" data-icon="trash"></span>
+      </button>
+    </footer>
   </div>
-
-  <div id="newDeckForm" class="new-deck-form hidden">
-    <input id="newDeckName" type="text" placeholder="Багцын нэр" />
-    <button id="confirmNewDeck" class="secondary">Нэмэх</button>
-  </div>
-
-  <main id="wordList"></main>
-
-  <footer>
-    <button id="openWebBtn" class="primary">Вэб дээр засах</button>
-    <button id="deleteDeckBtn" class="danger">Багц устгах</button>
-  </footer>
 
   <script src="config.js"></script>
+  <script src="ui.js"></script>
   <script src="sync.js"></script>
   <script src="popup.js"></script>
 </body>

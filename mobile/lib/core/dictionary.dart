@@ -66,7 +66,7 @@ class Dictionary {
               'sl': 'auto',
               'tl': 'mn',
               'dt': 't',
-              'q': t,
+              'q': stripNotes(t).isEmpty ? t : stripNotes(t),
             }),
             headers: _headers,
           )
@@ -81,8 +81,8 @@ class Dictionary {
   }
 }
 
-/// Jisho's results → dictionary form, reading, up to three senses joined with
-/// "; " (jisho.ts `parseJisho`, same rules).
+/// Jisho's results → dictionary form, reading, and the first three senses
+/// compacted by [compactGloss] (jisho.ts `parseJisho`, same rules).
 ///
 /// The entry and writing are chosen to keep [term] as typed when Jisho knows
 /// it: Jisho lists an entry under its most common spelling, so the first
@@ -118,36 +118,57 @@ LookupResult parseJisho(Object? data, {String term = ''}) {
 
   final senses = entry['senses'];
   final meaning = senses is List
-      ? senses
+      ? compactGloss(senses
           .take(3)
           .map((s) => s is Map && s['english_definitions'] is List
               ? (s['english_definitions'] as List).join(', ')
               : '')
-          .where((s) => s.isNotEmpty)
-          .join('; ')
+          .join('; '))
       : '';
 
   return LookupResult(word: word, reading: reading, meaning: meaning);
 }
 
-/// Google's `[[["translated","source",...], ...], ...]` → joined text
-/// (translate.ts `translateToMongolian`).
+/// Google's `[[["translated","source",...], ...], ...]` → joined text, then
+/// [compactGloss] (translate.ts `translateToMongolian`).
 String parseTranslation(Object? data, {required String source}) {
   if (data is! List || data.isEmpty || data.first is! List) return '';
-  var result = (data.first as List)
+  final result = (data.first as List)
       .map((seg) => seg is List && seg.isNotEmpty && seg.first is String ? seg.first as String : '')
       .where((s) => s.isNotEmpty)
       .join()
       .trim();
-  // Dictionary meanings are synonym lists ("careful, cautious, prudent") and
-  // Google often maps several to the same Mongolian word — keep each once.
-  if (source.contains(',')) result = dedupeList(result);
-  return result;
+  return compactGloss(result);
 }
 
-String dedupeList(String text) {
-  final parts = text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-  if (parts.length < 2) return text;
+/// Most items a gloss keeps, and the length past which no further item is
+/// added (the first is always kept). Same as gloss.ts.
+const maxGlossItems = 3;
+const maxGlossChars = 40;
+
+/// Drops bracketed notes: Jisho's "(e.g. a salary)", "(a task)" and the like.
+String stripNotes(String text) => text
+    .replaceAll(RegExp(r'\([^()]*\)|（[^（）]*）|\[[^\]]*\]'), '')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();
+
+/// Dictionary meanings are synonym lists split by "," and ";", and Google maps
+/// many of them to the same Mongolian word ("болгоомжтой, болгоомжтой;
+/// болгоомжтой"). Keep each item once, notes stripped, at most
+/// [maxGlossItems] and about [maxGlossChars] long — meaning_mn is
+/// shown on cards and fed to audio/video reviews. Used for both the English
+/// meaning ([parseJisho]) and its translation (gloss.ts, same rules).
+String compactGloss(String text) {
   final seen = <String>{};
-  return parts.where((p) => seen.add(p.toLowerCase())).join(', ');
+  final items = <String>[];
+  var length = 0;
+  for (final raw in text.split(RegExp(r'[,;、，；\n]'))) {
+    final item = stripNotes(raw).replaceAll(RegExp(r'^[\s.:-]+|[\s.:-]+$'), '');
+    if (item.isEmpty || !seen.add(item.toLowerCase())) continue;
+    if (items.isNotEmpty && length + 2 + item.length > maxGlossChars) break;
+    items.add(item);
+    length += (items.length > 1 ? 2 : 0) + item.length;
+    if (items.length == maxGlossItems) break;
+  }
+  return items.join(', ');
 }

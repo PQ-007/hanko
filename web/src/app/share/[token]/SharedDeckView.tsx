@@ -1,22 +1,19 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Layers, LogIn, Plus, Swords } from "@/ui/icons";
+import { Layers, Plus } from "@/ui/icons";
 import { supabase } from "../../decks/_lib/db";
 import { T } from "../../decks/_lib/strings";
-import { Arena } from "../../decks/review/battle/_components/BattleArena";
-import { MIN_WORDS_FOR_BATTLE } from "../../decks/review/battle/_lib/quiz";
 import type { SharedDeck } from "../_lib/trial";
-import { trialPool, useTrialSession } from "../_lib/useTrialSession";
 import TrialCards from "./TrialCards";
 
 /**
- * The public face of a shared deck: its words, two ways to play them with no
- * account (Monster Hunt or flip cards — `?play=hunt|cards`, so the arena's own
- * "exit" link comes back here), and the way in: sign up, or for a signed-in
- * visitor, copy the deck into their library (copy_shared_deck, 0028).
+ * The public face of a shared deck: its words and one way to practise them
+ * with no account — flip cards (`?play=cards`). No sign-up pitch (owner's
+ * call); a visitor who already has an account and is signed in can copy the
+ * deck into their library (copy_shared_deck, 0028), and that's all.
  */
 export default function SharedDeckView({
   deck,
@@ -29,14 +26,11 @@ export default function SharedDeckView({
 }) {
   const play = useSearchParams().get("play");
   const here = `/share/${token}`;
-  const canHunt = deck.words.length >= MIN_WORDS_FOR_BATTLE;
 
-  const cta = <JoinButton token={token} signedIn={signedIn} />;
-  // The trial deals with Math.random (word order, options, the monster), so
-  // it renders on the client only — a server render would never match it.
+  const cta = signedIn ? <CopyButton token={token} /> : null;
+  // The trial shuffles with Math.random, so it renders on the client only —
+  // a server render would never match it.
   const onClient = useSyncExternalStore(noop, () => true, () => false);
-
-  if (play === "hunt" && canHunt) return onClient ? <TrialHunt deck={deck} exitHref={here} cta={cta} /> : null;
 
   return (
     // App shell, like /decks: the bar stays, only the content scrolls.
@@ -46,13 +40,9 @@ export default function SharedDeckView({
           <Link href={here} className="min-w-0 truncate text-sm font-semibold text-ink-soft">
             {T.sharedBy}
           </Link>
-          {signedIn ? (
+          {signedIn && (
             <Link href="/decks" className="text-sm font-medium text-ink-soft hover:text-ink">
               {T.backToDecks}
-            </Link>
-          ) : (
-            <Link href={`/login?next=${encodeURIComponent(here)}`} className="hk-btn hk-btn-primary px-3 py-1.5 text-sm">
-              <LogIn size={14} /> {T.sharedSignUp}
             </Link>
           )}
         </div>
@@ -67,28 +57,18 @@ export default function SharedDeckView({
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">{deck.name}</h1>
           <p className="mt-1 text-sm text-ink-soft">{T.sharedWords(deck.words.length)}</p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <PlayCard
-              href={`${here}?play=hunt`}
-              disabled={!canHunt}
-              icon={<Swords size={22} />}
-              title={T.sharedPlayHunt}
-              desc={canHunt ? T.sharedPlayHuntDesc : T.sharedHuntNeedsWords}
-              primary
-            />
+          <div className="mt-6">
             <PlayCard
               href={`${here}?play=cards`}
               disabled={deck.words.length === 0}
               icon={<Layers size={22} />}
               title={T.sharedPlayCards}
               desc={T.sharedPlayCardsDesc}
+              primary
             />
           </div>
 
-          <div className="mt-6 rounded-card border border-line bg-surface p-4">
-            <p className="text-sm text-ink-soft">{T.sharedPitch}</p>
-            <div className="mt-3">{cta}</div>
-          </div>
+          {cta && <div className="mt-3">{cta}</div>}
 
           {/* The same flip cards as the owner's deck view (WordRow's grid), minus
               the grade and the edit buttons: hover, tap or focus turns a card. */}
@@ -158,21 +138,10 @@ function PlayCard({
   );
 }
 
-/** Sign up (visitor), or copy the deck into my library (signed in). */
-function JoinButton({ token, signedIn }: { token: string; signedIn: boolean }) {
+/** Copy the deck into my library — shown to signed-in visitors only. */
+function CopyButton({ token }: { token: string }) {
   const router = useRouter();
   const [state, setState] = useState<"idle" | "copying" | "done" | "failed">("idle");
-
-  if (!signedIn) {
-    return (
-      <Link
-        href={`/login?next=${encodeURIComponent(`/share/${token}`)}`}
-        className="hk-btn hk-btn-primary w-full px-4 py-2.5 text-sm"
-      >
-        <LogIn size={15} /> {T.sharedSignInToCopy}
-      </Link>
-    );
-  }
 
   async function copy() {
     setState("copying");
@@ -197,35 +166,6 @@ function JoinButton({ token, signedIn }: { token: string; signedIn: boolean }) {
         <Plus size={15} /> {state === "copying" ? T.sharedCopying : T.sharedCopy}
       </button>
       {state === "failed" && <p className="text-center text-xs text-red-700">{T.sharedCopyFailed}</p>}
-    </div>
-  );
-}
-
-/** The real Monster Hunt arena, on a local trial session. */
-function TrialHunt({ deck, exitHref, cta }: { deck: SharedDeck; exitHref: string; cta: React.ReactNode }) {
-  const { session } = useTrialSession(deck.words);
-  const pool = useMemo(() => trialPool(deck.words), [deck.words]);
-  return (
-    <div className="h-dvh overflow-y-auto overscroll-contain bg-gradient-to-b from-paper to-paper-dim text-ink">
-      <Arena
-        session={session}
-        allWords={pool}
-        trial={{
-          exitHref,
-          banner: T.sharedTrialBanner,
-          resultAction: (
-            <div className="flex flex-1 flex-col gap-2">
-              {cta}
-              <Link
-                href={exitHref}
-                className="hk-btn border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-paper hover:bg-white/10"
-              >
-                {T.sharedBack}
-              </Link>
-            </div>
-          ),
-        }}
-      />
     </div>
   );
 }

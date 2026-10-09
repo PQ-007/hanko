@@ -14,9 +14,10 @@ import {
   kanjiOf,
   kanjiPositions,
   partialStrokes,
+  lessonSize,
+  NEW_KANJI_PER_LESSON,
   planLesson,
   wordsForKanji,
-  WORDS_PER_LESSON,
   type LessonStep,
 } from "./_lib/lesson";
 import { missMessage } from "./_lib/missMessage";
@@ -114,6 +115,8 @@ function Setup({
       ? candidates.filter((w) => picked.has(w.id))
       : wordsForKanji(pickedKanji, candidates, (w) => w.term);
   const hasNew = (w: Word) => kanjiOf(w.term).some((k) => !learned.has(k));
+  // New kanji in the selection — lessons teach at most 10 each (lessonSize).
+  const newInChosen = new Set(chosen.flatMap((w) => kanjiOf(w.term)).filter((k) => !learned.has(k))).size;
 
   function quickPick(onlyNew: boolean) {
     if (view === "words") setPicked(new Set(candidates.filter((w) => !onlyNew || hasNew(w)).map((w) => w.id)));
@@ -198,17 +201,22 @@ function Setup({
                       return n;
                     })
                   }
-                  className="h-4 w-4"
+                  className="h-4 w-4 shrink-0"
                 />
-                <span className="text-lg font-bold">
+                {/* The word and its reading never wrap; the meaning takes what's
+                    left and is cut with an ellipsis (a long one used to squeeze
+                    the kanji onto two lines). */}
+                <span className="shrink-0 whitespace-nowrap text-lg font-bold">
                   {[...w.term].map((ch, i) => (
                     <span key={i} className={learned.has(ch) ? "text-emerald-600" : "text-ink"}>
                       {ch}
                     </span>
                   ))}
                 </span>
-                {w.reading && w.reading !== w.term && <span className="text-sm text-ink-mute">{w.reading}</span>}
-                <span className="ml-auto truncate text-xs text-ink-mute">{w.meaning_mn || w.meaning}</span>
+                {w.reading && w.reading !== w.term && (
+                  <span className="shrink-0 whitespace-nowrap text-sm text-ink-mute">{w.reading}</span>
+                )}
+                <span className="min-w-0 flex-1 truncate text-right text-xs text-ink-mute">{w.meaning_mn || w.meaning}</span>
               </label>
             </li>
           ))}
@@ -234,6 +242,9 @@ function Setup({
       )}
 
       <div className="sticky bottom-0 mt-4 bg-paper/90 py-3 backdrop-blur">
+        {newInChosen > NEW_KANJI_PER_LESSON && (
+          <p className="mb-1.5 text-center text-xs text-ink-mute">{T.writingSplitHint(newInChosen, NEW_KANJI_PER_LESSON)}</p>
+        )}
         {view === "kanji" && pickedKanji.length > 0 && (
           <p className="mb-1.5 text-center text-xs text-ink-mute">{T.writingKanjiSelected(pickedKanji.length, chosen.length)}</p>
         )}
@@ -298,7 +309,8 @@ function Lesson({
 
   const startLesson = useCallback(
     async (from: number) => {
-      const next = pool.slice(from, from + WORDS_PER_LESSON);
+      // At most 10 new kanji per lesson (lessonSize), the rest wait for the next.
+      const next = pool.slice(from, from + lessonSize(pool.map((w) => w.term), from, learned));
       setSteps(null);
       const kanji = [...new Set(next.flatMap((w) => kanjiOf(w.term)))];
       const [loaded, ids] = await Promise.all([

@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Noto_Sans } from "next/font/google";
-import { Download, Share2 } from "@/ui/icons";
+import { Download, RefreshCw, Share2 } from "@/ui/icons";
 import { T } from "../_lib/strings";
-import { renderStoryCard, storySize, type StoryCard, type StoryLang, type StoryStyle } from "../_lib/storyCard";
+import {
+  buildStoryQuiz,
+  renderStoryCard,
+  storySize,
+  STORY_LAYOUTS,
+  type StoryCard,
+  type StoryLang,
+  type StoryLayout,
+  type StoryStyle,
+} from "../_lib/storyCard";
 
 // The story image's text face: full Mongolian Cyrillic (Ө ө Ү ү are in the
 // cyrillic-ext subset), variable weight, self-hosted by next/font.
@@ -17,17 +26,27 @@ const storyFont = Noto_Sans({ subsets: ["latin", "cyrillic", "cyrillic-ext"], di
  */
 const OPTS_KEY = "hanko.story.opts";
 
-function readOpts(): { style: StoryStyle; lang: StoryLang } {
+type Opts = { style: StoryStyle; lang: StoryLang; layout: StoryLayout };
+
+function readOpts(): Opts {
   try {
     const o = JSON.parse(window.localStorage.getItem(OPTS_KEY) ?? "{}");
     return {
       style: ["seal", "dark", "paper"].includes(o.style) ? o.style : "seal",
       lang: ["mn", "en", "both"].includes(o.lang) ? o.lang : "mn",
+      layout: STORY_LAYOUTS.includes(o.layout) ? o.layout : "grid",
     };
   } catch {
-    return { style: "seal", lang: "mn" };
+    return { style: "seal", lang: "mn", layout: "grid" };
   }
 }
+
+const LAYOUT_LABEL: Record<StoryLayout, string> = {
+  grid: T.storyLayoutGrid,
+  list: T.storyLayoutList,
+  spotlight: T.storyLayoutSpotlight,
+  quiz: T.storyLayoutQuiz,
+};
 
 export default function StoryImagePanel({ card, fileName }: { card: StoryCard; fileName: string }) {
   const [image, setImage] = useState<{ blob: Blob; url: string } | null>(null);
@@ -45,12 +64,29 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
       // Not remembered — a small loss.
     }
   }
-  const key = JSON.stringify({ ...card, style: opts.style, lang: opts.lang });
+  // Which word Spotlight/Quiz show (and the quiz's answer slot): "another word".
+  const [seed, setSeed] = useState(0);
+  const quizOk = useMemo(() => buildStoryQuiz(card.words, opts.lang, 0) !== null, [card.words, opts.lang]);
+  const layout: StoryLayout = opts.layout === "quiz" && !quizOk ? "grid" : opts.layout;
+  const full: StoryCard = {
+    ...card,
+    style: opts.style,
+    lang: opts.lang,
+    layout,
+    seed,
+    quizPrompt: T.storyQuizPrompt,
+    quizAnswer: T.storyQuizAnswer,
+  };
+  // Re-render when anything drawn changes. moreLabel is a function, which the
+  // JSON round-trip drops — it used to, and "+20 үг" came out as a bare "+20" —
+  // so it's passed back in alongside.
+  const key = JSON.stringify(full);
+  const moreLabel = card.moreLabel;
 
   useEffect(() => {
     let url: string | null = null;
     let cancelled = false;
-    renderStoryCard(JSON.parse(key), size, storyFont.style.fontFamily)
+    renderStoryCard({ ...JSON.parse(key), moreLabel }, size, storyFont.style.fontFamily)
       .then((blob) => {
         if (cancelled) return;
         url = URL.createObjectURL(blob);
@@ -61,7 +97,7 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [key, size]);
+  }, [key, size, moreLabel]);
 
   const file = image ? new File([image.blob], `${fileName}.png`, { type: "image/png" }) : null;
   const canShareFile =
@@ -102,6 +138,38 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
         )}
       </div>
       <div className="flex w-full flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-ink-soft">{T.storyLayoutLabel}</span>
+          <div role="radiogroup" aria-label={T.storyLayoutLabel} className="grid grid-cols-4 gap-1.5">
+            {STORY_LAYOUTS.map((l) => {
+              const disabled = l === "quiz" && !quizOk;
+              return (
+                <button
+                  key={l}
+                  role="radio"
+                  aria-checked={layout === l}
+                  disabled={disabled}
+                  title={disabled ? T.storyQuizNeedsWords : LAYOUT_LABEL[l]}
+                  onClick={() => pick({ layout: l })}
+                  className={`flex flex-col items-center gap-1 rounded-control border px-1 py-1.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                    layout === l ? "border-seal bg-seal-tint text-ink" : "border-line text-ink-soft hover:border-ink-mute"
+                  }`}
+                >
+                  <LayoutGlyph layout={l} />
+                  {LAYOUT_LABEL[l]}
+                </button>
+              );
+            })}
+          </div>
+          {(layout === "spotlight" || layout === "quiz") && card.words.length > 1 && (
+            <button
+              onClick={() => setSeed((n) => n + 1)}
+              className="flex items-center justify-center gap-1.5 self-center rounded-control px-2.5 py-1 text-xs font-medium text-seal hover:bg-paper-dim"
+            >
+              <RefreshCw size={13} /> {T.storyNextWord}
+            </button>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-medium text-ink-soft">{T.storyStyleLabel}</span>
           <div role="radiogroup" aria-label={T.storyStyleLabel} className="flex gap-1.5">
@@ -169,5 +237,28 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
         </button>
       </div>
     </div>
+  );
+}
+
+/** A tiny drawing of each layout, for the picker. */
+function LayoutGlyph({ layout }: { layout: StoryLayout }) {
+  const box = "fill-current opacity-60";
+  return (
+    <svg viewBox="0 0 18 28" width="16" height="24" aria-hidden className="text-current">
+      <rect x="0.5" y="0.5" width="17" height="27" rx="3" className="fill-none stroke-current" strokeWidth="1" />
+      {layout === "grid" && [6, 13, 20].flatMap((y) => [3, 9.5].map((x) => <rect key={`${x}${y}`} x={x} y={y} width="5.5" height="5" rx="1" className={box} />))}
+      {layout === "list" && [6, 11, 16, 21].map((y) => <rect key={y} x="3" y={y} width="12" height="3.5" rx="1" className={box} />)}
+      {layout === "spotlight" && (
+        <>
+          <rect x="3" y="8" width="12" height="13" rx="1.5" className={box} />
+        </>
+      )}
+      {layout === "quiz" && (
+        <>
+          <rect x="3" y="4" width="12" height="7" rx="1.5" className={box} />
+          {[13, 16.5, 20, 23.5].map((y) => <rect key={y} x="3" y={y} width="12" height="2.3" rx="1" className={box} />)}
+        </>
+      )}
+    </svg>
   );
 }

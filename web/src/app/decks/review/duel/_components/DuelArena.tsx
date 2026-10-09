@@ -31,6 +31,10 @@ import {
   type ResolvedRound,
 } from "../_lib/duel";
 import type { OpponentDriver } from "../_lib/opponent";
+import type { HeadToHead } from "../../../_lib/social";
+import type { MatchRow } from "../_lib/match";
+import { questionFor, quizFor, type SharedQuestion } from "../_lib/sharedQuestions";
+import DuelIntro, { INTRO_MS } from "./DuelIntro";
 import DuelResult from "./DuelResult";
 
 // How long the arena holds on a resolved round before the next question. Long
@@ -49,22 +53,49 @@ interface ClosedRound {
   them: DuelAnswer | null;
 }
 
+/** Everything that exists only when the opponent is a person (0030). */
+export interface OnlineMatch {
+  matchId: string;
+  meId: string;
+  opponentId: string;
+  /** "@handle · lv" shown under their name on the intro. */
+  foeSub: string | null;
+  /** Your record with them before this match; null while loading. */
+  record: HeadToHead | null;
+  /** The question set the server planned — both players answer these. */
+  questions: SharedQuestion[] | null;
+  onRematchStarted: (match: MatchRow) => void;
+}
+
 export default function DuelArena({
   opponent,
   deckId = null,
   roundCount = DUEL_ROUND_COUNT,
   onRematch,
   exitHref = "/decks/review/duel",
+  online,
 }: {
   opponent: OpponentDriver;
   deckId?: string | null;
   roundCount?: number;
   onRematch?: () => void;
   exitHref?: string;
+  online?: OnlineMatch;
 }) {
   useImmersive();
   const hero = usePlayerCharacter();
   const router = useRouter();
+  // Both players answer the same planned questions when the server made them;
+  // otherwise (a bot, or a match from before 0030) each draws from their own deck.
+  const shared = online?.questions ?? null;
+  // The pre-fight screen (names + your record) — person-vs-person only.
+  const hasIntro = !!online;
+  const [introDone, setIntroDone] = useState(!hasIntro);
+  useEffect(() => {
+    if (!hasIntro) return;
+    const id = setTimeout(() => setIntroDone(true), INTRO_MS);
+    return () => clearTimeout(id);
+  }, [hasIntro]);
 
   const [cards, setCards] = useState<QueueCard[] | null>(null);
   const [allWords, setAllWords] = useState<OwnWord[] | null>(null);
@@ -95,6 +126,15 @@ export default function DuelArena({
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (shared) {
+        // The words come with the match; only the baseline is the player's own.
+        const baselineRes = await supabase.rpc("response_baseline");
+        if (cancelled) return;
+        setCards([]);
+        setAllWords([]);
+        setBaselineMs(baselineRes.error ? null : ((baselineRes.data as number | null) ?? null));
+        return;
+      }
       const [cardsRes, wordsRes, baselineRes] = await Promise.all([
         // practice_cards, NOT review_queue: the scheduled queue is capped by
         // the day's remaining allowance (0010), so a duel wired through it
@@ -118,7 +158,7 @@ export default function DuelArena({
     return () => {
       cancelled = true;
     };
-  }, [deckId]);
+  }, [deckId, shared]);
 
   const state = useMemo(() => deriveDuelState(rounds), [rounds]);
   // An opponent who stopped answering for several rounds has left: you win.
@@ -129,18 +169,20 @@ export default function DuelArena({
   // cards and a match is twelve rounds, so this only bites for a library
   // smaller than the round count — where repeating a word is still a better
   // match than ending early.
-  const card = cards && cards.length > 0 ? cards[(roundNo - 1) % cards.length] : null;
+  const card = !shared && cards && cards.length > 0 ? cards[(roundNo - 1) % cards.length] : null;
+  const sharedQ = shared ? questionFor(shared, roundNo) : null;
 
   const quiz = useMemo<QuizOption[] | null>(() => {
+    if (sharedQ) return quizFor(sharedQ);
     if (!card || !allWords) return null;
     return buildQuiz(card, allWords);
     // roundNo is a dependency on purpose: a wrapped card would otherwise keep
     // the identical shuffle it had the first time round.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card, allWords, roundNo]);
+  }, [card, allWords, roundNo, shared]);
 
-  const ready = cards !== null && allWords !== null && quiz !== null;
-  const tooFewWords = allWords !== null && allWords.length < MIN_WORDS_FOR_BATTLE;
+  const ready = cards !== null && allWords !== null && quiz !== null && introDone;
+  const tooFewWords = !shared && allWords !== null && allWords.length < MIN_WORDS_FOR_BATTLE;
 
   const { remainingMs, elapsedMs } = useQuestionClock({
     durationMs,
@@ -276,6 +318,36 @@ export default function DuelArena({
     return () => clearTimeout(id);
   }, [phase, outcome]);
 
+  async function logSharedAnswer(term: string, correct: boolean, ms: number) {
+    try {
+      const { data: w } = await supabase
+        .from("words")
+        .select("id")
+        .eq("term", term)
+        .eq("deleted", false)
+        .limit(1)
+        .maybeSingle();
+      if (!w) return;
+      const { data: c } = await supabase
+        .from("cards")
+        .select("id")
+        .eq("word_id", (w as { id: string }).id)
+        .eq("template", "recognition")
+        .limit(1)
+        .maybeSingle();
+      if (!c) return;
+      await supabase.rpc("review_card", {
+        p_card_id: (c as { id: string }).id,
+        p_rating: correct ? "good" : "again",
+        p_duration_ms: ms,
+        p_log_id: crypto.randomUUID(),
+        p_source: "battle",
+      });
+    } catch {
+      // A dropped log costs a row of analytics, not the match.
+    }
+  }
+
   function handlePick(option: QuizOption) {
     if (answered.current || phase !== "question") return;
     answered.current = true;
@@ -283,6 +355,15 @@ export default function DuelArena({
     setYourPick(option);
     yourResolver.current?.(answer);
 
+    if (sharedQ) {
+      // The question is the server's, so the card it came from is looked up by
+      // term — your own recognition card for that word, if you have one. Logged
+      // for XP and your response baseline; never scheduled (source 'battle').
+      // Off the critical path, like the log below: a failure costs a row.
+      logSharedAnswer(sharedQ.term, option.correct, answer.elapsedMs);
+      opponent.submit?.(roundNo, answer, null)?.catch(() => {});
+      return;
+    }
     const played = cardRef.current;
     if (played) {
       // Logged, never scheduled. review_card()'s log-only branch (0018) returns
@@ -348,6 +429,18 @@ export default function DuelArena({
       </div>
     );
   }
+  if (online && !introDone) {
+    return (
+      <DuelIntro
+        heroSlug={hero}
+        youName={T.duelYou}
+        foeSlug={opponent.slug}
+        foeName={opponent.name}
+        foeSub={online.foeSub}
+        record={online.record}
+      />
+    );
+  }
   if (!ready) return <LoadingScene label={T.duelLoading} />;
 
   if (outcome !== "ongoing") {
@@ -362,6 +455,15 @@ export default function DuelArena({
         onRematch={onRematch}
         exitHref={exitHref}
         opponentLeft={opponent.left?.() ?? false}
+        online={
+          online && {
+            matchId: online.matchId,
+            meId: online.meId,
+            opponentId: online.opponentId,
+            before: online.record,
+            onRematchStarted: online.onRematchStarted,
+          }
+        }
       />
     );
   }
@@ -473,7 +575,7 @@ export default function DuelArena({
           <div className="relative z-10 order-3 flex w-full shrink-0 items-center justify-center lg:order-2 lg:h-full lg:w-[430px] xl:w-[490px]">
             <div className="hanko-parchment flex w-full flex-col gap-4 px-6 py-8 text-center sm:px-8 xl:gap-5 xl:px-10 xl:py-10">
               <div className="text-4xl font-bold tracking-tight text-ink xl:text-5xl">
-                {card?.term}
+                {sharedQ ? sharedQ.term : card?.term}
               </div>
               <CountdownBar
                 durationMs={durationMs}

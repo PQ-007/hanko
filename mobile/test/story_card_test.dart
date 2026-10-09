@@ -55,15 +55,51 @@ void main() {
     await tester.runAsync(() async {
       for (final s in StoryStyle.values) {
         for (final l in StoryLang.values) {
-          final png = await renderStoryCard(card, const ui.Size(1080, 2340), s, l);
-          final codec = await ui.instantiateImageCodec(png);
-          final frame = await codec.getNextFrame();
-          expect(frame.image.width, 1080);
-          expect(frame.image.height, 2340);
-          frame.image.dispose();
+          for (final layout in StoryLayout.values) {
+            final png = await renderStoryCard(card, const ui.Size(1080, 2340), s, l, layout: layout, seed: 1);
+            final codec = await ui.instantiateImageCodec(png);
+            final frame = await codec.getNextFrame();
+            expect(frame.image.width, 1080);
+            expect(frame.image.height, 2340);
+            frame.image.dispose();
+          }
         }
       }
     });
   });
 
+
+  // buildStoryQuiz — the same cases as storyCard.test.ts (web).
+  group('buildStoryQuiz', () {
+    StoryWord w(String term, String? mn, [String? en]) => StoryWord(term: term, meaningMn: mn, meaningEn: en);
+    final five = [w('a', 'm1', 'e1'), w('b', 'm2', 'e2'), w('c', 'm3', 'e3'), w('d', 'm4', 'e4'), w('e', 'm5', 'e5')];
+
+    test('word, options and answer slot follow the seed', () {
+      final q0 = buildStoryQuiz(five, StoryLang.mn, 0)!;
+      expect(q0.word, same(five[0]));
+      expect(q0.options, ['m2', 'm1', 'm3', 'm4']);
+      expect(q0.answer, 1);
+      final q6 = buildStoryQuiz(five, StoryLang.mn, 6)!;
+      expect(q6.word, same(five[1]));
+      expect(q6.options, ['m3', 'm4', 'm5', 'm2']);
+      expect(q6.answer, 3);
+    });
+
+    test('English options when English is asked; Mongolian falls back to English', () {
+      expect(buildStoryQuiz(five, StoryLang.en, 0)!.options, ['e2', 'e1', 'e3', 'e4']);
+      final mixed = [w('a', null, 'e1'), w('b', 'm2'), w('c', 'm3'), w('d', 'm4')];
+      expect(buildStoryQuiz(mixed, StoryLang.mn, 0)!.options, ['m2', 'e1', 'm3', 'm4']);
+    });
+
+    test('a repeated meaning is never offered twice', () {
+      final dup = [w('a', 'x'), w('b', 'x'), w('c', 'y'), w('d', 'z'), w('e', 'v')];
+      expect(buildStoryQuiz(dup, StoryLang.mn, 0)!.options, ['y', 'x', 'z', 'v']);
+    });
+
+    test('null without four words of distinct meaning', () {
+      expect(buildStoryQuiz(five.sublist(0, 3), StoryLang.mn, 0), isNull);
+      expect(buildStoryQuiz([w('a', 'x'), w('b', 'x'), w('c', 'x'), w('d', 'y'), w('e', 'z')], StoryLang.mn, 0), isNull);
+      expect(buildStoryQuiz([w('a', ''), w('b', 'm2'), w('c', 'm3'), w('d', 'm4')], StoryLang.mn, 0), isNull);
+    });
+  });
 }

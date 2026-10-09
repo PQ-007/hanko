@@ -1,6 +1,8 @@
 // Dictionary auto-fill via Jisho's public API (same endpoint the extension's
 // background script uses). Unofficial but widely used; on failure we just
 // return blanks so the caller can fall back to manual entry.
+import { compactGloss } from "./gloss.ts";
+
 export interface LookupResult {
   // The dictionary / base form (普通形) of the word — Jisho deinflects, so a
   // conjugated query like 担っています resolves to 担う here.
@@ -34,7 +36,8 @@ interface JishoEntry {
 }
 
 /**
- * Jisho's results → dictionary form, reading and up to three senses.
+ * Jisho's results → dictionary form, reading and a short meaning: the first
+ * three senses, compacted by compactGloss.
  *
  * The entry and writing are chosen to keep `term` as typed when Jisho knows
  * it: Jisho lists an entry under its most common spelling, so the first
@@ -65,11 +68,12 @@ export function parseJisho(data: unknown, term = ""): LookupResult {
   // Dictionary form: the kanji writing, or the slug, or the reading (kana words).
   const word: string = jp.word ?? entry.slug ?? reading ?? "";
 
-  const meaning: string = (entry.senses ?? [])
-    .slice(0, 3)
-    .map((s) => (s.english_definitions ?? []).join(", "))
-    .filter(Boolean)
-    .join("; ");
+  const meaning: string = compactGloss(
+    (entry.senses ?? [])
+      .slice(0, 3)
+      .map((s) => (s.english_definitions ?? []).join(", "))
+      .join("; ")
+  );
 
   return { word, reading, meaning };
 }

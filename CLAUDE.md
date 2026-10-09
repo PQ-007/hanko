@@ -460,6 +460,10 @@ web `/decks/writing`): pick words or kanji, then trace → some strokes → from
 memory per new kanji, then the whole word (`lesson.ts` ports `lesson.dart`,
 same cases). Answers log as `drill` and learned kanji go to `learned_kanji`
 (0026). On the web, a kanji with no stroke data falls back to self-judging.
+A lesson teaches **at most 10 new kanji** (owner's call): `lessonSize()` in
+`lesson.ts` / `lesson.dart` (same cases in both tests) takes words in order
+until the next would pass 10 kanji not yet learned, capped at 10 words, and
+always at least one word; the rest of the selection becomes the next lesson.
 
 Mobile's review sheet is three modes — Monster Hunt, classic cards, kanji
 writing — plus a leech-rescue link shown only when leeches exist. Speed round
@@ -518,10 +522,40 @@ Two things a future session must not "tidy up":
   wired through it is unplayable on exactly the day you have finished your
   reviews.
 
+**Friends, identical questions, record, rematch (`0030_duel_friends.sql`,
+web + mobile).** Owner's call, reversing the "own deck" rule below for PvP:
+- **Both players answer the same questions.** When a match starts,
+  `duel_start()` → `duel_plan_questions()` plans all of its rounds once and
+  stores them on `matches.questions` (`[{term, reading, options[4], answer}]`):
+  words both players have *with the same meaning* first, then each library in
+  turn, options drawn from both. Clients read it (`sharedQuestions.ts` /
+  `duel_shared.dart`, same cases) and fall back to their own deck only for a
+  match with no set (bots, pre-0030 rows). The answer index is readable by
+  both — no new hole, clients already self-report `correct`. A shared answer
+  is logged against the player's *own* card for that term, if any.
+- **Invites:** `invite_to_duel(friend)` (friends only, idempotent for 10 min),
+  `duel_invites()`, `accept_duel_invite()`, `decline_duel_invite()`;
+  `join_match` refuses a code for someone else's invitation. Web: lobby
+  friend list + an app-wide toast (`DuelInviteToast`, Realtime + 20 s poll);
+  the friends page links `?invite=<id>`. Mobile: lobby friend list, a
+  "Тулах" button on friend tiles, and an app-wide banner (`AppShell`, 12 s
+  poll — there is no push).
+- **Record:** an intro before every PvP match (`DuelIntro` / `_Intro`, 4.5 s)
+  shows names and your face-to-face record — score, a result bar, the last
+  five as chips — via `headToHead()`; the result screen shows it again with
+  this match counted. Names come from `duel_opponent()` (handle always,
+  name/picture for friends only, like 0027).
+- **Rematch:** `duel_rematch(match)` is idempotent and symmetric — first
+  press creates the invitation, the other player's press starts it — with the
+  old match row locked so simultaneous presses serialise.
+- Verified against Postgres 16 as `authenticated`: non-friend invites,
+  someone else's invitation by id or by code, and direct calls to the
+  planners are refused; re-running the migration is safe.
+
 - Two players (or player vs. bot), each with an HP bar; center timer and a
   multiple-choice question box
-- Each round both players are quizzed **from their own deck**, not a shared pool
-  — keeps fights fair across mismatched deck sizes
+- ~~Each round both players are quizzed from their own deck~~ — superseded by
+  0030 above for PvP; bot duels still draw from your own deck
 - Speed-scaled damage, measured against the player's own historical average from
   `review_log.duration_ms` (this is why 0.4 exists)
 - Wrong answer = no damage, or a brief self-penalty
@@ -597,12 +631,13 @@ hides a user's numbers even from friends.
 
 - **`/share/<token>`** (`web/src/app/share/`) is outside `/decks`, so the
   proxy never sends a visitor to /login. Anyone with the link sees the deck's
-  words and can play Monster Hunt or flip cards with **no account and nothing
-  saved**: `_lib/trial.ts` is a local stand-in for `usePracticeSession`
-  (pinned by `trial.test.ts`), and the real arena runs on it — `BattleArena.tsx`
-  exports `Arena`, which takes any `ArenaSession`. A signed-in visitor can copy
+  words and can practise them as flip cards with **no account and nothing
+  saved** (`_lib/trial.ts`, pinned by `trial.test.ts`). **No Monster Hunt and
+  no sign-up pitch** on share surfaces (owner's call) — not on the page, the
+  trial or the expired-link page. A visitor who is already signed in can copy
   the deck (`copy_shared_deck`; the copy gets fresh `new` cards, never the
-  owner's history).
+  owner's history). `BattleArena.tsx` still exports `Arena` over any
+  `ArenaSession`, but nothing outside the hunt uses it now.
 - What a link exposes is decided in one place, `shared_deck()`: deck name +
   term/reading/meaning/meaning_mn, max 500 words. No owner, no ids, no SRS
   state. Tokens are 128 random bits and **expire 24 hours after issue**
@@ -666,10 +701,16 @@ Two traps found doing this:
   `set_deck_share` link as the web, built on `Config.webUrl` (dart-define
   `WEB_URL`, default `https://hanko-amber.vercel.app`) — the only use of the
   web's address on the phone; the app still never calls that server.
-- **Story images** (web, `_lib/storyCard.ts`): header band with up to three
-  big numbers, a two-column word grid (fewer, taller tiles; meanings wrap to
-  two lines via the tested `wrapLines`), a "+N" pill; three styles and
-  Монгол / English / Хоёул meanings, remembered per browser.
+- **Story images** (web `_lib/storyCard.ts`, mobile `story_card.dart`): four
+  layouts — **Тор** (header + two-column grid + "+N"), **Жагсаалт** (one word
+  per row), **Нэг үг** (one word, huge) and **Асуулт** (a multiple-choice quiz
+  for Instagram viewers: the word, four lettered meanings, the answer upside
+  down at the bottom). The quiz comes from `buildStoryQuiz()` — deterministic
+  in a seed, built from the card's own words, null under four distinct
+  meanings (the picker then disables Quiz) — pinned by the same cases in
+  `storyCard.test.ts` and `story_card_test.dart`. "Өөр үг" bumps the seed for
+  Нэг үг / Асуулт. Three styles, Монгол / English / Хоёул, and the layout
+  are remembered per browser / per phone.
 - **Mobile offline decks** (Drift schema v4: `OfflineDecks`,
   `OfflineDeckCards`): "Офлайнд татах" in a deck's menu saves every card
   (practice_cards), flags which ones review_queue() was serving, refreshes
@@ -779,8 +820,28 @@ Two traps found doing this:
   rules in the same file were added. Build `--release` **and launch it on a
   device** after adding any ML Kit or native plugin; debug builds don't
   shrink, so they show neither problem.
-- The extension has **no build step** — edits to `src/sync.js` must be copied
-  verbatim into both `chrome/` and `firefox/`.
+- The extension has **no build step** — edits to `src/sync.js` and
+  `src/ui.js` must be copied verbatim into both `chrome/` and `firefox/`, and
+  every other file except `manifest.json` is identical in the two folders.
+  `bash src/package.sh` copies the `src/` files in, refuses to zip if the
+  folders drift, and writes `web-ext-artifacts/hanko-{chrome,firefox}-<v>.zip`.
+- **Extension look (1.2.0):** popup, save window and in-page panel share
+  `src/ui.js` (`HankoUI`): the same three themes as the app (Цайвар /
+  Бараан / Цэнхэр, same token values), picked in the popup header and stored
+  as `hankoTheme` in `storage.local`; the background swaps the toolbar icon
+  (`icons/<theme>-<size>.png`) on the same storage change. No
+  `confirm()`/`alert()` — `HankoUI.confirm(container, …)` draws a themed
+  dialog (inside the panel's shadow root on web pages). Use `--hk-danger` for
+  red text and `--hk-danger-solid` for red buttons; on Цэнхэр the text red is a
+  pale pink that white button text can't sit on.
+- **Extension 1.3.0:** the toolbar badge is the due count — `VocabSync.refreshDue()`
+  calls `due_summary()` (same number as the web dashboard) after every sync and
+  stores `dueNow`; the background redraws the badge off that storage change.
+  The popup has a today card (due count → web review), search across all decks,
+  inline word edit, and delete with undo (`HankoUI.snack`; the sync waits ~4s
+  so an undo never reaches the server). `HankoUI.speak()` uses the browser's
+  Japanese voice, else Google TTS, which 400s on any Referer — extension pages
+  that play it carry `<meta name="referrer" content="no-referrer">`.
 - Never commit `config.js` or `.env.local`. The publishable key is safe to ship;
   RLS is what protects the data, so any new table needs its policies written in
   the same migration.

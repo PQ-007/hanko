@@ -9,6 +9,7 @@ import '../../core/widgets.dart';
 import '../battle/hero.dart';
 import '../battle/sprite_view.dart';
 import '../decks/word_actions.dart' show toast;
+import '../duel/duel_api.dart' show FriendLite;
 import '../pvp/pvp_screen.dart';
 import 'social_api.dart';
 
@@ -418,6 +419,18 @@ class _ActivityCard extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (!r.isMe)
+                  // Challenge: the duel tab sends the invitation (0030).
+                  IconButton(
+                    tooltip: T.duelChallenge,
+                    icon: Icon(Icons.sports_kabaddi, color: context.hk.sealText),
+                    onPressed: () {
+                      ref.read(pendingDuelChallengeProvider.notifier).set(
+                            FriendLite(userId: r.userId, handle: r.handle, name: r.displayName),
+                          );
+                      DefaultTabController.maybeOf(context)?.animateTo(2);
+                    },
+                  ),
                 if (!r.isMe)
                   PopupMenuButton<String>(
                     onSelected: (_) async {
