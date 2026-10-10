@@ -4,7 +4,9 @@
 // words" from the stats page, and a shared deck's invitation from the deck
 // share dialog. mobile/lib/features/share/story_card.dart is a port.
 //
-// Four layouts (StoryLayout):
+// Five layouts (StoryLayout):
+//   achievement  Strava-style: your hero mid-swing in a burst, one huge
+//              number, a stat row, the week as a streak chain, word chips
 //   grid       header (kicker, headline, up to three big numbers), then a
 //              two-column grid of word tiles and a "+N" pill
 //   list       the same header, one word per full-width row — more meaning
@@ -23,8 +25,30 @@ export interface StoryWord {
 
 export type StoryStyle = "seal" | "dark" | "paper";
 export type StoryLang = "mn" | "en" | "both";
-export type StoryLayout = "grid" | "list" | "spotlight" | "quiz";
-export const STORY_LAYOUTS: StoryLayout[] = ["grid", "list", "spotlight", "quiz"];
+export type StoryLayout = "achievement" | "grid" | "list" | "spotlight" | "quiz";
+export const STORY_LAYOUTS: StoryLayout[] = ["achievement", "grid", "list", "spotlight", "quiz"];
+
+/** The player's Monster Hunt hero, drawn as the story's mascot. */
+export interface StoryMascot {
+  slug: string;
+  /** What the speech bubble says (short — it wraps to two lines at most). */
+  says?: string | null;
+}
+
+/** One day of the streak chain, oldest first, today last. */
+export interface StoryDay {
+  label: string;
+  active: boolean;
+}
+
+/** Sprite frames the renderer draws, loaded by renderStoryCard (or a test). */
+export interface StoryArt {
+  /** A 100×100 frame strip; frame 0 is drawn. */
+  idle: CanvasImageSource | null;
+  /** A swing, for the achievement burst. */
+  cheer: CanvasImageSource | null;
+  cheerFrame: number;
+}
 
 export interface StoryCard {
   /** Small line over the heading, e.g. the date or "shared deck". */
@@ -47,7 +71,17 @@ export interface StoryCard {
   /** Quiz copy: the question line and the label of the upside-down answer. */
   quizPrompt?: string;
   quizAnswer?: string;
+  mascot?: StoryMascot;
+  /** What the mascot says when the layout has nothing of its own to say. */
+  bubble?: string;
+  /** The streak chain for the achievement layout (7 days, today last). */
+  week?: StoryDay[];
 }
+
+// Instagram draws its own chrome over a story: the progress bars and profile
+// row at the top, the reply bar at the bottom. Nothing that matters goes there.
+const safeTop = (H: number) => Math.max(190, Math.round(H * 0.105));
+const safeBottom = (H: number) => H - Math.max(70, Math.round(H * 0.09));
 
 export const STORY_W = 1080;
 /** Most words a card ever shows (fewer when the screen is short). */
@@ -92,6 +126,8 @@ interface Palette {
   deco: { kind: "disc" | "ring"; color: string };
   /** Card drop shadow. */
   shadow: string;
+  /** The achievement layout's big number. */
+  metric: string;
 }
 
 // Each style is one continuous surface — that's what made "dark" look right
@@ -116,6 +152,7 @@ const PALETTES: Record<StoryStyle, Palette> = {
     pillText: "#184f95",
     deco: { kind: "disc", color: "rgba(255,255,255,0.07)" },
     shadow: "rgba(4,20,48,0.30)",
+    metric: "#ffffff",
   },
   dark: {
     bgTop: "#14181e",
@@ -134,6 +171,7 @@ const PALETTES: Record<StoryStyle, Palette> = {
     pillText: "#ffffff",
     deco: { kind: "disc", color: "rgba(255,255,255,0.06)" },
     shadow: "rgba(0,0,0,0.10)",
+    metric: "#6fa3e6",
   },
   // Warm washi paper with a vermilion seal accent (the hanko itself).
   paper: {
@@ -153,6 +191,7 @@ const PALETTES: Record<StoryStyle, Palette> = {
     pillText: "#fffaf2",
     deco: { kind: "ring", color: "rgba(200,68,47,0.10)" },
     shadow: "rgba(110,80,40,0.16)",
+    metric: "#c8442f",
   },
 };
 
@@ -304,7 +343,7 @@ export function buildStoryQuiz(words: StoryWord[], lang: StoryLang, seed: number
   return { word: cands[q], options, answer };
 }
 
-export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
+export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard, art: StoryArt | null = null) {
   const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
   const p = PALETTES[card.style ?? "seal"];
   const lang = card.lang ?? "mn";
@@ -316,20 +355,29 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   bg.addColorStop(1, p.bgBottom);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  drawWatermark(ctx, p, card);
+  const says = card.mascot?.says?.trim() || null;
 
   const layout = card.layout ?? "grid";
-  if (layout === "spotlight") return drawSpotlight(ctx, card, p, lang);
+  if (layout === "achievement") return drawAchievement(ctx, card, p, art, says);
+  if (layout === "spotlight") return drawSpotlight(ctx, card, p, lang, art, says);
   if (layout === "quiz") {
     const quiz = buildStoryQuiz(card.words, lang, card.seed ?? 0);
     // Too few words for four options: the spotlight of the same word instead.
-    return quiz ? drawQuiz(ctx, card, p, quiz) : drawSpotlight(ctx, card, p, lang);
+    return quiz ? drawQuiz(ctx, card, p, quiz, art, says) : drawSpotlight(ctx, card, p, lang, art, says);
   }
 
   // ---- Header band ----
+  // With a mascot, the heading leaves the top-right corner to it.
+  const y0 = safeTop(H);
+  const mascotW = art?.idle ? 300 : 0;
   ctx.font = font(800, 92);
-  const headLines = wrapLines((s) => ctx.measureText(s).width, card.heading, W - 2 * M, 2);
+  const headLines = wrapLines((s) => ctx.measureText(s).width, card.heading, W - 2 * M - mascotW, 2);
   const numbers = (card.numbers ?? []).slice(0, 3);
-  const bandH = 190 + 40 + headLines.length * 104 + (numbers.length ? 200 : 0) + 30;
+  const afterHead = y0 + 40 + headLines.length * 104;
+  // The numbers row starts below the mascot's feet.
+  const numsAt = mascotW ? Math.max(afterHead, y0 + 243) : afterHead;
+  const bandH = numbers.length ? numsAt + 230 : Math.max(afterHead + 30, mascotW ? y0 + 330 : 0);
   if (p.bandTop && p.bandBottom) {
     const band = ctx.createLinearGradient(0, 0, W, bandH);
     band.addColorStop(0, p.bandTop);
@@ -339,10 +387,10 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   }
   drawDeco(ctx, p);
 
-  let y = 190;
+  let y = y0;
   ctx.fillStyle = p.bandSoft;
   ctx.font = font(700, 34);
-  ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
+  ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M - mascotW), M, y);
   y += 40;
   ctx.fillStyle = p.bandText;
   ctx.font = font(800, 92);
@@ -350,8 +398,13 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
     y += 104;
     ctx.fillText(line, M, y);
   }
+  if (art?.idle) {
+    // The hero in the corner, with something to say.
+    const head = drawHero(ctx, art.idle, 0, W - M - 140, y0 + 300, 200, 260);
+    if (says) drawBubble(ctx, p, says, W - M - 140, head - 10, 300);
+  }
   if (numbers.length) {
-    y += 60;
+    y = numsAt + 60;
     const colW = (W - 2 * M) / numbers.length;
     numbers.forEach((n, i) => {
       const x = M + i * colW;
@@ -374,7 +427,7 @@ export function drawStoryCard(ctx: CanvasRenderingContext2D, card: StoryCard) {
   // ---- Word grid ----
   const footerH = card.footer ? 150 : 0;
   const top = bandH + 56;
-  const bottom = H - 70 - footerH;
+  const bottom = safeBottom(H) - footerH;
   const gap = 24;
   const colW = (W - 2 * M - gap) / 2;
   // Tall enough for term + reading + a two-line meaning (both languages when
@@ -534,7 +587,7 @@ function centred(ctx: CanvasRenderingContext2D, lines: string[], cx: number, y: 
 // ---- list: one word per full-width row ----
 function drawList(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, lang: StoryLang, bandH: number) {
   const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
-  const top = bandH + 56, bottom = H - 70;
+  const top = bandH + 56, bottom = safeBottom(H);
   const gap = 20, MORE_H = 110, MIN_ROW = 180, MAX_ROW = 230;
   const total = card.total ?? card.words.length;
   const room = Math.max(1, Math.floor((bottom - top - MORE_H + gap) / (MIN_ROW + gap)));
@@ -594,7 +647,14 @@ function drawList(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, la
 }
 
 // ---- spotlight: one word, huge ----
-function drawSpotlight(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, lang: StoryLang) {
+function drawSpotlight(
+  ctx: CanvasRenderingContext2D,
+  card: StoryCard,
+  p: Palette,
+  lang: StoryLang,
+  art: StoryArt | null,
+  says: string | null
+) {
   const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
   drawDeco(ctx, p);
   const n = card.words.length;
@@ -603,7 +663,7 @@ function drawSpotlight(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palett
 
   // Top: kicker and the heading, smaller than the other layouts' — the word
   // is the headline here.
-  let y = 200;
+  let y = safeTop(H);
   ctx.fillStyle = p.bandSoft;
   ctx.font = font(700, 34);
   ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
@@ -615,7 +675,7 @@ function drawSpotlight(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palett
   }
 
   // The word, centred in what's left, on one big card.
-  const cardTop = y + 90, cardBottom = H - 230;
+  const cardTop = y + 90, cardBottom = safeBottom(H) - 110;
   panel(ctx, p, M, cardTop, W - 2 * M, cardBottom - cardTop, 48);
   const inner = W - 2 * M - 120;
   const ts = fit(ctx, w.term, 800, 280, 110, inner);
@@ -652,36 +712,57 @@ function drawSpotlight(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palett
     centred(ctx, m2, W / 2, cy + 20 - 14, 52);
   }
 
+  // The hero peeks over the card's bottom-left corner.
+  if (art?.idle) {
+    const head = drawHero(ctx, art.idle, 0, M + 150, cardBottom - 28, 230, 240);
+    if (says) drawBubble(ctx, p, says, M + 170, head - 10, 380);
+  }
+
   // Bottom: the numbers as one quiet line.
   const nums = (card.numbers ?? []).slice(0, 3).map((x) => `${x.value} ${x.label}`).join("  ·  ");
   if (nums) {
     ctx.fillStyle = p.bandSoft;
     ctx.font = font(700, fit(ctx, nums, 700, 36, 24, W - 2 * M));
-    centred(ctx, [nums], W / 2, H - 130, 0);
+    centred(ctx, [nums], W / 2, safeBottom(H) - 20, 0);
   }
 }
 
 // ---- quiz: a multiple-choice question for the viewers ----
-function drawQuiz(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, quiz: StoryQuiz) {
+function drawQuiz(
+  ctx: CanvasRenderingContext2D,
+  card: StoryCard,
+  p: Palette,
+  quiz: StoryQuiz,
+  art: StoryArt | null,
+  says: string | null
+) {
   const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
   drawDeco(ctx, p);
   const LETTERS = ["A", "B", "C", "D"];
 
-  let y = 200;
+  const y0 = safeTop(H);
+  const mascotW = art?.idle ? 250 : 0;
+  let y = y0;
   ctx.fillStyle = p.bandSoft;
   ctx.font = font(700, 34);
-  ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M), M, y);
+  ctx.fillText(clip(ctx, card.kicker.toUpperCase(), W - 2 * M - mascotW), M, y);
   ctx.fillStyle = p.bandText;
   ctx.font = font(800, 64);
-  for (const line of wrapLines((s) => ctx.measureText(s).width, card.quizPrompt ?? "?", W - 2 * M, 2)) {
+  for (const line of wrapLines((s) => ctx.measureText(s).width, card.quizPrompt ?? "?", W - 2 * M - mascotW, 2)) {
     y += 78;
     ctx.fillText(line, M, y);
+  }
+  if (art?.idle) {
+    // No bubble here: the prompt beside it already asks the question.
+    void says;
+    drawHero(ctx, art.idle, 0, W - M - 110, y0 + 190, 200, 220);
+    y = Math.max(y, y0 + 190);
   }
 
   // The question card and four options, as one block centred between the
   // prompt and the answer line, as large as the space allows.
   const reading = quiz.word.reading && quiz.word.reading !== quiz.word.term ? quiz.word.reading : "";
-  const areaTop = y + 60, areaBottom = H - 200, gap = 26, between = 56;
+  const areaTop = y + 60, areaBottom = safeBottom(H) - 90, gap = 26, between = 56;
   const avail = areaBottom - areaTop;
   const qH = Math.min(reading ? 520 : 440, Math.round(avail * 0.36));
   const oH = Math.min(210, (avail - qH - between - 3 * gap) / 4);
@@ -731,7 +812,7 @@ function drawQuiz(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, qu
   // The answer, small and upside down — turn the phone to check.
   const answer = `${card.quizAnswer ?? "Answer"}: ${LETTERS[quiz.answer]}`;
   ctx.save();
-  ctx.translate(W / 2, H - 120);
+  ctx.translate(W / 2, safeBottom(H) - 20);
   ctx.rotate(Math.PI);
   ctx.fillStyle = p.bandSoft;
   ctx.font = font(700, 32);
@@ -740,12 +821,328 @@ function drawQuiz(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, qu
   ctx.restore();
 }
 
+// ---- Mascot, bubble, watermark -------------------------------------------
+
+interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+const boxes = new WeakMap<object, Map<number, Box>>();
+
+/**
+ * Where the character actually is inside its 100×100 frame. The figures fill
+ * a third of the frame or less (the rest is room for swings), so sizing by
+ * the frame drew a mascot the size of a stamp.
+ */
+function spriteBox(img: CanvasImageSource, frame: number): Box {
+  const cache = boxes.get(img as object) ?? new Map<number, Box>();
+  boxes.set(img as object, cache);
+  const hit = cache.get(frame);
+  if (hit) return hit;
+  let box: Box = { x: 0, y: 0, w: 100, h: 100 };
+  try {
+    const c = document.createElement("canvas");
+    c.width = 100;
+    c.height = 100;
+    const g = c.getContext("2d")!;
+    g.drawImage(img, frame * 100, 0, 100, 100, 0, 0, 100, 100);
+    const d = g.getImageData(0, 0, 100, 100).data;
+    let x0 = 100, y0 = 100, x1 = -1, y1 = -1;
+    for (let y = 0; y < 100; y++)
+      for (let x = 0; x < 100; x++)
+        if (d[(y * 100 + x) * 4 + 3] > 24) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+    if (x1 >= 0) box = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  } catch {
+    // No pixel access: fall back to the whole frame.
+  }
+  cache.set(frame, box);
+  return box;
+}
+
+/**
+ * The hero, standing with its feet on (cx, footY), as tall as it can be up
+ * to [maxH] × [maxW] — at a whole-number scale, so the pixel art stays crisp.
+ * Returns the top of its head (where a speech bubble's tail goes).
+ */
+function drawHero(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  frame: number,
+  cx: number,
+  footY: number,
+  maxH: number,
+  maxW = maxH * 1.4
+): number {
+  const b = spriteBox(img, frame);
+  const k = Math.max(1, Math.floor(Math.min(maxH / b.h, maxW / b.w)));
+  const left = Math.round(cx - (b.x + b.w / 2) * k);
+  const top = Math.round(footY - (b.y + b.h) * k);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, frame * 100, 0, 100, 100, left, top, 100 * k, 100 * k);
+  ctx.restore();
+  return top + b.y * k;
+}
+
+/** A rounded speech bubble whose tail points down at (cx, tipY). */
+function drawBubble(ctx: CanvasRenderingContext2D, p: Palette, text: string, cx: number, tipY: number, maxW: number) {
+  const W = ctx.canvas.width;
+  ctx.font = font(800, 34);
+  const lines = wrapLines((s) => ctx.measureText(s).width, text, maxW - 56, 2);
+  const w = Math.min(maxW, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 56);
+  const h = lines.length * 42 + 34;
+  // Keep the bubble on the canvas; the tail still points at the speaker.
+  const x = Math.max(24, Math.min(W - 24 - w, cx - w / 2));
+  const y = tipY - 22 - h;
+  ctx.save();
+  ctx.shadowColor = p.shadow;
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = p.pill;
+  roundRect(ctx, x, y, w, h, Math.min(36, h / 2));
+  ctx.fill();
+  ctx.beginPath();
+  const tx = Math.max(x + 30, Math.min(x + w - 30, cx));
+  ctx.moveTo(tx - 18, y + h - 2);
+  ctx.lineTo(tx, tipY);
+  ctx.lineTo(tx + 18, y + h - 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = p.pillText;
+  ctx.font = font(800, 34);
+  centred(ctx, lines, x + w / 2, y + 17 + 32, 42);
+}
+
+/** The first kanji of the story, giant and faint, as texture. */
+function drawWatermark(ctx: CanvasRenderingContext2D, p: Palette, card: StoryCard) {
+  const ch = [...(card.words[0]?.term ?? "")].find((c) => /[\u3400-\u9fff]/.test(c));
+  if (!ch) return;
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  ctx.save();
+  ctx.translate(W * 0.72, H * 0.7);
+  ctx.rotate(-0.12);
+  ctx.fillStyle = p.deco.color;
+  ctx.font = font(900, 900);
+  ctx.textAlign = "center";
+  ctx.fillText(ch, 0, 300);
+  ctx.restore();
+}
+
+/** Small deterministic noise, so the confetti is the same in preview and share. */
+function rng(seed: number) {
+  let a = (seed * 2654435761) >>> 0 || 1;
+  return () => {
+    a ^= a << 13;
+    a ^= a >>> 17;
+    a ^= a << 5;
+    return ((a >>> 0) % 10000) / 10000;
+  };
+}
+
+// ---- achievement: the Strava-style summary ----
+function drawAchievement(ctx: CanvasRenderingContext2D, card: StoryCard, p: Palette, art: StoryArt | null, says: string | null) {
+  const W = ctx.canvas.width, H = ctx.canvas.height, M = 72;
+  drawDeco(ctx, p);
+  const top = safeTop(H);
+  let bottom = safeBottom(H);
+  const numbers = card.numbers ?? [];
+
+  // Top, centred: kicker and a modest heading.
+  let y = top;
+  ctx.fillStyle = p.bandSoft;
+  ctx.font = font(700, 34);
+  centred(ctx, [clip(ctx, card.kicker.toUpperCase(), W - 2 * M)], W / 2, y, 0);
+  ctx.fillStyle = p.bandText;
+  ctx.font = font(800, 64);
+  for (const line of wrapLines((s) => ctx.measureText(s).width, card.heading, W - 2 * M, 2)) {
+    y += 78;
+    centred(ctx, [line], W / 2, y, 0);
+  }
+  const zoneTop = y + 40;
+
+  // Built from the bottom up: word chips, the week, the stat row, the big
+  // number — whatever is left above goes to the hero.
+
+  // Word chips, up to two rows.
+  ctx.font = font(800, 44);
+  const chipH = 84, chipGap = 16, chipPad = 30;
+  const rows: { text: string; w: number }[][] = [[]];
+  let rowW = 0;
+  for (const w of card.words.slice(0, 10)) {
+    const cw = Math.min(W - 2 * M, ctx.measureText(w.term).width + 2 * chipPad);
+    if (rowW + cw > W - 2 * M && rows[rows.length - 1].length) {
+      if (rows.length === 2) break;
+      rows.push([]);
+      rowW = 0;
+    }
+    rows[rows.length - 1].push({ text: w.term, w: cw });
+    rowW += cw + chipGap;
+  }
+  const chipRows = rows.filter((r) => r.length);
+  if (chipRows.length) {
+    const blockH = chipRows.length * chipH + (chipRows.length - 1) * chipGap;
+    let cy = bottom - blockH;
+    for (const r of chipRows) {
+      const total = r.reduce((s, c) => s + c.w, 0) + (r.length - 1) * chipGap;
+      let cx = (W - total) / 2;
+      for (const c of r) {
+        panel(ctx, p, cx, cy, c.w, chipH, chipH / 2);
+        ctx.fillStyle = p.term;
+        ctx.font = font(800, 44);
+        ctx.fillText(clip(ctx, c.text, c.w - 2 * chipPad), cx + chipPad, cy + 58);
+        cx += c.w + chipGap;
+      }
+      cy += chipH + chipGap;
+    }
+    bottom -= blockH + 56;
+  }
+
+  // The week as a streak chain.
+  const week = card.week ?? [];
+  if (week.length) {
+    const r = 40, labelY = bottom - 4, cyc = labelY - 58 - r;
+    const span = W - 2 * M - 2 * r;
+    const step = span / Math.max(1, week.length - 1);
+    const xs = week.map((_, i) => M + r + i * step);
+    for (let i = 0; i + 1 < week.length; i++) {
+      ctx.fillStyle = week[i].active && week[i + 1].active ? p.accent : p.cardLine;
+      ctx.fillRect(xs[i], cyc - 6, step, 12);
+    }
+    week.forEach((d, i) => {
+      const today = i === week.length - 1;
+      ctx.beginPath();
+      ctx.arc(xs[i], cyc, today ? r + 6 : r, 0, Math.PI * 2);
+      ctx.fillStyle = d.active ? p.accent : p.card;
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = d.active ? p.accent : p.cardLine;
+      ctx.stroke();
+      if (d.active) {
+        ctx.strokeStyle = p.pillText;
+        ctx.lineWidth = 9;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(xs[i] - 16, cyc + 1);
+        ctx.lineTo(xs[i] - 4, cyc + 13);
+        ctx.lineTo(xs[i] + 18, cyc - 12);
+        ctx.stroke();
+        ctx.lineCap = "butt";
+      }
+      ctx.fillStyle = today ? p.bandText : p.bandSoft;
+      ctx.font = font(today ? 800 : 600, 28);
+      centred(ctx, [d.label], xs[i], labelY, 0);
+    });
+    bottom = cyc - r - 56;
+  }
+
+  // The stat row: the second and third numbers, divided like a run summary.
+  const rest = numbers.slice(1, 3);
+  if (rest.length) {
+    const h = 176;
+    panel(ctx, p, M, bottom - h, W - 2 * M, h, 36);
+    const colW = (W - 2 * M) / rest.length;
+    rest.forEach((n, i) => {
+      const cx = M + colW * i + colW / 2;
+      if (i > 0) {
+        ctx.fillStyle = p.cardLine;
+        ctx.fillRect(M + colW * i, bottom - h + 34, 2, h - 68);
+      }
+      ctx.fillStyle = p.term;
+      ctx.font = font(800, fit(ctx, n.value, 800, 76, 40, colW - 40));
+      centred(ctx, [n.value], cx, bottom - h + 92, 0);
+      ctx.fillStyle = p.reading;
+      ctx.font = font(600, 30);
+      centred(ctx, [clip(ctx, n.label, colW - 40)], cx, bottom - h + 140, 0);
+    });
+    bottom -= h + 48;
+  }
+
+  // The one big number.
+  const hero = numbers[0] ?? { value: String(card.total ?? card.words.length), label: "" };
+  if (hero.label) {
+    ctx.fillStyle = p.bandSoft;
+    ctx.font = font(700, 44);
+    centred(ctx, [clip(ctx, hero.label, W - 2 * M)], W / 2, bottom, 0);
+    bottom -= 64;
+  }
+  const vs = fit(ctx, hero.value, 900, 300, 140, W - 2 * M);
+  ctx.fillStyle = p.metric;
+  ctx.font = font(900, vs);
+  centred(ctx, [hero.value], W / 2, bottom, 0);
+  bottom -= vs * 0.78 + 30;
+
+  // The hero in a burst of rays and confetti, in whatever room is left.
+  const zoneH = bottom - zoneTop;
+  if (zoneH < 160) return;
+  const cx = W / 2, cy = zoneTop + zoneH / 2 + 20;
+  const R = Math.min(560, zoneH * 0.75);
+  ctx.save();
+  ctx.fillStyle = p.deco.color;
+  for (let i = 0; i < 18; i += 2) {
+    const a0 = (i / 18) * Math.PI * 2, a1 = ((i + 1) / 18) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, a0, a1);
+    ctx.closePath();
+    ctx.fill();
+  }
+  const rand = rng(card.seed ?? 7);
+  const colours = [p.accent, p.pill, p.bandSoft, p.meaning];
+  for (let i = 0; i < 28; i++) {
+    const a = rand() * Math.PI * 2, d = R * (0.45 + rand() * 0.6);
+    ctx.save();
+    ctx.translate(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8);
+    ctx.rotate(rand() * Math.PI);
+    ctx.fillStyle = colours[i % colours.length];
+    roundRect(ctx, -9, -4, 18 + rand() * 14, 9, 4);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  const sprite = art?.cheer ?? art?.idle ?? null;
+  if (sprite) {
+    // Feet a little below the burst's centre, so the figure fills it.
+    const maxH = Math.min(560, zoneH * 0.7);
+    const foot = cy + maxH * 0.55;
+    const head = drawHero(ctx, sprite, art?.cheer ? art.cheerFrame : 0, cx, foot, maxH, W - 2 * M);
+    if (says) drawBubble(ctx, p, says, Math.min(W - 220, cx + 120), Math.max(zoneTop + 120, head - 10), 440);
+  }
+}
+
+/**
+ * The mascot's frames: idle, and a swing caught mid-motion for the
+ * achievement burst (the strongest attack the hero has, at ~60% through).
+ */
+export async function loadStoryArt(slug: string, frames: Partial<Record<string, { frames: number }>>): Promise<StoryArt> {
+  const load = (pose: string) =>
+    new Promise<HTMLImageElement | null>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = `/battle/characters/${slug}/${pose}.png`;
+    });
+  const pose = ["attack02", "attack01"].find((k) => frames[k]) ?? null;
+  const [idle, cheer] = await Promise.all([load("idle"), pose ? load(pose) : Promise.resolve(null)]);
+  const n = pose ? (frames[pose]?.frames ?? 1) : 1;
+  return { idle, cheer, cheerFrame: Math.min(n - 1, Math.floor(n * 0.6)) };
+}
+
 /** The card as a PNG. Waits for fonts so the first render isn't in a fallback face. */
 export async function renderStoryCard(
   card: StoryCard,
   size: { width: number; height: number } = storySize(),
   /** A loaded web font with Mongolian Cyrillic (e.g. next/font's fontFamily). */
-  family?: string
+  family?: string,
+  art: StoryArt | null = null
 ): Promise<Blob> {
   textFamily = family ?? null;
   try {
@@ -763,7 +1160,7 @@ export async function renderStoryCard(
   canvas.height = size.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas unavailable");
-  drawStoryCard(ctx, card);
+  drawStoryCard(ctx, card, art);
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png")
   );

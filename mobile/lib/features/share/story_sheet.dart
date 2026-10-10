@@ -2,11 +2,13 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../battle/hero.dart';
 import 'story_card.dart';
 
 /// A story card's preview, its style and meaning-language pickers, and Share
@@ -33,7 +35,7 @@ const _optsStyle = 'hanko.story.style';
 const _optsLang = 'hanko.story.lang';
 const _optsLayout = 'hanko.story.layout';
 
-class _StorySheet extends StatefulWidget {
+class _StorySheet extends ConsumerStatefulWidget {
   const _StorySheet({required this.title, required this.card, required this.fileName, required this.emptyText});
   final String title;
   final Future<StoryCard?> card;
@@ -41,13 +43,16 @@ class _StorySheet extends StatefulWidget {
   final String emptyText;
 
   @override
-  State<_StorySheet> createState() => _StorySheetState();
+  ConsumerState<_StorySheet> createState() => _StorySheetState();
 }
 
-class _StorySheetState extends State<_StorySheet> {
+class _StorySheetState extends ConsumerState<_StorySheet> {
   StoryStyle _style = StoryStyle.seal;
   StoryLang _lang = StoryLang.mn;
-  StoryLayout _layout = StoryLayout.grid;
+  StoryLayout _layout = StoryLayout.achievement;
+
+  /// Your Monster Hunt hero, drawn as the story's mascot.
+  StoryArt? _art;
 
   /// Which word Spotlight/Quiz show (and the quiz's answer slot): "another word".
   int _seed = 0;
@@ -78,6 +83,9 @@ class _StorySheetState extends State<_StorySheet> {
     } catch (_) {
       _failed = true;
     }
+    try {
+      _art = await loadStoryArt(ref.read(heroProvider));
+    } catch (_) {}
     if (!mounted) return;
     setState(() => _loading = false);
     _render();
@@ -91,13 +99,21 @@ class _StorySheetState extends State<_StorySheet> {
   /// four words with meanings.
   StoryLayout get _drawn => _layout == StoryLayout.quiz && !_quizOk ? StoryLayout.grid : _layout;
 
+  /// What the mascot says: the layout's own line, else the card's.
+  String? get _says => switch (_drawn) {
+        StoryLayout.quiz => T.storyBubbleQuiz,
+        StoryLayout.spotlight => T.storyBubbleWord,
+        _ => _card?.bubble,
+      };
+
   Future<void> _render() async {
     final card = _card;
     if (card == null) return;
     final id = ++_renderId;
     final size = _size;
     try {
-      final png = await renderStoryCard(card, size, _style, _lang, layout: _drawn, seed: _seed);
+      final png =
+          await renderStoryCard(card, size, _style, _lang, layout: _drawn, seed: _seed, art: _art, says: _says);
       if (mounted && id == _renderId) setState(() => _png = png);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
@@ -179,6 +195,7 @@ class _StorySheetState extends State<_StorySheet> {
           Row(
             children: [
               for (final (i, (l, label)) in const [
+                (StoryLayout.achievement, T.storyLayoutAchievement),
                 (StoryLayout.grid, T.storyLayoutGrid),
                 (StoryLayout.list, T.storyLayoutList),
                 (StoryLayout.spotlight, T.storyLayoutSpotlight),
@@ -376,6 +393,12 @@ class _GlyphPainter extends CustomPainter {
     void box(double x, double y, double w, double h) =>
         canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), const Radius.circular(1)), fill);
     switch (layout) {
+      case StoryLayout.achievement:
+        canvas.drawCircle(const Offset(9, 9), 4.5, fill);
+        box(4, 15.5, 10, 3);
+        for (final x in [5.0, 9.0, 13.0]) {
+          canvas.drawCircle(Offset(x, 22.5), 1.4, fill);
+        }
       case StoryLayout.grid:
         for (final y in [6.0, 13.0, 20.0]) {
           box(3, y, 5.5, 5);

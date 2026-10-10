@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -15,17 +16,44 @@ class SpriteSheets {
 
   static final _cache = <String, Future<ui.Image>>{};
 
+  /// Folders (one per character or projectile) whose sheets are cached, least
+  /// recently used first. Every sheet decoded is 72 MB, and the loading scene
+  /// draws a random pair each round, so an unbounded cache crept toward all
+  /// of it — and Android kills a big app first when memory runs low. A screen
+  /// shows at most a hero, a monster and their shots, so ten folders is
+  /// plenty. Evicting only drops the cache's reference: a sprite still
+  /// showing keeps its image.
+  static final _recent = <String>[];
+  static const _maxFolders = 10;
+
   static String path(String slug, String state) =>
       'assets/battle/characters/$slug/$state.png';
 
   static Future<ui.Image> load(String slug, String state) => loadAsset(path(slug, state));
 
   static Future<ui.Image> loadAsset(String key) {
+    _touch(key.substring(0, key.lastIndexOf('/') + 1));
     return _cache.putIfAbsent(key, () async {
-      final data = await rootBundle.load(key);
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      return (await codec.getNextFrame()).image;
+      try {
+        final data = await rootBundle.load(key);
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+        return (await codec.getNextFrame()).image;
+      } catch (_) {
+        _cache.remove(key); // let a later call retry
+        rethrow;
+      }
     });
+  }
+
+  static void _touch(String folder) {
+    if (_recent.isNotEmpty && _recent.last == folder) return;
+    _recent
+      ..remove(folder)
+      ..add(folder);
+    while (_recent.length > _maxFolders) {
+      final old = _recent.removeAt(0);
+      _cache.removeWhere((k, _) => k.startsWith(old));
+    }
   }
 
   /// Warm the clips a character can reach, so its first attack isn't blank.
@@ -33,7 +61,7 @@ class SpriteSheets {
     final meta = spriteFrames[slug];
     if (meta == null) return;
     for (final s in states ?? meta.keys) {
-      if (meta.containsKey(s)) unawaited(load(slug, s));
+      if (meta.containsKey(s)) load(slug, s).ignore();
     }
   }
 }
@@ -68,24 +96,42 @@ class SpriteView extends StatefulWidget {
   State<SpriteView> createState() => _SpriteViewState();
 }
 
-class _SpriteViewState extends State<SpriteView>
-    with SingleTickerProviderStateMixin {
-  // Created in initState, not lazily: a sprite removed before its sheet has
-  // loaded would otherwise first touch the controller inside dispose(), which
-  // builds it against a deactivated element and throws. The loading scene
-  // swaps fighters every few seconds, so that happened routinely.
-  late final AnimationController _clock;
+/// Steps frames on a timer, not an AnimationController. A clip shows a new
+/// frame every ~100-150 ms, but a controller drives a full build/paint/raster
+/// pass on every vsync (90-120 Hz) for as long as a sprite is on screen — the
+/// home hero and the loading fight never stop, so the app never idled. Now a
+/// frame is drawn only when the picture changes.
+///
+/// Timing matches the controller it replaces: each of F frames holds clipMs/F;
+/// a one-shot reaches its last frame at (F-1)/F, holds it, and ends (calling
+/// [SpriteView.onOneShotEnd]) at clipMs. Paused while TickerMode is off
+/// (offstage routes, hidden tabs), as a controller's ticker would be.
+class _SpriteViewState extends State<SpriteView> {
+  final _frame = ValueNotifier<int>(0);
+  Timer? _timer;
+  ValueListenable<TickerModeData>? _tickerMode;
   ui.Image? _sheet;
-  String _resolved = 'idle';
   int _frames = 1;
+  bool _loop = true;
+  bool _ended = false;
   int _loadToken = 0;
 
   @override
   void initState() {
     super.initState();
-    _clock = AnimationController(vsync: this)..addStatusListener(_onStatus);
     SpriteSheets.preload(widget.slug);
     _start();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mode = TickerMode.getValuesNotifier(context);
+    if (mode != _tickerMode) {
+      _tickerMode?.removeListener(_schedule);
+      _tickerMode = mode..addListener(_schedule);
+      _schedule();
+    }
   }
 
   @override
@@ -99,41 +145,63 @@ class _SpriteViewState extends State<SpriteView>
     }
   }
 
-  void _onStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed && !isLoopState(_resolved)) {
-      widget.onOneShotEnd?.call();
-    }
-  }
-
   Future<void> _start() async {
     final token = ++_loadToken;
     final resolved = resolveState(widget.slug, widget.state);
     final frames = framesOf(widget.slug, widget.state);
-    final loop = isLoopState(resolved);
 
-    final sheet = await SpriteSheets.load(widget.slug, resolved);
+    final ui.Image sheet;
+    try {
+      sheet = await SpriteSheets.load(widget.slug, resolved);
+    } catch (_) {
+      return; // missing or undecodable sheet: draw nothing rather than throw
+    }
     if (!mounted || token != _loadToken) return;
 
     setState(() {
       _sheet = sheet;
-      _resolved = resolved;
       _frames = frames;
     });
-    _clock
-      ..stop()
-      ..duration = Duration(milliseconds: loop ? loopMs : oneShotMs)
-      ..value = 0;
-    if (frames <= 1) return;
-    if (loop) {
-      _clock.repeat();
+    _loop = isLoopState(resolved);
+    _ended = false;
+    _frame.value = 0;
+    _timer?.cancel();
+    _timer = null;
+    _schedule();
+  }
+
+  /// Runs the frame timer while there's a clip to play and tickers are on.
+  void _schedule() {
+    final run = _sheet != null && _frames > 1 && !_ended && (_tickerMode?.value.enabled ?? true);
+    if (!run) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    if (_timer != null) return;
+    final stepMs = (_loop ? loopMs : oneShotMs) / _frames;
+    _timer = Timer.periodic(Duration(microseconds: (stepMs * 1000).round()), (_) => _step());
+  }
+
+  void _step() {
+    final next = _frame.value + 1;
+    if (_loop) {
+      _frame.value = next % _frames;
+    } else if (next < _frames) {
+      _frame.value = next;
     } else {
-      _clock.forward();
+      // Past the last frame: hold it and end the clip.
+      _ended = true;
+      _schedule();
+      widget.onOneShotEnd?.call();
     }
   }
 
   @override
   void dispose() {
-    _clock.dispose();
+    _timer?.cancel();
+    _tickerMode?.removeListener(_schedule);
+    _frame.dispose();
     super.dispose();
   }
 
@@ -144,35 +212,39 @@ class _SpriteViewState extends State<SpriteView>
       dimension: widget.size,
       child: sheet == null
           ? null
-          : AnimatedBuilder(
-              animation: _clock,
-              builder: (_, _) => CustomPaint(
-                painter: _FramePainter(
-                  sheet: sheet,
-                  // steps(F, jump-none): F stops across [0, 1] inclusive, so
-                  // t = 1 lands on the last real frame and holds it.
-                  frame: (_clock.value * _frames).floor().clamp(0, _frames - 1),
-                  offset: spriteOffsets[widget.slug] ?? (x: 0, y: 0),
-                  flip: widget.flip,
-                ),
+          : CustomPaint(
+              painter: _FramePainter(
+                sheet: sheet,
+                frame: _frame,
+                offset: spriteOffsets[widget.slug] ?? (x: 0, y: 0),
+                flip: widget.flip,
               ),
             ),
     );
   }
 }
 
+/// Draws one frame of a sheet. [frame] is either a plain int or a listenable
+/// that repaints the sprite (and only the sprite — no rebuild) on change.
 class _FramePainter extends CustomPainter {
   _FramePainter({
     required this.sheet,
-    required this.frame,
+    required Object frame,
     required this.offset,
     required this.flip,
-  });
+  })  : _frame = frame,
+        super(repaint: frame is Listenable ? frame : null);
 
   final ui.Image sheet;
-  final int frame;
+  final Object _frame;
   final ({int x, int y}) offset;
   final bool flip;
+
+  int get frame => switch (_frame) {
+        ValueListenable<int> l => l.value,
+        int i => i,
+        _ => 0,
+      };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -210,6 +282,7 @@ class _FramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FramePainter old) =>
+      old._frame != _frame ||
       old.frame != frame ||
       old.sheet != sheet ||
       old.flip != flip ||
@@ -255,7 +328,7 @@ class _ProjectileViewState extends State<ProjectileView> with SingleTickerProvid
     if (widget.frames > 1) _clock.repeat();
     SpriteSheets.loadAsset('assets/battle/projectiles/${widget.slug}/${widget.pose}.png').then((img) {
       if (mounted) setState(() => _sheet = img);
-    });
+    }).ignore();
   }
 
   @override

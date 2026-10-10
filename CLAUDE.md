@@ -711,6 +711,16 @@ Two traps found doing this:
   `storyCard.test.ts` and `story_card_test.dart`. "Өөр үг" bumps the seed for
   Нэг үг / Асуулт. Three styles, Монгол / English / Хоёул, and the layout
   are remembered per browser / per phone.
+  **Амжилт** (the default) is the Strava-style one: your Monster Hunt hero
+  mid-swing in a burst of rays and confetti, one huge number in the accent,
+  a stat row, the week as a streak chain (the SRS day back seven days,
+  filled by the streak) and word chips. Every layout has the hero as a
+  mascot with a speech bubble, and the first kanji as a faint watermark.
+  The figures fill a third of their 100×100 frame or less, so the renderer
+  measures each frame's opaque outline (`spriteBox` / `_frameBox`) and
+  scales the *figure* by whole pixels — sizing by the frame drew a stamp.
+  Content stays out of Instagram's own chrome: nothing above ~10.5% of the
+  height (profile row) or below ~9% from the bottom (reply bar).
 - **Mobile offline decks** (Drift schema v4: `OfflineDecks`,
   `OfflineDeckCards`): "Офлайнд татах" in a deck's menu saves every card
   (practice_cards), flags which ones review_queue() was serving, refreshes
@@ -745,7 +755,11 @@ Two traps found doing this:
   switched in `MainActivity.onStop` so a launcher refresh never hits mid-use.
   They are real `<activity>`s, not `activity-alias`es, because the Flutter
   tool only finds MAIN/LAUNCHER on `<activity>` — aliases broke `flutter
-  run`. iOS: primary `AppIcon` is Цайвар, `AppIconDark`/`AppIconBlue` are
+  run`. **Debug builds never switch** (they reset to `.IconPaper` on stop):
+  `flutter run` always launches `.IconPaper`, and once a theme had disabled
+  it the launch was refused and the tool sat on "Waiting for VM Service"
+  forever, looking like a stuck install. `adb shell pm enable` can't undo it
+  (Android 14 refuses the shell); only the app can. iOS: primary `AppIcon` is Цайвар, `AppIconDark`/`AppIconBlue` are
   alternate sets (`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), set via
   `setAlternateIconName`, which shows iOS's own one-line notice.
 - **Story images on mobile too** (`features/share/`): `story_card.dart`
@@ -820,6 +834,20 @@ Two traps found doing this:
   rules in the same file were added. Build `--release` **and launch it on a
   device** after adding any ML Kit or native plugin; debug builds don't
   shrink, so they show neither problem.
+- **Mobile sprites step on a timer, not an AnimationController**
+  (`features/battle/sprite_view.dart`). A controller drove a full frame on
+  every vsync while any sprite was visible — the home hero and the loading
+  fight never stop, so the app never idled. Frames now repaint only when the
+  picture changes, paused under `TickerMode` off. The decoded sheet cache is
+  capped at 10 character/projectile folders (all sheets are 72 MB decoded;
+  Android had been killing the app for low memory). `sprite_view_test.dart`
+  pins the one-shot timing battle/duel rely on.
+- **Mobile APK size** (`android/app/build.gradle.kts`): the Flutter Gradle
+  plugin packs all three ABIs no matter what the build targets, and ML Kit's
+  native code is ~20 MB per ABI. The build now keeps only the ARM ABIs it
+  targets (x86_64 only for an emulator-only build) and stores native libs
+  compressed — release APK 125 MB → 36 MB. Still ships 32-bit `armeabi-v7a`
+  for Android Go phones; arm64-only would be ~22 MB.
 - The extension has **no build step** — edits to `src/sync.js` and
   `src/ui.js` must be copied verbatim into both `chrome/` and `firefox/`, and
   every other file except `manifest.json` is identical in the two folders.

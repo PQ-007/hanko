@@ -11,10 +11,13 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "any",
-    background_color: "#faf7f0",
-    theme_color: "#faf7f0",
+    // Цайвар, the default theme (decks/_lib/theme.ts).
+    background_color: "#f7eedd",
+    theme_color: "#f7eedd",
     icons: [
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+      // The installed icon can't follow the theme, so it's the default one —
+      // app/icon.svg is gone (the tab icon is set per theme by the theme script).
+      { src: "/favicon-paper.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
   };

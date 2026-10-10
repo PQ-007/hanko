@@ -467,7 +467,7 @@ class T {
   static const storyNumRecalled = 'үг санасан';
   static const storyNumAdded = 'шинэ үг';
   static const storyNumStreak = 'өдөр дараалан';
-  static const storyNumWords = 'үг · бүртгэлгүй тоглоно';
+  static const storyNumWords = 'үг';
   static const storyStyleLabel = 'Загвар';
   static const storyStyleSeal = 'Цэнхэр';
   static const storyStyleDark = 'Бараан';
@@ -477,7 +477,13 @@ class T {
   static const storyLangEn = 'English';
   static const storyLangBoth = 'Хоёул';
   static const storyLayoutLabel = 'Хэлбэр';
+  static const storyLayoutAchievement = 'Амжилт';
   static const storyLayoutGrid = 'Тор';
+  static const storyBubbleQuiz = 'Чи мэдэх үү?';
+  static const storyBubbleWord = 'Өнөөдрийн үг!';
+  static String storyBubbleToday(int n) => 'Өнөөдөр $n үг!';
+  static String storyBubbleStreak(int n) => '$n өдөр дараалан!';
+  static const storyBubbleDeck = 'Надтай хамт сур!';
   static const storyLayoutList = 'Жагсаалт';
   static const storyLayoutSpotlight = 'Нэг үг';
   static const storyLayoutQuiz = 'Асуулт';

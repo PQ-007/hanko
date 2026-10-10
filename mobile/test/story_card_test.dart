@@ -102,4 +102,38 @@ void main() {
       expect(buildStoryQuiz([w('a', ''), w('b', 'm2'), w('c', 'm3'), w('d', 'm4')], StoryLang.mn, 0), isNull);
     });
   });
+
+  testWidgets('the mascot loads with its figure measured, and every layout draws with it', (tester) async {
+    await tester.runAsync(() async {
+      final art = await loadStoryArt('knight');
+      expect(art.idle, isNotNull);
+      expect(art.cheer, isNotNull);
+      // The figure is much smaller than its 100×100 frame — that's why it's measured.
+      expect(art.idleBox!.height, lessThan(80));
+      expect(art.idleBox!.width, greaterThan(5));
+      expect(art.cheerFrame, greaterThan(0));
+
+      final none = await loadStoryArt('no-such-hero');
+      expect(none.idle, isNull, reason: 'a missing asset just means no mascot');
+
+      const card = StoryCard(
+        kicker: '10-р сарын 9',
+        heading: 'Өнөөдөр сурсан үгс',
+        numbers: [StoryNumber('15', 'үг санасан'), StoryNumber('5', 'шинэ үг'), StoryNumber('6', 'өдөр дараалан')],
+        words: [
+          StoryWord(term: '機密', reading: 'きみつ', meaningMn: 'нууц'),
+          StoryWord(term: '等', reading: 'など', meaningMn: 'гэх мэт'),
+          StoryWord(term: '把握', reading: 'はあく', meaningMn: 'атгах'),
+          StoryWord(term: '居住', reading: 'きょじゅう', meaningMn: 'оршин суух'),
+        ],
+        week: [StoryDay('Да', false), StoryDay('Мя', true), StoryDay('Лх', true)],
+        bubble: '6 өдөр дараалан!',
+      );
+      for (final layout in StoryLayout.values) {
+        final png = await renderStoryCard(card, const ui.Size(1080, 1920), StoryStyle.paper, StoryLang.mn,
+            layout: layout, art: art, says: 'Сайн уу!');
+        expect(png.length, greaterThan(1000));
+      }
+    });
+  });
 }
