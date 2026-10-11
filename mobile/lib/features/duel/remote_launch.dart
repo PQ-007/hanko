@@ -51,6 +51,8 @@ Future<void> openRemoteDuel(BuildContext context, WidgetRef ref, MatchRow m, {bo
         opponentId: opponentId,
         foeName: name,
         foeSub: info?.sub,
+        isFriend: info?.isFriend ?? false,
+        startedAt: m.startedAt,
         record: record,
         questions: m.questions,
       ),

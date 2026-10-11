@@ -289,6 +289,17 @@ class T {
   static const duelIntroKicker = 'Нүүр тулах тулаан';
   static String duelIntroStarting(int n) => '$n секундын дараа эхэлнэ…';
   static const duelIntroGo = 'Эхэллээ!';
+  // Ready room + chat (same copy as the web's strings.ts).
+  static const duelReady = 'Бэлэн';
+  static const duelWaitingFoe = 'Өрсөлдөгчийг хүлээж байна…';
+  static String duelReadyAuto(int n) => '$n секундын дараа автоматаар эхэлнэ';
+  static const duelFoeReady = 'Бэлэн';
+  static const duelFoeWaiting = 'Бэлдэж байна…';
+  static const duelFoeAway = 'Холбогдож байна…';
+  static const duelChatEmpty = 'Эмотикон эсвэл бэлэн үг илгээгээрэй.';
+  static const duelChatPlaceholder = 'Мессеж бичих…';
+  static const duelChatSend = 'Илгээх';
+  static const duelChatStrangers = 'Найз биш тоглогчтой зөвхөн эмотикон, бэлэн үг илгээх боломжтой.';
   static String duelRematchWaiting(String name) => '$name-г хүлээж байна…';
   static const duelRematchCancel = 'Болих';
   static String duelRematchIncoming(String name) => '$name дахин тулах гэж байна';

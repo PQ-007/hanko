@@ -11,6 +11,9 @@ import type { MatchRow } from "../_lib/match";
 import { loadRecord, recordTotal } from "../_lib/record";
 import { useRematch } from "../_lib/useRematch";
 import H2HRecord from "./H2HRecord";
+import ChatFighter from "./ChatFighter";
+import DuelChatPanel from "./DuelChatPanel";
+import type { DuelChat } from "../_lib/useDuelChat";
 
 /** What the result screen needs to show a person-vs-person ending. */
 export interface OnlineResult {
@@ -61,7 +64,9 @@ export default function DuelResult({
   hero,
   onRematch,
   exitHref,
+  onExit,
   opponentLeft = false,
+  chat,
   online,
 }: {
   outcome: DuelOutcome;
@@ -72,8 +77,12 @@ export default function DuelResult({
   hero: string;
   onRematch?: () => void;
   exitHref: string;
+  /** Leaving in place (see DuelArena's onExit); otherwise a link to exitHref. */
+  onExit?: () => void;
   /** The win came from the other player leaving, not from the fight. */
   opponentLeft?: boolean;
+  /** PvP: the match's chat, still open after the fight (emotes play on the fighters). */
+  chat?: DuelChat;
   /** Set for a match against a person: record, and a rematch that asks them. */
   online?: OnlineResult;
 }) {
@@ -97,7 +106,7 @@ export default function DuelResult({
         : "text-amber-300";
 
   return (
-    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-4 py-8">
+    <div className="mx-auto flex w-full min-h-full max-w-3xl flex-col justify-center overflow-x-clip px-4 py-8">
       <div className="hk-arena flex flex-col gap-6 p-6 sm:p-8">
         <div className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-paper/40">
@@ -110,22 +119,30 @@ export default function DuelResult({
         {/* The two fighters as they finished. A draw leaves both standing,
             which is the whole visual difference between it and a win. */}
         <div className="flex items-center justify-center gap-6">
-          <div className="hanko-fighter-slot flex shrink-0 items-center justify-center">
-            <FighterSprite
-              slug={hero}
-              state={state.yourDefeated ? "death" : "idle"}
-              preload={["idle", "death"]}
-            />
-          </div>
+          {chat ? (
+            <ChatFighter slug={hero} base={state.yourDefeated ? "death" : "idle"} beat={chat.mine} />
+          ) : (
+            <div className="hanko-fighter-slot flex shrink-0 items-center justify-center">
+              <FighterSprite
+                slug={hero}
+                state={state.yourDefeated ? "death" : "idle"}
+                preload={["idle", "death"]}
+              />
+            </div>
+          )}
           <span className="text-xs font-bold tracking-wider text-paper/40">VS</span>
-          <div className="hanko-fighter-slot flex shrink-0 items-center justify-center">
-            <FighterSprite
-              slug={opponentSlug}
-              state={state.theirDefeated ? "death" : "idle"}
-              flip
-              preload={["idle", "death"]}
-            />
-          </div>
+          {chat ? (
+            <ChatFighter slug={opponentSlug} base={state.theirDefeated ? "death" : "idle"} flip beat={chat.foe} />
+          ) : (
+            <div className="hanko-fighter-slot flex shrink-0 items-center justify-center">
+              <FighterSprite
+                slug={opponentSlug}
+                state={state.theirDefeated ? "death" : "idle"}
+                flip
+                preload={["idle", "death"]}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-4 text-sm font-semibold tabular-nums">
@@ -145,8 +162,10 @@ export default function DuelResult({
           <Tile label={T.duelResultDamage} value={damage} />
         </div>
 
+        {chat && <DuelChatPanel chat={chat} foeName={opponentName} />}
+
         {online ? (
-          <OnlineEnd online={online} hero={hero} opponentName={opponentName} exitHref={exitHref} />
+          <OnlineEnd online={online} hero={hero} opponentName={opponentName} exitHref={exitHref} onExit={onExit} />
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             {onRematch && (
@@ -154,7 +173,7 @@ export default function DuelResult({
                 <RotateCcw size={15} /> {T.duelRematch}
               </button>
             )}
-            <ExitLink href={exitHref} />
+            <ExitLink href={exitHref} onExit={onExit} />
           </div>
         )}
       </div>
@@ -162,11 +181,19 @@ export default function DuelResult({
   );
 }
 
-function ExitLink({ href }: { href: string }) {
+function ExitLink({ href, onExit }: { href: string; onExit?: () => void }) {
+  const cls = "hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10";
+  if (onExit) {
+    return (
+      <button onClick={onExit} className={cls}>
+        <ArrowLeft size={15} /> {T.exitBattle}
+      </button>
+    );
+  }
   return (
     <Link
       href={href}
-      className="hk-btn border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-paper hover:bg-white/10"
+      className={cls}
     >
       <ArrowLeft size={15} /> {T.exitBattle}
     </Link>
@@ -183,11 +210,13 @@ function OnlineEnd({
   hero,
   opponentName,
   exitHref,
+  onExit,
 }: {
   online: OnlineResult;
   hero: string;
   opponentName: string;
   exitHref: string;
+  onExit?: () => void;
 }) {
   const [record, setRecord] = useState<HeadToHead | null>(online.before);
   const wanted = online.before ? recordTotal(online.before) + 1 : 1;
@@ -238,7 +267,7 @@ function OnlineEnd({
             >
               {T.duelRematchCancel}
             </button>
-            <ExitLink href={exitHref} />
+            <ExitLink href={exitHref} onExit={onExit} />
           </>
         ) : (
           <>
@@ -258,7 +287,7 @@ function OnlineEnd({
                 {T.duelInviteDecline}
               </button>
             )}
-            <ExitLink href={exitHref} />
+            <ExitLink href={exitHref} onExit={onExit} />
           </>
         )}
       </div>

@@ -34,7 +34,9 @@ import type { OpponentDriver } from "../_lib/opponent";
 import type { HeadToHead } from "../../../_lib/social";
 import type { MatchRow } from "../_lib/match";
 import { questionFor, quizFor, type SharedQuestion } from "../_lib/sharedQuestions";
-import DuelIntro, { INTRO_MS } from "./DuelIntro";
+import DuelReadyRoom from "./DuelReadyRoom";
+import { readyDeadline } from "../_lib/chat";
+import { useDuelChat } from "../_lib/useDuelChat";
 import DuelResult from "./DuelResult";
 
 // How long the arena holds on a resolved round before the next question. Long
@@ -60,6 +62,10 @@ export interface OnlineMatch {
   opponentId: string;
   /** "@handle · lv" shown under their name on the intro. */
   foeSub: string | null;
+  /** duel_opponent().is_friend — typed chat is for friends only. */
+  isFriend: boolean;
+  /** matches.started_at: the ready room's shared clock. */
+  startedAt: string | null;
   /** Your record with them before this match; null while loading. */
   record: HeadToHead | null;
   /** The question set the server planned — both players answer these. */
@@ -73,6 +79,7 @@ export default function DuelArena({
   roundCount = DUEL_ROUND_COUNT,
   onRematch,
   exitHref = "/decks/review/duel",
+  onExit,
   online,
 }: {
   opponent: OpponentDriver;
@@ -80,6 +87,12 @@ export default function DuelArena({
   roundCount?: number;
   onRematch?: () => void;
   exitHref?: string;
+  /**
+   * Leaving, when the arena is shown in place by a page that is already at
+   * exitHref (the duel lobby): navigating to the URL you are on does nothing,
+   * so the page has to drop the match itself.
+   */
+  onExit?: () => void;
   online?: OnlineMatch;
 }) {
   useImmersive();
@@ -88,14 +101,19 @@ export default function DuelArena({
   // Both players answer the same planned questions when the server made them;
   // otherwise (a bot, or a match from before 0030) each draws from their own deck.
   const shared = online?.questions ?? null;
-  // The pre-fight screen (names + your record) — person-vs-person only.
+  // The ready room (names, record, chat) — person-vs-person only. It ends
+  // when both are ready or at the shared deadline; the cards load meanwhile.
   const hasIntro = !!online;
   const [introDone, setIntroDone] = useState(!hasIntro);
-  useEffect(() => {
-    if (!hasIntro) return;
-    const id = setTimeout(() => setIntroDone(true), INTRO_MS);
-    return () => clearTimeout(id);
-  }, [hasIntro]);
+  const [deadline] = useState(() => readyDeadline(online?.startedAt, Date.now()));
+  const startMatch = useCallback(() => setIntroDone(true), []);
+  // One chat channel for the whole match, so the ready room's messages are
+  // still there on the result screen.
+  const chat = useDuelChat(
+    online
+      ? { matchId: online.matchId, meId: online.meId, opponentId: online.opponentId, isFriend: online.isFriend }
+      : null
+  );
 
   const [cards, setCards] = useState<QueueCard[] | null>(null);
   const [allWords, setAllWords] = useState<OwnWord[] | null>(null);
@@ -431,13 +449,16 @@ export default function DuelArena({
   }
   if (online && !introDone) {
     return (
-      <DuelIntro
+      <DuelReadyRoom
         heroSlug={hero}
         youName={T.duelYou}
         foeSlug={opponent.slug}
         foeName={opponent.name}
         foeSub={online.foeSub}
         record={online.record}
+        chat={chat}
+        deadline={deadline}
+        onStart={startMatch}
       />
     );
   }
@@ -454,7 +475,9 @@ export default function DuelArena({
         hero={hero}
         onRematch={onRematch}
         exitHref={exitHref}
+        onExit={onExit}
         opponentLeft={opponent.left?.() ?? false}
+        chat={online ? chat : undefined}
         online={
           online && {
             matchId: online.matchId,
@@ -480,7 +503,13 @@ export default function DuelArena({
             onClick={(e) => {
               // Leaving a live match against a person concedes it — after asking.
               const concede = opponent.concede;
-              if (!concede) return;
+              if (!concede) {
+                if (onExit) {
+                  e.preventDefault();
+                  onExit();
+                }
+                return;
+              }
               e.preventDefault();
               void askConfirm({
                 title: T.duelLeaveTitle,
@@ -491,7 +520,8 @@ export default function DuelArena({
               }).then((ok) => {
                 if (!ok) return;
                 void concede().catch(() => {});
-                router.push(exitHref);
+                if (onExit) onExit();
+                else router.push(exitHref);
               });
             }}
             className="flex items-center gap-1 rounded-control px-2 py-1 font-medium text-paper/60 transition hover:bg-white/10 hover:text-paper"

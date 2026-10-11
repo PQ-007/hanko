@@ -264,6 +264,8 @@ export default function DuelLobby() {
       meId: userId,
       opponentId,
       foeSub,
+      isFriend: info.opp?.is_friend ?? false,
+      startedAt: match.started_at ?? null,
       record: info.record,
       questions: parseQuestions(match.questions),
       // A rematch is a new match row: swap it in and the arena (keyed by id)
@@ -294,6 +296,7 @@ export default function DuelLobby() {
         key={bot.nonce}
         opponent={botOpponent}
         onRematch={() => startBot(bot.difficulty)}
+        onExit={() => setBot(null)}
       />
     );
   }
@@ -305,6 +308,10 @@ export default function DuelLobby() {
         opponent={remoteOpponent}
         roundCount={match.round_count}
         online={online}
+        onExit={() => {
+          setInfo(null);
+          setMatch(null);
+        }}
       />
     );
   }

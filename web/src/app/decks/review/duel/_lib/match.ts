@@ -15,6 +15,8 @@ export interface MatchRow {
   round_count: number;
   /** The question set both players answer (0030); null on older matches. */
   questions: unknown;
+  /** Set by the server when the guest joined — the ready room's clock. */
+  started_at?: string | null;
 }
 
 /** A challenge waiting for me — duel_invites() (0030). */
