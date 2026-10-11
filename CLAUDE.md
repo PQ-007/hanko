@@ -794,6 +794,14 @@ Two traps found doing this:
   Google Input Tools' keyless handwriting endpoint, called straight from the
   browser (it answers CORS `*`) — no route of ours, so no new open proxy.
   The stroke grader can't do this: it checks ink against one known kanji.
+  **Mobile has the same sheet** (`features/shell/quick_add_sheet.dart`, from
+  quick add and from a deck with `lockDeck`); `WordForm` is now edit-only.
+  The fill rules and multi-match parsing are ports pinned by the same cases
+  (`add_word_rules.dart` / `addWord.ts`, `parseJishoResults` in both
+  `dictionary_test.dart` and `jisho.test.ts`). Its pad
+  (`decks/handwriting_pad.dart`) uses ML Kit digital ink on the phone — the
+  writing lessons' model, offline once downloaded — and claims the pointer
+  on touch-down (`_EagerPan`), or a downward stroke scrolls the sheet.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a

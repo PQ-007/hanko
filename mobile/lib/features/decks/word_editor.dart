@@ -7,11 +7,12 @@ import '../../models/library.dart';
 
 export '../../models/library.dart' show WordDraft;
 
-/// The add/edit form for a word, shown as a bottom sheet. Returns the entered
+/// The edit form for a word, shown as a bottom sheet. Returns the entered
 /// fields, or null if dismissed. It does no saving, so the caller owns error
-/// handling, the duplicate check and the refresh.
+/// handling and the refresh. (Adding has its own sheet — quick_add_sheet.dart,
+/// with live lookups and the handwriting pad, like the web's AddWordModal.)
 ///
-/// Behaves like the web's AddWordForm / WordEditModal:
+/// Behaves like the web's WordEditModal:
 /// - leaving the term field looks it up on Jisho, replaces a conjugated form
 ///   with its dictionary form (担っています → 担う) and fills reading/English
 ///   only where they're empty, then translates the English;
@@ -38,8 +39,7 @@ Future<WordDraft?> showWordEditor(BuildContext context, {Word? existing, WordDra
   );
 }
 
-/// The form itself, reusable inside other sheets (quick add keeps it open
-/// between words, so it can't pop on submit).
+/// The form itself.
 class WordForm extends ConsumerStatefulWidget {
   const WordForm({
     super.key,
@@ -100,17 +100,6 @@ class WordFormState extends ConsumerState<WordForm> {
     _termFocus.dispose();
     _meaningFocus.dispose();
     super.dispose();
-  }
-
-  /// Clears the fields after a successful quick-add, keeping the sheet open.
-  void reset() {
-    _term.clear();
-    _reading.clear();
-    _meaning.clear();
-    _meaningMn.clear();
-    _lastEn = '';
-    _lastLooked = '';
-    _termFocus.requestFocus();
   }
 
   Future<void> _lookup({bool overwrite = false}) async {

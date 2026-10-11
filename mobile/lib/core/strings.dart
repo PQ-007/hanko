@@ -154,6 +154,19 @@ class T {
   static const quickAddSaveFailed = 'Үгийг хадгалж чадсангүй.';
   static String quickAddedCount(int n) => '$n үг нэмлээ';
   static const quickAddDone = 'Дуусгах';
+  // Add-word sheet: dictionary matches and the handwriting pad (same copy as
+  // the web's AddWordModal).
+  static const addMatches = 'Jisho-гийн үр дүн';
+  static const addMatchesNone = 'Jisho-оос олдсонгүй';
+  static const handwrite = 'Гараар бичих';
+  static const handwriteHint = 'Ханзаа энд зурна уу';
+  static const handwritePick = 'Зурсан тэмдэгтээ сонгоно уу';
+  static const addTermLabel = 'Үг';
+  static const clearForm = 'Цэвэрлэх';
+  static String addedFlash(String t) => '$t нэмэгдлээ';
+  static const autoFilled = 'Авто';
+  static const autoFilledTitle = 'Jisho-оос автоматаар бөглөсөн — засаж болно';
+  static const closeLabel = 'Хаах';
   static const goalModalTitle = 'Өдрийн шинэ үгийн зорилго';
   static const goalModalDesc = 'Өдөрт хэдэн шинэ үг сурахыг зорих вэ?';
   static const goalModalLabel = 'Шинэ үг / өдөр';

@@ -13,6 +13,7 @@ import '../battle/hero.dart';
 import '../decks/word_actions.dart';
 import '../decks/word_editor.dart';
 import '../shell/action_sheet.dart';
+import '../shell/quick_add_sheet.dart';
 import '../stats/grade_bars.dart';
 import 'deck_actions.dart';
 import 'deck_share_sheet.dart';
@@ -31,11 +32,9 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
   Grade? _filter;
   bool _grid = false;
 
-  Future<void> _add(Deck deck) async {
-    final draft = await showWordEditor(context);
-    if (draft == null || !mounted) return;
-    await addWordChecked(context, ref, deckId: deck.id, draft: draft);
-  }
+  /// The same add sheet as quick add, with this deck fixed: lookups as you
+  /// type, the handwriting pad, and it stays open for the next word.
+  Future<void> _add(Deck deck) => showQuickAddSheet(context, ref, deckId: deck.id, lockDeck: true);
 
   Future<void> _edit(Word word) async {
     final draft = await showWordEditor(context, existing: word);

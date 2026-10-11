@@ -199,4 +199,53 @@ void main() {
       expect(sanitizeFilename(''), 'deck');
     });
   });
+
+  // Same fixture and cases as web/src/lib/jisho.test.ts.
+  group('parseJishoResults', () {
+    const variant = {
+      'data': [
+        {
+          'slug': '付属',
+          'japanese': [
+            {'word': '付属', 'reading': 'ふぞく'},
+            {'word': '附属', 'reading': 'ふぞく'},
+          ],
+          'senses': [
+            {'english_definitions': ['attached']},
+          ],
+        },
+        {
+          'slug': '籠る',
+          'japanese': [
+            {'word': '篭る', 'reading': 'こもる'},
+            {'word': '籠る', 'reading': 'こもる'},
+          ],
+          'senses': [
+            {'english_definitions': ['to shut oneself in']},
+          ],
+        },
+      ],
+    };
+
+    test("several results start with parseJisho's pick, then the rest without repeats", () {
+      final rs = parseJishoResults(variant, term: '籠る');
+      expect(rs.first.word, parseJisho(variant, term: '籠る').word);
+      expect(rs.first.meaning, 'to shut oneself in');
+      expect(rs.map((r) => r.word), ['籠る', '付属']);
+      expect(parseJishoResults(variant, term: '籠る', max: 1).length, 1);
+    });
+
+    test('an entry listing the typed writing shows it, not its main one', () {
+      final twice = {
+        'data': [...(variant['data'] as List), (variant['data'] as List)[1]],
+      };
+      expect(parseJishoResults(twice, term: '籠る').map((r) => r.word), ['籠る', '付属']);
+      expect(parseJishoResults(twice).map((r) => r.word), ['付属', '篭る']);
+    });
+
+    test('several results of nothing is an empty list', () {
+      expect(parseJishoResults({'data': []}, term: 'x'), isEmpty);
+      expect(parseJishoResults(null), isEmpty);
+    });
+  });
 }
