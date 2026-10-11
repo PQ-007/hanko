@@ -16,7 +16,7 @@ import WeekdayReviewsChart from "../_components/WeekdayReviewsChart";
 import DeckBreakdownTable from "../_components/DeckBreakdownTable";
 import WordSpotlight from "../_components/WordSpotlight";
 import ReviewModeModal from "../_components/ReviewModeModal";
-import QuickAddWordModal from "../_components/QuickAddWordModal";
+import AddWordModal from "../_components/AddWordModal";
 import GoalModal from "../_components/GoalModal";
 import TodayShareModal from "../_components/TodayShareModal";
 import LoadingScene from "../review/battle/_components/LoadingScene";
@@ -233,7 +233,7 @@ export default function StatsDashboard() {
         />
       )}
       {modal === "add" && (
-        <QuickAddWordModal
+        <AddWordModal
           decks={decks}
           onClose={(added) => {
             setModal(null);

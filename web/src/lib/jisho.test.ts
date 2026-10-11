@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseJisho } from "./jisho.ts";
+import { parseJisho, parseJishoResults } from "./jisho.ts";
 
 // Same cases as parseJisho's tests in mobile/test/dictionary_test.dart: Jisho
 // lists an entry under its common spelling, so searching 附属 returns the 付属
@@ -44,4 +44,28 @@ test("a form no entry lists (conjugated) still gets the dictionary form", () => 
 test("no results or a malformed body is empty", () => {
   assert.deepEqual(parseJisho({ data: [] }), { word: "", reading: "", meaning: "" });
   assert.deepEqual(parseJisho(null), { word: "", reading: "", meaning: "" });
+});
+
+test("several results start with parseJisho's pick, then the rest without repeats", () => {
+  const rs = parseJishoResults(variant, "籠る");
+  assert.deepEqual(rs[0], parseJisho(variant, "籠る"));
+  assert.deepEqual(
+    rs.map((r) => r.word),
+    ["籠る", "付属"]
+  );
+  assert.deepEqual(parseJishoResults(variant, "籠る", 1).length, 1);
+});
+
+test("several results: an entry listing the typed writing shows it, not its main one", () => {
+  const twice = { data: [...variant.data, variant.data[1]] };
+  assert.deepEqual(
+    parseJishoResults(twice, "籠る").map((r) => r.word),
+    ["籠る", "付属"]
+  );
+  assert.deepEqual(parseJishoResults(twice).map((r) => r.word), ["付属", "篭る"]);
+});
+
+test("several results of nothing is an empty list", () => {
+  assert.deepEqual(parseJishoResults({ data: [] }, "x"), []);
+  assert.deepEqual(parseJishoResults(null), []);
 });

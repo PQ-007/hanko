@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { lookupWord } from "@/lib/jisho";
+import { lookupWords } from "@/lib/jisho";
 import { callerKey, takeToken } from "@/lib/rateLimit";
 
-// GET /api/lookup?term=... -> { word, reading, meaning }
+// GET /api/lookup?term=... -> { word, reading, meaning, results }
 // Auto-fills the dictionary form + reading/meaning when adding a word.
+// `results` is up to five matches, the first being the same as the top-level
+// fields; the web's add-word dialog lists them. Older callers (extension,
+// mobile) read only the top-level fields, so it is additive.
 //
 // Unauthenticated on purpose: the extension and the mobile app both call it,
 // and neither has a cookie session here. That makes it an open proxy in front
@@ -30,9 +33,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(await lookupWord(term));
+    const results = await lookupWords(term);
+    const best = results[0] ?? { word: "", reading: "", meaning: "" };
+    return NextResponse.json({ ...best, results });
   } catch {
     // Don't fail the UX over a dictionary outage.
-    return NextResponse.json({ word: "", reading: "", meaning: "" });
+    return NextResponse.json({ word: "", reading: "", meaning: "", results: [] });
   }
 }

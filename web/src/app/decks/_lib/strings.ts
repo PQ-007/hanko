@@ -250,6 +250,14 @@ export const T = {
   quickAddSaveFailed: "Үгийг хадгалж чадсангүй.",
   quickAddedCount: (n: number) => `${n} үг нэмлээ`,
   quickAddDone: "Дуусгах",
+  // Add-word dialog: dictionary matches and the handwriting pad.
+  addMatches: "Jisho-гийн үр дүн",
+  addMatchesNone: "Jisho-оос олдсонгүй",
+  handwrite: "Гараар бичих",
+  handwriteHint: "Ханзаа энд зурна уу",
+  handwriteFailed: "Танилт амжилтгүй — сүлжээгээ шалгана уу.",
+  handwritePick: "Зурсан тэмдэгтээ сонгоно уу",
+  addShortcuts: "Enter — үр дүн сонгох · Ctrl+Enter — нэмэх",
   // New-word daily goal (GoalModal)
   goalModalTitle: "Өдрийн шинэ үгийн зорилго",
   goalModalDesc: "Өдөрт хэдэн шинэ үг сурахыг зорих вэ?",

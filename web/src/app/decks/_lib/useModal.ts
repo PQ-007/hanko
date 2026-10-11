@@ -11,7 +11,9 @@ import { useEffect } from "react";
 // path out — including an unmount that isn't a close.
 export function useModalChrome(onClose: () => void) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Not mid-IME-composition: there Escape cancels the conversion, and
+    // closing the dialog would take the half-typed Japanese with it.
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !e.isComposing && onClose();
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {

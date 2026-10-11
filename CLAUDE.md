@@ -772,6 +772,17 @@ Two traps found doing this:
   public `avatars` bucket (`0029_avatars.sql`), resized client-side to 256px
   WebP; `profiles.image` may only be a Google photo or that bucket (a free
   URL would let someone track who views their profile).
+- **Adding words on the web is one dialog** (`AddWordModal.tsx`), opened from
+  a deck (deck fixed, list refreshes behind it) and from the dashboard (deck
+  picker). The term is looked up as it changes; `/api/lookup` now also
+  returns `results` (up to 5 matches, first = the old top-level fields, so
+  the extension and mobile are unaffected) to pick from. Matches fill only
+  fields the user hasn't typed into (`_lib/addWord.ts`, tested); the term is
+  swapped for the dictionary form only on Enter/Tab, never mid-typing.
+  **Handwriting search** (`HandwritingPad.tsx`, `_lib/handwriting.ts`) uses
+  Google Input Tools' keyless handwriting endpoint, called straight from the
+  browser (it answers CORS `*`) — no route of ours, so no new open proxy.
+  The stroke grader can't do this: it checks ink against one known kanji.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a

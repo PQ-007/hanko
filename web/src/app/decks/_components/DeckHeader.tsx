@@ -14,16 +14,14 @@ import DeckShareModal from "./DeckShareModal";
 export default function DeckHeader({
   deck,
   folders,
-  adding,
-  onToggleAdd,
+  onAdd,
   view,
   onView,
   onChanged,
 }: {
   deck: DeckWithCount;
   folders: Folder[];
-  adding: boolean;
-  onToggleAdd: () => void;
+  onAdd: () => void;
   view: WordView;
   onView: (v: WordView) => void;
   onChanged: () => void;
@@ -149,20 +147,10 @@ export default function DeckHeader({
           <GraduationCap size={15} /> {T.practice}
         </Link>
         <button
-          onClick={onToggleAdd}
-          className={`flex items-center gap-1 rounded-control px-3 py-1.5 text-sm font-medium transition max-sm:flex-1 max-sm:justify-center ${
-            adding
-              ? "border border-line text-ink hover:bg-paper-dim"
-              : "bg-seal text-paper hover:bg-seal-dark"
-          }`}
+          onClick={onAdd}
+          className="flex items-center gap-1 rounded-control bg-seal px-3 py-1.5 text-sm font-medium text-paper transition hover:bg-seal-dark max-sm:flex-1 max-sm:justify-center"
         >
-          {adding ? (
-            T.cancel
-          ) : (
-            <>
-              <Plus size={15} /> {T.addWord}
-            </>
-          )}
+          <Plus size={15} /> {T.addWord}
         </button>
         <div className="relative">
           <button
