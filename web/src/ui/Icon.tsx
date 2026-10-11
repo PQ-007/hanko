@@ -188,6 +188,14 @@ const PATHS = {
       <path d="M7 6.5H4v1.5a3 3 0 0 0 3 3M17 6.5h3v1.5a3 3 0 0 1-3 3M12 15v3.5M8 20.5h8" />
     </>
   ),
+  // The user guide (/doc): a question mark cut into a square stamp.
+  guide: (
+    <>
+      <path d="M4 4h16v16H4z" />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.8" />
+      <path d="M11 16h2v2h-2z" fill="currentColor" stroke="none" />
+    </>
+  ),
   copy: (
     <>
       <path d="M8.5 8.5h11v11h-11z" />

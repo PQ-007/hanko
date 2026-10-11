@@ -6,7 +6,7 @@ import TabBar from "./_components/TabBar";
 import PageTitle from "./_components/PageTitle";
 import DuelInviteToast from "./_components/DuelInviteToast";
 import { T } from "./_lib/strings";
-import { Settings2 } from "@/ui/icons";
+import { HelpCircle, Settings2 } from "@/ui/icons";
 
 export default async function DecksLayout({
   children,
@@ -46,6 +46,18 @@ export default async function DecksLayout({
             <span className="hidden max-w-[180px] truncate text-xs xl:inline">
               {user?.email}
             </span>
+            {/* The user guide: a static page (public/doc, served at /doc by a
+                rewrite), so a plain <a> — <Link> would try a client-side
+                navigation into a route the app router doesn't own. */}
+            <a
+              href="/doc"
+              title={T.guideLong}
+              aria-label={T.guideLong}
+              className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:bg-paper-dim hover:text-ink"
+            >
+              <HelpCircle size={17} />
+              <span className="hidden sm:inline">{T.guideTitle}</span>
+            </a>
             {/* Settings (theme, profile, limits) — sign-out lives there too. */}
             <Link
               href="/decks/settings"

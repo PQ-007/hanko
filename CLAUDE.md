@@ -830,6 +830,14 @@ Two traps found doing this:
   (`decks/handwriting_pad.dart`) uses ML Kit digital ink on the phone — the
   writing lessons' model, offline once downloaded — and claims the pointer
   on touch-down (`_EagerPan`), or a downward stroke scrolls the sheet.
+- **User guide at `/doc`** (Mongolian, for users): a static page,
+  `web/public/doc/index.html` + `public/doc/img/*.webp` (real screenshots;
+  the phone ones have a friend's name and the owner's photo blurred). Served
+  at `/doc` by a rewrite in `next.config.ts`; outside `/decks`, so it opens
+  signed out. Linked from the app header («Заавар», `HelpCircle` icon) and
+  the login page — as a plain `<a>`, not `<Link>`: it isn't an app-router
+  route. It follows the site theme from `localStorage["hanko.theme"]`.
+  When a feature changes, update its section there too.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a

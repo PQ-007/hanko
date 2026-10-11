@@ -1,17 +1,48 @@
-# mobile
+# Hanko — мобайл апп
 
-A new Flutter project.
+Flutter + Riverpod + Drift. Вэбтэй ижил Supabase төсөл, ижил хүснэгт, ижил
+RPC — вэбийн сервер рүү хандахгүй, бие даан ажиллана. Төслийн ерөнхий
+танилцуулгыг **[үндсэн README](../README.md)**-ээс.
 
-## Getting Started
+## Ажиллуулах
 
-This project is a starting point for a Flutter application.
+```bash
+cp env.example.json env.json   # Supabase URL, publishable key, Google client ID
+flutter pub get
+flutter run --dart-define-from-file=env.json
+flutter analyze
+flutter test
+```
 
-A few resources to get you started if this is your first Flutter project:
+`env.json` git-д орохгүй. VS Code-ийн `.vscode/launch.json` түүнийг ашигладаг.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Бүтэц
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```text
+lib/core/           Supabase repository, Drift (офлайн), толь/орчуулга,
+                    загвар (theme), текст (strings.dart), сануулга
+lib/features/
+  library/ decks/   багц, үг, нэмэх sheet, гар бичмэл (ML Kit), олон сонголт
+  capture/          камераар үг таних (ML Kit OCR)
+  review/           давталт, офлайн outbox
+  battle/           Мангас агнах, дүрсийн sprite
+  duel/ pvp/        нүүр тулах тулаан, ready room, чат
+  writing/          ханз бичих хичээл
+  audio/            аудио багц (MP3), жишээ өгүүлбэр
+  stats/ social/ share/ settings/ home/ shell/
+```
+
+## Санах зүйлс
+
+- **Release build-ийг заавал утсан дээр ажиллуулж шалга** — ML Kit-ийн R8
+  дүрмүүд (`android/app/proguard-rules.pro`) debug-д илэрдэггүй.
+- **`flutter run` эхлэхгүй бол:** release build Бараан/Цэнхэр загвар дээр
+  нүүрний дүрсээ солиод `.IconPaper`-ийг унтраасан байна. Аппаа нээж
+  **Цайвар** руу шилжүүлээд гарвал засагдана — adb-ээр засах боломжгүй.
+- Dart Android-ийн үндсэн thread дээр ажилладаг (Flutter 3.29+) — удаан
+  синхрон ажлыг `Isolate.run`-д өгнө, эс бөгөөс ANR.
+- Вэбтэй давхардсан дүрмүүд (тулааны тооцоо, асуулт, чатын дүрэм…) хоёр
+  талд ижил тестийн тохиолдлоор бэхлэгдсэн — нэг талыг өөрчилбөл нөгөөг нь
+  бас өөрчил.
+
+Архитектур, шийдвэрүүдийн шалтгаан — **[CLAUDE.md](../CLAUDE.md)**.

@@ -565,6 +565,8 @@ export const T = {
 
   // Тохиргоо (settings).
   settingsTitle: "Тохиргоо",
+  guideTitle: "Заавар",
+  guideLong: "Хэрхэн ашиглах вэ?",
   settingsLoadFailed: "Тохиргоог ачаалж чадсангүй.",
   settingsSignedInAs: "Нэвтэрсэн",
   settingsSaved: "Хадгаллаа",
