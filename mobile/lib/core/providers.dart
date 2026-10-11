@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 
 import '../models/library.dart';
 import '../models/queue_card.dart';
@@ -59,15 +60,23 @@ final deckCountsProvider = Provider<AsyncValue<Map<String, int>>>((ref) {
   });
 });
 
+void _refreshLibrary(void Function(ProviderOrFamily) invalidate, String? deckId) {
+  invalidate(foldersProvider);
+  invalidate(decksProvider);
+  invalidate(allWordsProvider);
+  invalidate(dueSummaryProvider);
+  if (deckId != null) invalidate(deckWordsProvider(deckId));
+}
+
+/// The same refresh from outside a widget — an undo on a snackbar that has
+/// outlived the screen that showed it.
+extension RefreshContainer on ProviderContainer {
+  void refreshLibrary({String? deckId}) => _refreshLibrary(invalidate, deckId);
+}
+
 extension Refresh on WidgetRef {
   /// After anything that changes folders, decks or words.
-  void refreshLibrary({String? deckId}) {
-    invalidate(foldersProvider);
-    invalidate(decksProvider);
-    invalidate(allWordsProvider);
-    invalidate(dueSummaryProvider);
-    if (deckId != null) invalidate(deckWordsProvider(deckId));
-  }
+  void refreshLibrary({String? deckId}) => _refreshLibrary(invalidate, deckId);
 
   /// After a review session: what's due, the streak and the stats all move.
   void refreshAfterReview() {

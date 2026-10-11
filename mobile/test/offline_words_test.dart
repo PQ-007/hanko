@@ -27,6 +27,14 @@ class FakeRepo extends Repository {
     }
     return ids!;
   }
+
+  final tombstoned = <String>{};
+
+  @override
+  Future<void> deleteWords(List<String> ids) async {
+    if (offline) throw Exception('offline');
+    tombstoned.addAll(ids.where(server.containsKey));
+  }
 }
 
 void main() {
@@ -47,14 +55,14 @@ void main() {
   ];
 
   test('online, words go straight to the server and nothing is queued', () async {
-    expect(await outbox.save('d', words), SaveOutcome.saved);
+    expect((await outbox.save('d', words)).$1, SaveOutcome.saved);
     expect(repo.server.values.map((w) => w.$2), ['猫', 'コーヒー']);
     expect(await outbox.pendingCount(), 0);
   });
 
   test('offline, words are kept on the phone with every field', () async {
     repo.offline = true;
-    expect(await outbox.save('d', words), SaveOutcome.queued);
+    expect((await outbox.save('d', words)).$1, SaveOutcome.queued);
     final pending = await db.pendingWordList();
     expect(pending.map((w) => w.term), ['猫', 'コーヒー']);
     expect(pending.first.meaningMn, 'муур');
@@ -91,5 +99,25 @@ void main() {
     repo.failingDecks.add('b');
     expect(await outbox.flush(), 1);
     expect((await db.pendingWordList()).single.deckId, 'b');
+  });
+
+  // Undo: a capture pushed into the wrong deck, taken back from the snackbar.
+  test('undo after an online save tombstones exactly the words it saved', () async {
+    await outbox.save('d', [words.first]);
+    final (_, ids) = await outbox.save('d', words);
+    await outbox.undo(ids);
+    expect(repo.tombstoned, ids.toSet());
+    expect(repo.server.length, 3, reason: 'the earlier save is untouched');
+  });
+
+  test('undo while still queued drops the words, so a later flush sends nothing', () async {
+    repo.offline = true;
+    final (outcome, ids) = await outbox.save('d', words);
+    expect(outcome, SaveOutcome.queued);
+    repo.offline = false;
+    await outbox.undo(ids);
+    expect(await outbox.pendingCount(), 0);
+    expect(await outbox.flush(), 0);
+    expect(repo.server, isEmpty);
   });
 }

@@ -268,6 +268,15 @@ How it's built, so nobody re-litigates it:
   conflict make replay idempotent, same reasoning as the answer outbox.
   Flushed on app start and resume (`AppShell`). It writes `words` only; the
   trigger creates the cards.
+- **Undoing a capture** (pushed into the wrong deck): the save's snackbar
+  has Буцаах (`WordOutbox.undo` — drops still-queued words *and* tombstones
+  sent ones, since a flush can land in between). The deck screen shows the
+  last batch with "undo all" / "select" (then move or delete, both with
+  undo), plus sort and an "added today / this week" filter
+  (`library/word_batches.dart`, `word_bulk.dart`). **A batch needs no
+  column**: one insert gives every row the same `date_added` (now() is fixed
+  per transaction) to the microsecond, and the outbox flushes each deck's
+  queue as one insert too; manual and extension adds arrive one per insert.
 - `image_picker` (system camera/gallery) rather than a live `camera` preview:
   fewer permissions to manage, and screenshots work too.
 
