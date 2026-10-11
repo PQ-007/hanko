@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Trash2, Undo2 } from "@/ui/icons";
+import { Loader2, PenLine, Trash2, Undo2 } from "@/ui/icons";
 import WritingPad from "../writing/_components/WritingPad";
 import type { Polyline } from "../writing/_lib/strokes";
 import { recognizeKanji } from "../_lib/handwriting";
@@ -65,65 +65,71 @@ export default function HandwritingPad({
     setInk([]);
   }
 
+  // Fixed slots, filled or not, so the panel keeps its shape between
+  // characters instead of collapsing to an empty column. 10 = two rows of five
+  // on a phone; from sm it is a 3×3 grid and the tenth hides.
+  const slots = Array.from({ length: 10 }, (_, i) => candidates[i] ?? null);
+
   return (
-    <div className="grid grid-cols-1 gap-3 rounded-control border border-line-soft bg-paper-dim/50 p-2.5 sm:grid-cols-[200px_1fr]">
-      <div className="mx-auto w-full max-w-[220px]">
+    <div className="flex flex-col gap-3 rounded-card border border-line-soft bg-paper-dim/40 p-3 sm:flex-row">
+      <div className="mx-auto w-full max-w-[240px] shrink-0 sm:mx-0 sm:w-[200px]">
         <div ref={wrap} className="relative">
           <WritingPad strokes={null} guideCount={0} ink={ink} onInk={setInk} showCount={false} />
           {ink.length === 0 && (
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink-mute">
+            <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center text-xs text-ink-mute">
+              <PenLine size={18} className="opacity-60" />
               {T.handwriteHint}
             </span>
           )}
         </div>
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            aria-label={T.writingUndo}
-            title={T.writingUndo}
-            disabled={!ink.length}
-            onClick={() => setInk(ink.slice(0, -1))}
-            className="hk-btn flex-1 px-2 py-1.5 disabled:opacity-40"
-          >
-            <Undo2 size={15} />
-          </button>
-          <button
-            type="button"
-            aria-label={T.writingClear}
-            title={T.writingClear}
-            disabled={!ink.length}
-            onClick={() => setInk([])}
-            className="hk-btn flex-1 px-2 py-1.5 disabled:opacity-40"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
       </div>
 
-      <div className="flex min-w-0 flex-col">
-        <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-ink-mute">
-          {T.handwritePick}
-          {busy && <Loader2 size={11} className="animate-spin" />}
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <p className="flex h-4 items-center gap-1.5 text-xs font-medium text-ink-soft">
+          {failed ? <span className="text-red-700 dark:text-red-300">{T.handwriteFailed}</span> : T.handwritePick}
+          {busy && <Loader2 size={12} className="animate-spin text-ink-mute" />}
         </p>
-        {failed ? (
-          <p className="text-xs text-ink-soft">{T.handwriteFailed}</p>
-        ) : (
-          <div lang="ja" className="grid grid-cols-5 content-start gap-1.5 sm:grid-cols-3">
-            {candidates.slice(0, 10).map((c, i) => (
+        <div lang="ja" className="grid grid-cols-5 gap-1.5 sm:grid-cols-3">
+          {slots.map((c, i) =>
+            c ? (
               <button
-                key={c}
+                key={`${i}-${c}`}
                 type="button"
                 onClick={() => pick(c)}
                 title={c}
-                className={`flex h-11 items-center justify-center truncate rounded-control border px-1 font-medium text-ink transition hover:border-seal hover:bg-surface ${
-                  c.length > 1 ? "text-base" : "text-2xl"
-                } ${i === 0 ? "border-seal bg-surface" : "border-line bg-surface/60"}`}
+                className={`flex aspect-square items-center sm:aspect-auto sm:h-[50px] justify-center truncate rounded-control border px-0.5 font-medium text-ink transition hover:-translate-y-px hover:border-seal hover:shadow-sm ${
+                  c.length > 1 ? "text-sm" : "text-2xl"
+                } ${i === 0 ? "border-seal bg-seal-tint/60" : "border-line bg-surface"} ${i === 9 ? "sm:hidden" : ""}`}
               >
                 {c}
               </button>
-            ))}
-          </div>
-        )}
+            ) : (
+              <span
+                key={i}
+                aria-hidden
+                className={`aspect-square rounded-control border border-dashed sm:aspect-auto sm:h-[50px] border-line-soft ${i === 9 ? "sm:hidden" : ""}`}
+              />
+            )
+          )}
+        </div>
+        <div className="mt-auto flex gap-1.5 pt-1">
+          <button
+            type="button"
+            disabled={!ink.length}
+            onClick={() => setInk(ink.slice(0, -1))}
+            className="hk-btn hk-btn-quiet flex-1 gap-1.5 px-2 py-1.5 text-xs disabled:opacity-40"
+          >
+            <Undo2 size={14} /> {T.writingUndo}
+          </button>
+          <button
+            type="button"
+            disabled={!ink.length}
+            onClick={() => setInk([])}
+            className="hk-btn hk-btn-quiet flex-1 gap-1.5 px-2 py-1.5 text-xs disabled:opacity-40"
+          >
+            <Trash2 size={14} /> {T.writingClear}
+          </button>
+        </div>
       </div>
     </div>
   );

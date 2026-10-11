@@ -34,6 +34,9 @@ export const T = {
   mongolian: "Монгол",
   addWord: "Үг нэмэх",
   clickToRename: "Нэр солих бол дарна уу",
+  rename: "Нэр солих",
+  renameDeckTitle: "Багцын нэр солих",
+  renameFolderTitle: "Хавтасны нэр солих",
   playAudio: "Дуудлага сонсох",
   removeWord: "Үг устгах",
   edit: "Засах",
@@ -47,6 +50,7 @@ export const T = {
   openDeck: "Нээх",
   deleteDeckTitle: "Багц устгах уу?",
   deleteFolderTitle: "Хавтас устгах уу?",
+  deleteWordTitle: "Үг устгах уу?",
   removeFriendTitle: "Найзаас хасах уу?",
   removeFriendBody: (h: string) => `@${h} таны найзын жагсаалтаас хасагдана. Дахин найзлахын тулд хүсэлт илгээх хэрэгтэй.`,
   subfolderName: "Хавтасны нэр",
@@ -57,6 +61,8 @@ export const T = {
   audioFailed: "Дуу үүсгэж чадсангүй",
   deleteDeckConfirm: (n: string) =>
     `“${n}” багц болон доторх бүх үгийг устгах уу? Буцаах боломжгүй.`,
+  deleteWordConfirm: (t: string) =>
+    `“${t}” энэ багцаас устгагдах ба сурсан явц нь хамт алга болно. Буцаах боломжгүй.`,
   deleteFolderConfirm: (n: string) =>
     `“${n}” хавтсыг устгах уу? Доторх багцууд устахгүй, хавтасгүй болно.`,
   duplicateWord: "Давхардсан үг",
@@ -257,7 +263,11 @@ export const T = {
   handwriteHint: "Ханзаа энд зурна уу",
   handwriteFailed: "Танилт амжилтгүй — сүлжээгээ шалгана уу.",
   handwritePick: "Зурсан тэмдэгтээ сонгоно уу",
-  addShortcuts: "Enter — үр дүн сонгох · Ctrl+Enter — нэмэх",
+  addTermLabel: "Үг",
+  clearForm: "Цэвэрлэх",
+  addedFlash: (t: string) => `${t} нэмэгдлээ`,
+  autoFilled: "Авто",
+  autoFilledTitle: "Jisho-оос автоматаар бөглөсөн — засаж болно",
   // New-word daily goal (GoalModal)
   goalModalTitle: "Өдрийн шинэ үгийн зорилго",
   goalModalDesc: "Өдөрт хэдэн шинэ үг сурахыг зорих вэ?",

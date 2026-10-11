@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mobile/features/audio/audio_deck.dart';
+import 'package:mobile/features/audio/example_sentences.dart';
 import 'package:mobile/features/audio/mp3.dart';
 import 'package:mobile/features/audio/tts_clips.dart';
 import 'package:mobile/models/library.dart';
@@ -101,6 +102,70 @@ void main() {
 
     await store.delete('d1');
     expect(await store.list(), isEmpty);
+  });
+
+  group('example sentences', () {
+    const sheep = Example('私は羊の群を見た。', 'I saw a flock of sheep.');
+
+    test('spoken once after the repeats, translation only with English on', () {
+      final parts = planParts(words, const AudioOptions(repeat: 2, sentences: true), examples: const [sheep, null]);
+      expect(parts.map((p) => '${p.wordIndex}:${p.lang}:${p.text}'), [
+        '0:ja:たべる', '0:en:to eat', '0:ja:たべる', '0:en:to eat',
+        '0:ja:私は羊の群を見た。', '0:en:I saw a flock of sheep.',
+        '1:ja:ありがとう', '1:en:thank you', '1:ja:ありがとう', '1:en:thank you',
+      ]);
+      expect(
+        planParts(words, const AudioOptions(english: false, sentences: true), examples: const [sheep, null])
+            .map((p) => p.text),
+        ['たべる', '私は羊の群を見た。', 'ありがとう'],
+      );
+      expect(planParts(words, const AudioOptions(), examples: const [sheep, null]).length, 4,
+          reason: 'switched off, examples are ignored');
+    });
+
+    test("a missing sentence drops the sentence and its translation, never the word", () {
+      const o = AudioOptions(sentences: true);
+      final parts = planParts(words, o, examples: const [sheep, null]);
+      // たべる, to eat, [sentence missing], sentence-en, ありがとう, thank you
+      final clips = <Uint8List?>[ja, en, null, en, ja, en];
+      final r = assemble(words, parts, clips, o);
+      expect(r.kept, [0, 1]);
+      final perWord = mp3DurationMs(ja) + mp3DurationMs(en) + 2 * o.pauseMs;
+      expect(mp3DurationMs(r.mp3), closeTo(2 * perWord, 100), reason: 'no orphaned translation');
+    });
+
+    test('build: looks the words up, speaks and cues the sentence', () async {
+      final tmp = Directory.systemTemp.createTempSync();
+      final clips = TtsClips(
+        client: MockClient((req) async => http.Response.bytes(
+              req.url.queryParameters['tl'] == 'ja' ? ja : en, 200,
+              headers: {'content-type': 'audio/mpeg'})),
+        dir: () async => tmp,
+      );
+      final sentences = ExampleSentences(
+        client: MockClient((req) async => http.Response(
+              req.url.queryParameters['q'] == '食べる'
+                  ? '{"data":[{"text":"朝ごはんを食べるのが好きです。","translations":[{"lang":"eng","text":"I like eating breakfast."}]}]}'
+                  : '{"data":[]}',
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'})),
+        dir: () async => tmp,
+      );
+      final store = AudioDeckStore(clips, sentences: sentences, dir: () async => tmp);
+      final looked = <int>[];
+      final deck = await store.build(
+        deckId: 'd2', deckName: 'N', words: words,
+        options: const AudioOptions(sentences: true),
+        onSentenceProgress: (done, _) => looked.add(done),
+      );
+      expect(looked.last, 2);
+      expect(deck!.cues.first.sentence, '朝ごはんを食べるのが好きです。');
+      expect(deck.cues.first.sentenceEn, 'I like eating breakfast.');
+      expect(deck.cues.last.sentence, isNull);
+      final again = AudioDeck.fromJson(deck.toJson());
+      expect(again.cues.first.sentenceEn, 'I like eating breakfast.');
+      expect(again.options.sentences, isTrue);
+    });
   });
 
   test('long meanings are cut at a sense break, not mid-word', () {

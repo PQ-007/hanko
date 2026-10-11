@@ -533,6 +533,9 @@ class T {
   static const audioRepeat = 'Үг бүрийг давтах';
   static const audioPause = 'Завсарлага';
   static const audioShuffle = 'Санамсаргүй дараалал';
+  static const audioSentences = 'Жишээ өгүүлбэр';
+  static const audioSentencesHint = 'Үг бүрийн дараа богино өгүүлбэр, англи орчуулгатай нь (Tatoeba). Олдоогүй үг өгүүлбэргүй уншигдана.';
+  static String audioFindingSentences(int done, int total) => 'Жишээ өгүүлбэр хайж байна… $done / $total';
   static const audioNoWords = 'Энэ багцад үг алга байна.';
   static String audioSummary(int words, String length) => '$words үг · $length';
   static String audioRepeatN(int n) => '$n удаа';

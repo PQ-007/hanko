@@ -43,12 +43,16 @@ class _AudioDecksScreenState extends ConsumerState<AudioDecksScreen> {
   String? _building;
   (int, int) _progress = (0, 0);
 
+  /// Still looking up example sentences (before any speech is fetched).
+  bool _findingSentences = false;
+
   Future<void> _create(Deck deck) async {
     final options = await showAudioOptions(context);
     if (options == null || !mounted) return;
     setState(() {
       _building = deck.id;
       _progress = (0, 0);
+      _findingSentences = options.sentences;
     });
     try {
       final words = [...await ref.read(repositoryProvider).words(deck.id)]
@@ -64,8 +68,16 @@ class _AudioDecksScreenState extends ConsumerState<AudioDecksScreen> {
             deckName: deck.name,
             words: words,
             options: options,
-            onProgress: (done, total) {
+            onSentenceProgress: (done, total) {
               if (mounted) setState(() => _progress = (done, total));
+            },
+            onProgress: (done, total) {
+              if (mounted) {
+                setState(() {
+                  _findingSentences = false;
+                  _progress = (done, total);
+                });
+              }
             },
           );
       if (!mounted) return;
@@ -122,6 +134,7 @@ class _AudioDecksScreenState extends ConsumerState<AudioDecksScreen> {
                 deck: d,
                 audio: byDeck[d.id],
                 building: _building == d.id ? _progress : null,
+                findingSentences: _findingSentences,
                 busy: _building != null,
                 onCreate: () => _create(d),
                 onPlay: (a) => context.push(Routes.audioPlayer(a.deckId)),
@@ -147,6 +160,7 @@ class _DeckRow extends StatelessWidget {
     required this.deck,
     required this.audio,
     required this.building,
+    this.findingSentences = false,
     required this.busy,
     required this.onCreate,
     required this.onPlay,
@@ -157,6 +171,7 @@ class _DeckRow extends StatelessWidget {
   final Deck deck;
   final AudioDeck? audio;
   final (int, int)? building;
+  final bool findingSentences;
   final bool busy;
   final VoidCallback onCreate;
   final ValueChanged<AudioDeck> onPlay;
@@ -195,7 +210,9 @@ class _DeckRow extends StatelessWidget {
                       value: b.$2 == 0 ? null : b.$1 / b.$2,
                     ),
                     Text(
-                      T.audioBuilding(b.$1, b.$2),
+                      findingSentences
+                          ? T.audioFindingSentences(b.$1, b.$2)
+                          : T.audioBuilding(b.$1, b.$2),
                       style: TextStyle(fontSize: 12, color: context.hk.inkMute),
                     ),
                   ] else if (a != null)
@@ -250,7 +267,8 @@ class _DeckRow extends StatelessWidget {
   }
 }
 
-/// The options sheet: speak English or not, repeats, pause length, order.
+/// The options sheet: speak English or not, example sentences, repeats,
+/// pause length, order.
 Future<AudioOptions?> showAudioOptions(BuildContext context) {
   return showModalBottomSheet<AudioOptions>(
     context: context,
@@ -287,25 +305,25 @@ class _OptionsSheetState extends State<_OptionsSheet> {
             title: const Text(T.audioEnglish),
             value: _o.english,
             onChanged: (v) => setState(
-              () => _o = AudioOptions(
-                english: v,
-                repeat: _o.repeat,
-                pauseMs: _o.pauseMs,
-                shuffle: _o.shuffle,
-              ),
+              () => _o = _o.copyWith(english: v),
             ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text(T.audioSentences),
+            subtitle: Text(
+              T.audioSentencesHint,
+              style: TextStyle(fontSize: 12, color: context.hk.inkMute),
+            ),
+            value: _o.sentences,
+            onChanged: (v) => setState(() => _o = _o.copyWith(sentences: v)),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text(T.audioShuffle),
             value: _o.shuffle,
             onChanged: (v) => setState(
-              () => _o = AudioOptions(
-                english: _o.english,
-                repeat: _o.repeat,
-                pauseMs: _o.pauseMs,
-                shuffle: v,
-              ),
+              () => _o = _o.copyWith(shuffle: v),
             ),
           ),
           const SizedBox(height: 4),
@@ -319,12 +337,7 @@ class _OptionsSheetState extends State<_OptionsSheet> {
             ],
             selected: {_o.repeat},
             onSelectionChanged: (s) => setState(
-              () => _o = AudioOptions(
-                english: _o.english,
-                repeat: s.single,
-                pauseMs: _o.pauseMs,
-                shuffle: _o.shuffle,
-              ),
+              () => _o = _o.copyWith(repeat: s.single),
             ),
           ),
           const SizedBox(height: 12),
@@ -338,12 +351,7 @@ class _OptionsSheetState extends State<_OptionsSheet> {
             ],
             selected: {_o.pauseMs},
             onSelectionChanged: (s) => setState(
-              () => _o = AudioOptions(
-                english: _o.english,
-                repeat: _o.repeat,
-                pauseMs: s.single,
-                shuffle: _o.shuffle,
-              ),
+              () => _o = _o.copyWith(pauseMs: s.single),
             ),
           ),
           const SizedBox(height: 20),
@@ -493,6 +501,11 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen> {
                                             color: context.hk.inkMute,
                                           ),
                                         ),
+                                      if (cue.sentence?.isNotEmpty ?? false)
+                                        _SentenceCard(
+                                          ja: cue.sentence!,
+                                          en: cue.sentenceEn,
+                                        ),
                                     ],
                                   ),
                           ),
@@ -568,6 +581,44 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// The example sentence under the word in the player, with its translation.
+class _SentenceCard extends StatelessWidget {
+  const _SentenceCard({required this.ja, this.en});
+  final String ja;
+  final String? en;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: context.hk.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.hk.lineSoft),
+      ),
+      child: Column(
+        children: [
+          Text(
+            ja,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          if (en?.isNotEmpty ?? false) ...[
+            const SizedBox(height: 4),
+            Text(
+              en!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: context.hk.inkSoft),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

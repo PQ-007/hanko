@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Loader2, PenLine, Plus, X } from "@/ui/icons";
+import { Check, Loader2, PenLine, Plus, Sparkle, X } from "@/ui/icons";
 import type { Deck } from "@/lib/types";
 import { askConfirm } from "@/ui/Dialog";
 import { supabase } from "../_lib/db";
@@ -90,6 +90,12 @@ export default function AddWordModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<{ term: string; reading: string }[]>([]);
+  // The word just saved, shown on the button for a moment as the confirmation.
+  const [flash, setFlash] = useState<string | null>(null);
+  // English whose translation came back empty, so the field stops saying
+  // "translating" instead of spinning forever.
+  const [mnFailedFor, setMnFailedFor] = useState<string | null>(null);
+  const [isMac] = useState(() => /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent));
   // Caret in the term (null = at the end), kept here rather than read off the
   // input so the pad can insert without focusing it — focusing opens the
   // keyboard over the pad on a phone.
@@ -212,7 +218,11 @@ export default function AddWordModal({
     const en = f.meaning;
     let live = true;
     translateMn(en).then((mn) => {
-      if (!live || !mn) return;
+      if (!live) return;
+      if (!mn) {
+        setMnFailedFor(en);
+        return;
+      }
       lastEn.current = en.trim();
       setForm((p) =>
         p.f.meaning === en && p.auto.has("meaningMn") && !p.f.meaningMn
@@ -224,6 +234,13 @@ export default function AddWordModal({
       live = false;
     };
   }, [needMn, f.meaning]);
+  const translating = needMn && mnFailedFor !== f.meaning;
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 1400);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   // Hand-edited English: translate on blur, as the edit dialog does.
   async function onMeaningBlur() {
@@ -282,6 +299,20 @@ export default function AddWordModal({
     setField("term", r.text);
     const el = termRef.current;
     if (el && document.activeElement === el) requestAnimationFrame(() => el.setSelectionRange(r.caret, r.caret));
+  }
+
+  function resetForm() {
+    setForm({ f: EMPTY, auto: new Set() });
+    setMatches(null);
+    pinnedFor.current = null;
+    pendingAccept.current = null;
+    setCaret(null);
+    lastEn.current = "";
+  }
+
+  function clearTerm() {
+    resetForm();
+    termRef.current?.focus();
   }
 
   function togglePad() {
@@ -345,33 +376,30 @@ export default function AddWordModal({
     }
 
     setAdded((a) => [{ term: t, reading: f.reading.trim() }, ...a]);
-    setForm({ f: EMPTY, auto: new Set() });
-    setMatches(null);
-    pinnedFor.current = null;
-    pendingAccept.current = null;
-    setCaret(null);
-    lastEn.current = "";
+    setFlash(t);
+    resetForm();
     onAdded?.();
     if (!(padOpen && window.matchMedia?.("(pointer: coarse)").matches)) termRef.current?.focus();
   }
 
+
   const shownMatches = term && matches ? matches : null;
   const stale = shownMatches !== null && shownMatches.term !== term;
   const picked = shownMatches ? pickedMatch(f, shownMatches.list) : null;
+  const canAdd = !!term && !busy && decks.length > 0;
 
-  const labelCls = "mb-1 block text-xs font-medium text-ink-soft";
   const inputCls =
-    "w-full rounded-control border border-line bg-surface px-3 py-2 text-sm focus:border-seal focus:outline-none hk-input focus:ring-2 focus:ring-seal-tint";
+    "hk-input w-full rounded-control border border-line bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-ink-mute focus:border-seal focus:ring-2 focus:ring-seal-tint";
 
   return (
     <div
       onClick={close}
-      role="dialog"
-      aria-modal
-      aria-label={T.quickAddTitle}
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4"
+      className="hk-dialog-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center sm:p-4"
     >
       <div
+        role="dialog"
+        aria-modal
+        aria-labelledby="hk-add-title"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -379,218 +407,306 @@ export default function AddWordModal({
             add();
           }
         }}
-        className="my-auto w-full max-w-lg rounded-card bg-paper p-5 shadow-2xl"
+        className="hk-dialog flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-card border border-line bg-surface shadow-2xl sm:max-h-[min(880px,calc(100dvh-2rem))] sm:rounded-card"
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-ink">{T.quickAddTitle}</h2>
-            {fixedDeck && <p className="mt-0.5 truncate text-xs text-ink-mute">{fixedDeck.name}</p>}
+        {/* Header: title, the deck it goes into, what's been added so far. */}
+        <div className="shrink-0 border-b border-line-soft px-5 pb-3 pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 id="hk-add-title" className="text-[17px] font-semibold leading-snug text-ink">
+                {T.quickAddTitle}
+              </h2>
+              {fixedDeck ? (
+                <p className="mt-0.5 truncate text-xs text-ink-mute">{fixedDeck.name}</p>
+              ) : (
+                decks.length > 0 && (
+                  <label className="mt-1 flex items-center gap-1.5 text-xs text-ink-mute">
+                    {T.quickAddDeckLabel}
+                    <select
+                      value={deckId}
+                      onChange={(e) => pickDeck(e.target.value)}
+                      className="hk-input max-w-[14rem] truncate rounded-md border border-line bg-paper px-1.5 py-0.5 text-xs font-medium text-ink focus:border-seal"
+                    >
+                      {decks.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )
+              )}
+            </div>
+            <button
+              onClick={close}
+              title={T.closeLabel}
+              aria-label={T.closeLabel}
+              className="-mr-1.5 shrink-0 rounded-control p-1.5 text-ink-mute transition hover:bg-paper-dim hover:text-ink"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button
-            onClick={close}
-            title={T.closeLabel}
-            aria-label={T.closeLabel}
-            className="shrink-0 rounded-control p-1 text-ink-mute transition hover:bg-paper-dim hover:text-ink"
-          >
-            <X size={18} />
-          </button>
+          {added.length > 0 && (
+            <div className="-mx-5 mt-2.5 flex items-center gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
+              <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-seal">
+                <Check size={13} /> {added.length}
+              </span>
+              {added.map((w, i) => (
+                <span
+                  key={added.length - i}
+                  lang="ja"
+                  title={w.reading || undefined}
+                  className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${
+                    i === 0 ? "hk-chip-new border-seal/40 bg-seal-tint text-ink" : "border-line-soft bg-paper text-ink-soft"
+                  }`}
+                >
+                  {w.term}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        {added.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="flex items-center gap-1 text-xs font-medium text-seal">
-              <Check size={13} /> {T.quickAddedCount(added.length)}
-            </span>
-            {added.slice(0, 6).map((w, i) => (
-              <span
-                key={`${w.term}-${i}`}
-                lang="ja"
-                title={w.reading || undefined}
-                className="rounded-full border border-line-soft bg-surface px-2 py-0.5 text-xs text-ink"
-              >
-                {w.term}
-              </span>
-            ))}
-            {added.length > 6 && <span className="text-xs text-ink-mute">+{added.length - 6}</span>}
-          </div>
-        )}
-
         {decks.length === 0 ? (
-          <div className="mt-4">
+          <div className="p-5">
             <p className="text-sm text-ink-soft">{T.quickAddNoDecks}</p>
             <Link href="/decks" className="mt-4 hk-btn hk-btn-primary w-full px-4 py-2.5 text-sm">
               {T.decksNav}
             </Link>
           </div>
         ) : (
-          <div className="mt-4 flex flex-col gap-3">
-            {!fixedDeck && (
-              <label className="flex flex-col">
-                <span className={labelCls}>{T.quickAddDeckLabel}</span>
-                <select value={deckId} onChange={(e) => pickDeck(e.target.value)} className={inputCls}>
-                  {decks.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <div>
-              <label htmlFor="hk-add-term" className={labelCls}>
-                {T.term}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="hk-add-term"
-                  ref={termRef}
-                  lang="ja"
-                  autoComplete="off"
-                  value={f.term}
-                  onChange={(e) => {
-                    setCaret({ start: e.target.selectionStart ?? 0, end: e.target.selectionEnd ?? 0 });
-                    setField("term", e.target.value);
-                  }}
-                  onSelect={(e) => {
-                    const el = e.currentTarget;
-                    setCaret({ start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 });
-                  }}
-                  onCompositionStart={() => setComposing(true)}
-                  onCompositionEnd={() => setComposing(false)}
-                  onKeyDown={onTermKey}
-                  onBlur={onTermBlur}
-                  className={`${inputCls} text-base`}
-                />
-                <button
-                  type="button"
-                  data-keep-term
-                  onClick={togglePad}
-                  aria-pressed={padOpen}
-                  title={T.handwrite}
-                  aria-label={T.handwrite}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-control border px-3 text-sm font-medium transition ${
-                    padOpen ? "border-seal bg-seal text-paper" : "border-line text-ink-soft hover:bg-paper-dim"
-                  }`}
-                >
-                  <PenLine size={16} />
-                  <span className="max-sm:hidden">{T.handwrite}</span>
-                </button>
+          <>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              {/* The word itself — the one field that matters, so the big one. */}
+              <div>
+                <label htmlFor="hk-add-term" className="mb-1.5 block text-xs font-medium text-ink-soft">
+                  {T.addTermLabel}
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <input
+                      id="hk-add-term"
+                      ref={termRef}
+                      lang="ja"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="勉強"
+                      value={f.term}
+                      onChange={(e) => {
+                        setCaret({ start: e.target.selectionStart ?? 0, end: e.target.selectionEnd ?? 0 });
+                        setField("term", e.target.value);
+                      }}
+                      onSelect={(e) => {
+                        const el = e.currentTarget;
+                        setCaret({ start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 });
+                      }}
+                      onCompositionStart={() => setComposing(true)}
+                      onCompositionEnd={() => setComposing(false)}
+                      onKeyDown={onTermKey}
+                      onBlur={onTermBlur}
+                      className="hk-input h-11 w-full rounded-control border border-line bg-paper pl-3 pr-16 text-lg font-medium text-ink placeholder:font-normal placeholder:text-ink-mute/50 focus:border-seal focus:ring-2 focus:ring-seal-tint"
+                    />
+                    <div data-keep-term className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
+                      {looking && <Loader2 size={14} className="animate-spin text-ink-mute" />}
+                      {f.term && (
+                        <button
+                          type="button"
+                          onClick={clearTerm}
+                          title={T.clearForm}
+                          aria-label={T.clearForm}
+                          className="rounded-full p-1 text-ink-mute transition hover:bg-paper-dim hover:text-ink"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    data-keep-term
+                    onClick={togglePad}
+                    aria-pressed={padOpen}
+                    title={T.handwrite}
+                    aria-label={T.handwrite}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-control border transition ${
+                      padOpen
+                        ? "border-seal bg-seal-tint text-seal"
+                        : "border-line bg-paper text-ink-soft hover:border-seal hover:text-seal"
+                    }`}
+                  >
+                    <PenLine size={17} />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {padOpen && (
-              <div data-keep-term>
-                <HandwritingPad preContext={f.term.slice(0, caret?.start ?? f.term.length)} onPick={insertDrawn} />
-              </div>
-            )}
+              {padOpen && (
+                <div data-keep-term>
+                  <HandwritingPad preContext={f.term.slice(0, caret?.start ?? f.term.length)} onPick={insertDrawn} />
+                </div>
+              )}
 
-            {shownMatches && (
-              <div data-keep-term className={stale ? "opacity-60" : ""}>
-                <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-ink-mute">
-                  {T.addMatches}
-                  {looking && <Loader2 size={11} className="animate-spin" />}
-                </p>
-                {shownMatches.list.length === 0 ? (
-                  <p className="text-xs text-ink-soft">{T.addMatchesNone}</p>
-                ) : (
-                  <ul className="max-h-44 divide-y divide-line-soft overflow-y-auto rounded-control border border-line bg-surface">
-                    {shownMatches.list.map((m) => {
-                      const on = m === picked;
-                      return (
-                        <li key={`${m.word}|${m.reading}`}>
-                          <button
-                            type="button"
-                            onClick={() => choose(m)}
-                            className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left transition hover:bg-paper-dim ${
-                              on ? "bg-seal-tint/40" : ""
-                            }`}
-                          >
-                            <span lang="ja" className="shrink-0 font-semibold text-ink">
-                              {m.word}
-                            </span>
-                            {m.reading && m.reading !== m.word && (
-                              <span lang="ja" className="shrink-0 text-xs text-ink-mute">
-                                {m.reading}
+              {shownMatches && (
+                <div data-keep-term className={`transition-opacity ${stale ? "opacity-50" : ""}`}>
+                  <p className="mb-1.5 text-xs font-medium text-ink-soft">{T.addMatches}</p>
+                  {shownMatches.list.length === 0 ? (
+                    <p className="rounded-control border border-dashed border-line px-3 py-2.5 text-xs text-ink-mute">
+                      {T.addMatchesNone}
+                    </p>
+                  ) : (
+                    <ul className="max-h-48 space-y-1 overflow-y-auto">
+                      {shownMatches.list.map((m) => {
+                        const on = m === picked;
+                        return (
+                          <li key={`${m.word}|${m.reading}`}>
+                            <button
+                              type="button"
+                              onClick={() => choose(m)}
+                              aria-pressed={on}
+                              className={`flex w-full items-center gap-3 rounded-control border px-3 py-2 text-left transition ${
+                                on
+                                  ? "border-seal bg-seal-tint/60"
+                                  : "border-line-soft bg-paper hover:border-line hover:bg-paper-dim"
+                              }`}
+                            >
+                              <span lang="ja" className="flex shrink-0 flex-col leading-tight">
+                                <span className="text-base font-semibold text-ink">{m.word}</span>
+                                {m.reading && m.reading !== m.word && (
+                                  <span className="text-[11px] text-ink-mute">{m.reading}</span>
+                                )}
                               </span>
-                            )}
-                            <span className="min-w-0 flex-1 truncate text-xs text-ink-soft">{m.meaning}</span>
-                            {on && <Check size={13} className="shrink-0 self-center text-seal" />}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
+                              <span className="line-clamp-2 min-w-0 flex-1 text-xs leading-snug text-ink-soft">
+                                {m.meaning}
+                              </span>
+                              <span
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                  on ? "border-seal bg-seal text-white" : "border-line"
+                                }`}
+                              >
+                                {on && <Check size={12} />}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
 
-            <div>
-              <label htmlFor="hk-add-reading" className={labelCls}>
-                {T.reading}
-              </label>
-              <input
-                id="hk-add-reading"
-                lang="ja"
-                autoComplete="off"
-                value={f.reading}
-                onChange={(e) => setField("reading", e.target.value)}
-                className={inputCls}
-              />
+              {/* Details: filled from the dictionary, editable. */}
+              <div className="space-y-3 rounded-card border border-line-soft bg-paper-dim/40 p-3">
+                <Field id="hk-add-reading" label={T.reading} auto={form.auto.has("reading") && !!f.reading}>
+                  <input
+                    id="hk-add-reading"
+                    lang="ja"
+                    autoComplete="off"
+                    value={f.reading}
+                    onChange={(e) => setField("reading", e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field id="hk-add-meaning" label={T.meaningEn} auto={form.auto.has("meaning") && !!f.meaning}>
+                    <input
+                      id="hk-add-meaning"
+                      autoComplete="off"
+                      value={f.meaning}
+                      onChange={(e) => setField("meaning", e.target.value)}
+                      onBlur={onMeaningBlur}
+                      onKeyDown={(e) => e.key === "Enter" && !e.ctrlKey && !e.metaKey && onMeaningBlur()}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field
+                    id="hk-add-mn"
+                    label={T.mongolian}
+                    auto={form.auto.has("meaningMn") && !!f.meaningMn}
+                    busy={translating}
+                  >
+                    <input
+                      id="hk-add-mn"
+                      autoComplete="off"
+                      value={f.meaningMn}
+                      placeholder={translating ? T.lookingUp : undefined}
+                      onChange={(e) => setField("meaningMn", e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !e.ctrlKey && !e.metaKey && add()}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {error !== null && (
+                <p role="alert" className="rounded-control border border-line bg-paper-dim px-3 py-2 text-xs text-red-700 dark:text-red-300">
+                  {T.quickAddSaveFailed} {error}
+                </p>
+              )}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label htmlFor="hk-add-meaning" className={labelCls}>
-                  {T.meaningEn}
-                </label>
-                <input
-                  id="hk-add-meaning"
-                  autoComplete="off"
-                  value={f.meaning}
-                  onChange={(e) => setField("meaning", e.target.value)}
-                  onBlur={onMeaningBlur}
-                  onKeyDown={(e) => e.key === "Enter" && !e.ctrlKey && !e.metaKey && onMeaningBlur()}
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label htmlFor="hk-add-mn" className={labelCls}>
-                  {T.mongolian}
-                </label>
-                <input
-                  id="hk-add-mn"
-                  autoComplete="off"
-                  value={f.meaningMn}
-                  onChange={(e) => setField("meaningMn", e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.ctrlKey && !e.metaKey && add()}
-                  className={inputCls}
-                />
-              </div>
-            </div>
 
-            {error !== null && (
-              <p className="rounded-control border border-line bg-paper-dim px-3 py-2 text-xs text-ink">
-                {T.quickAddSaveFailed} {error}
-              </p>
-            )}
-
-            <p className="text-[11px] text-ink-mute max-sm:hidden">{T.addShortcuts}</p>
-
-            <div className="flex gap-2">
+            {/* Footer stays put while the body scrolls, so Add is always in reach. */}
+            <div className="flex shrink-0 gap-2 border-t border-line-soft bg-surface px-5 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3.5">
               <button onClick={close} className="hk-btn hk-btn-quiet px-4 py-2.5 text-sm">
                 {T.quickAddDone}
               </button>
               <button
                 onClick={add}
-                disabled={busy || !term}
-                className="hk-btn hk-btn-primary flex-1 px-4 py-2.5 text-sm"
+                disabled={!canAdd}
+                className="hk-btn hk-btn-primary flex-1 px-4 py-2.5 text-sm disabled:!bg-seal disabled:opacity-40"
               >
-                {busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} {T.addWord}
+                {busy ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : flash ? (
+                  <>
+                    <Check size={15} /> {T.addedFlash(flash)}
+                  </>
+                ) : (
+                  <>
+                    <Plus size={15} /> {T.addWord}
+                    <kbd className="ml-1 rounded border border-white/30 px-1.5 py-px font-sans text-[10px] font-medium opacity-80 max-sm:hidden">
+                      {isMac ? "⌘" : "Ctrl"} ↵
+                    </kbd>
+                  </>
+                )}
               </button>
             </div>
-          </div>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+/** A labelled field that says when the dictionary filled it, or is filling it. */
+function Field({
+  id,
+  label,
+  auto,
+  busy = false,
+  children,
+}: {
+  id: string;
+  label: string;
+  auto: boolean;
+  busy?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-1.5">
+        <label htmlFor={id} className="text-xs font-medium text-ink-soft">
+          {label}
+        </label>
+        {busy ? (
+          <Loader2 size={11} className="animate-spin text-ink-mute" />
+        ) : (
+          auto && (
+            <span title={T.autoFilledTitle} className="flex items-center gap-0.5 text-[10px] font-medium text-seal">
+              <Sparkle size={10} /> {T.autoFilled}
+            </span>
+          )
+        )}
+      </div>
+      {children}
     </div>
   );
 }

@@ -297,6 +297,17 @@ capture — but only the extension is positioned to collect it.
   rebuilding is cheap. Each deck is `audio_decks/<deckId>.mp3` plus a JSON
   sidecar with the options and per-word cues (start ms), which is how the
   player shows the word being spoken.
+- **Example sentences** (option "Жишээ өгүүлбэр", off by default): after a
+  word's repeats, one Tatoeba sentence (keyless API, CC BY) then its English
+  translation when English is on — fetched at build time and cached per word
+  on disk (`example_sentences.dart`), not stored in the database. Tatoeba
+  search matches substrings, so `pickExample` requires the word itself (or
+  its stem: 食べ, 担) with **no kanji touching its kanji edges** — that
+  rejects 抜群 for 群 and 無軌道 ("reckless") for 軌道, at the cost of
+  sometimes rejecting a fine sentence (今軌道). Deliberate: one of ~50
+  candidates lost costs nothing; speaking the wrong word doesn't. A word
+  with no good sentence is spoken without one; a failed sentence clip never
+  drops the word.
 - Playback is plain `just_audio` in the app (`deck_player.dart`), with its
   own player separate from word pronunciation in `core/audio.dart`. **Do not
   add `audio_service` back** without testing on a device: on Flutter 3.44 it
