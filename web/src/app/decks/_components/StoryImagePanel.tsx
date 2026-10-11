@@ -4,13 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { Noto_Sans } from "next/font/google";
 import { Download, RefreshCw, Share2 } from "@/ui/icons";
 import { T } from "../_lib/strings";
+import { usePlayerCharacter } from "../review/battle/_lib/playerCharacter";
+import { SPRITES } from "../review/battle/_lib/sprites";
 import {
   buildStoryQuiz,
+  loadStoryArt,
   renderStoryCard,
   storySize,
   STORY_LAYOUTS,
   type StoryCard,
   type StoryLang,
+  type StoryArt,
   type StoryLayout,
   type StoryStyle,
 } from "../_lib/storyCard";
@@ -34,14 +38,15 @@ function readOpts(): Opts {
     return {
       style: ["seal", "dark", "paper"].includes(o.style) ? o.style : "seal",
       lang: ["mn", "en", "both"].includes(o.lang) ? o.lang : "mn",
-      layout: STORY_LAYOUTS.includes(o.layout) ? o.layout : "grid",
+      layout: STORY_LAYOUTS.includes(o.layout) ? o.layout : "achievement",
     };
   } catch {
-    return { style: "seal", lang: "mn", layout: "grid" };
+    return { style: "seal", lang: "mn", layout: "achievement" };
   }
 }
 
 const LAYOUT_LABEL: Record<StoryLayout, string> = {
+  achievement: T.storyLayoutAchievement,
   grid: T.storyLayoutGrid,
   list: T.storyLayoutList,
   spotlight: T.storyLayoutSpotlight,
@@ -68,6 +73,18 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
   const [seed, setSeed] = useState(0);
   const quizOk = useMemo(() => buildStoryQuiz(card.words, opts.lang, 0) !== null, [card.words, opts.lang]);
   const layout: StoryLayout = opts.layout === "quiz" && !quizOk ? "grid" : opts.layout;
+  // The mascot is your Monster Hunt hero; what it says depends on the layout.
+  const hero = usePlayerCharacter();
+  const [art, setArt] = useState<{ slug: string; art: StoryArt } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    loadStoryArt(hero, SPRITES[hero] ?? {}).then((a) => !cancelled && setArt({ slug: hero, art: a }));
+    return () => {
+      cancelled = true;
+    };
+  }, [hero]);
+  const says =
+    layout === "quiz" ? T.storyBubbleQuiz : layout === "spotlight" ? T.storyBubbleWord : (card.bubble ?? null);
   const full: StoryCard = {
     ...card,
     style: opts.style,
@@ -76,7 +93,9 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
     seed,
     quizPrompt: T.storyQuizPrompt,
     quizAnswer: T.storyQuizAnswer,
+    mascot: { slug: hero, says },
   };
+  const artReady = art?.slug === hero ? art.art : null;
   // Re-render when anything drawn changes. moreLabel is a function, which the
   // JSON round-trip drops — it used to, and "+20 үг" came out as a bare "+20" —
   // so it's passed back in alongside.
@@ -86,7 +105,9 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
   useEffect(() => {
     let url: string | null = null;
     let cancelled = false;
-    renderStoryCard({ ...JSON.parse(key), moreLabel }, size, storyFont.style.fontFamily)
+    // Waits for the hero's frames, so the first image already has the mascot.
+    if (!artReady) return;
+    renderStoryCard({ ...JSON.parse(key), moreLabel }, size, storyFont.style.fontFamily, artReady)
       .then((blob) => {
         if (cancelled) return;
         url = URL.createObjectURL(blob);
@@ -97,7 +118,7 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [key, size, moreLabel]);
+  }, [key, size, moreLabel, artReady]);
 
   const file = image ? new File([image.blob], `${fileName}.png`, { type: "image/png" }) : null;
   const canShareFile =
@@ -140,7 +161,7 @@ export default function StoryImagePanel({ card, fileName }: { card: StoryCard; f
       <div className="flex w-full flex-col gap-2">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-ink-soft">{T.storyLayoutLabel}</span>
-          <div role="radiogroup" aria-label={T.storyLayoutLabel} className="grid grid-cols-4 gap-1.5">
+          <div role="radiogroup" aria-label={T.storyLayoutLabel} className="grid grid-cols-5 gap-1.5">
             {STORY_LAYOUTS.map((l) => {
               const disabled = l === "quiz" && !quizOk;
               return (
@@ -246,6 +267,13 @@ function LayoutGlyph({ layout }: { layout: StoryLayout }) {
   return (
     <svg viewBox="0 0 18 28" width="16" height="24" aria-hidden className="text-current">
       <rect x="0.5" y="0.5" width="17" height="27" rx="3" className="fill-none stroke-current" strokeWidth="1" />
+      {layout === "achievement" && (
+        <>
+          <circle cx="9" cy="9" r="4.5" className={box} />
+          <rect x="4" y="15.5" width="10" height="3" rx="1" className={box} />
+          {[3.5, 7.5, 11.5].map((x) => <circle key={x} cx={x + 1.5} cy="22.5" r="1.4" className={box} />)}
+        </>
+      )}
       {layout === "grid" && [6, 13, 20].flatMap((y) => [3, 9.5].map((x) => <rect key={`${x}${y}`} x={x} y={y} width="5.5" height="5" rx="1" className={box} />))}
       {layout === "list" && [6, 11, 16, 21].map((y) => <rect key={y} x="3" y={y} width="12" height="3.5" rx="1" className={box} />)}
       {layout === "spotlight" && (

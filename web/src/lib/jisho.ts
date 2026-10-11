@@ -11,7 +11,8 @@ export interface LookupResult {
   meaning: string;
 }
 
-export async function lookupWord(term: string): Promise<LookupResult> {
+/** The best match first (exactly parseJisho's), then other entries to choose from. */
+export async function lookupWords(term: string): Promise<LookupResult[]> {
   const url = `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(
     term
   )}`;
@@ -21,7 +22,7 @@ export async function lookupWord(term: string): Promise<LookupResult> {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; Hanko/1.0)" },
   });
   if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
-  return parseJisho(await res.json(), term);
+  return parseJishoResults(await res.json(), term);
 }
 
 interface JishoWriting {
@@ -64,6 +65,10 @@ export function parseJisho(data: unknown, term = ""): LookupResult {
       }
     }
   }
+  return toResult(entry, jp);
+}
+
+function toResult(entry: JishoEntry, jp: JishoWriting): LookupResult {
   const reading: string = jp.reading ?? "";
   // Dictionary form: the kanji writing, or the slug, or the reading (kana words).
   const word: string = jp.word ?? entry.slug ?? reading ?? "";
@@ -76,4 +81,31 @@ export function parseJisho(data: unknown, term = ""): LookupResult {
   );
 
   return { word, reading, meaning };
+}
+
+/**
+ * Several matches for the add-word dialog to choose from: parseJisho's pick
+ * first, so taking the first result is the same as the single lookup, then
+ * the other entries under their own main writing (or `term`, when it is one
+ * of theirs), without repeats.
+ *
+ * A single kanji drawn on the handwriting pad is the reason this exists: 生
+ * alone is a dozen words, and the first is rarely the one meant.
+ */
+export function parseJishoResults(data: unknown, term = "", max = 5): LookupResult[] {
+  const best = parseJisho(data, term);
+  if (!best.word) return [];
+  const out = [best];
+  const seen = new Set([`${best.word}|${best.reading}`]);
+  const entries = ((data as { data?: JishoEntry[] } | null)?.data ?? []) as JishoEntry[];
+  for (const e of entries) {
+    if (out.length >= max) break;
+    const jp = (term && e.japanese?.find((w) => w.word === term)) || e.japanese?.[0] || {};
+    const r = toResult(e, jp);
+    const key = `${r.word}|${r.reading}`;
+    if (!r.word || seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
 }

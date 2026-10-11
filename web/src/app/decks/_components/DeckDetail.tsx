@@ -6,7 +6,7 @@ import { gradeFor, type Grade } from "@/lib/srs";
 import { T } from "../_lib/strings";
 import type { WordView } from "../_lib/types";
 import DeckHeader from "./DeckHeader";
-import AddWordForm from "./AddWordForm";
+import AddWordModal from "./AddWordModal";
 import GradeChart from "./GradeChart";
 import WordRow from "./WordRow";
 import WordEditModal from "./WordEditModal";
@@ -51,13 +51,11 @@ export default function DeckDetail({
       <DeckHeader
         deck={deck}
         folders={folders}
-        adding={adding}
-        onToggleAdd={() => setAdding((v) => !v)}
+        onAdd={() => setAdding(true)}
         view={view}
         onView={setView}
         onChanged={onWordsChanged}
       />
-      {adding && <AddWordForm deck={deck} words={words} onAdded={onWordsChanged} />}
       {words.length > 0 && (
         <GradeChart words={words} selected={selectedGrade} onSelect={setSelectedGrade} />
       )}
@@ -77,6 +75,10 @@ export default function DeckDetail({
         </div>
       )}
 
+      {adding && (
+        // The deck's list refreshes behind the dialog after every word.
+        <AddWordModal decks={[deck]} deckId={deck.id} onAdded={onWordsChanged} onClose={() => setAdding(false)} />
+      )}
       {editingWord && (
         <WordEditModal
           word={editingWord}

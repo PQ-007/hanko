@@ -153,6 +153,7 @@ export default function DeckShareModal({ deck, onClose }: { deck: DeckWithCount;
                       words: story,
                       total: deck.word_count,
                       moreLabel: T.storyMore,
+                      bubble: T.storyBubbleDeck,
                       // No link on the image: it's shared on its own (copy /
                       // send above), not printed where it can't be tapped.
                     }}

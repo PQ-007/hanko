@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../models/library.dart';
+import 'example_sentences.dart';
 import 'mp3.dart';
 import 'tts_clips.dart';
 
@@ -18,9 +19,11 @@ class AudioOptions {
     this.repeat = 1,
     this.pauseMs = 1500,
     this.shuffle = false,
+    this.sentences = false,
   });
 
-  /// Speak the English meaning after the Japanese.
+  /// Speak the English meaning after the Japanese — and, with [sentences],
+  /// each sentence's English translation after it.
   final bool english;
 
   /// Times each word is spoken (with its meaning) before the next.
@@ -32,11 +35,29 @@ class AudioOptions {
   /// Random order instead of the deck's.
   final bool shuffle;
 
+  /// After each word, an example sentence using it (see example_sentences.dart).
+  final bool sentences;
+
+  AudioOptions copyWith({
+    bool? english,
+    int? repeat,
+    int? pauseMs,
+    bool? shuffle,
+    bool? sentences,
+  }) => AudioOptions(
+    english: english ?? this.english,
+    repeat: repeat ?? this.repeat,
+    pauseMs: pauseMs ?? this.pauseMs,
+    shuffle: shuffle ?? this.shuffle,
+    sentences: sentences ?? this.sentences,
+  );
+
   Map<String, dynamic> toJson() => {
     'english': english,
     'repeat': repeat,
     'pauseMs': pauseMs,
     'shuffle': shuffle,
+    'sentences': sentences,
   };
 
   factory AudioOptions.fromJson(Map<String, dynamic> j) => AudioOptions(
@@ -44,6 +65,7 @@ class AudioOptions {
     repeat: (j['repeat'] as num?)?.toInt() ?? 1,
     pauseMs: (j['pauseMs'] as num?)?.toInt() ?? 1500,
     shuffle: j['shuffle'] as bool? ?? false,
+    sentences: j['sentences'] as bool? ?? false,
   );
 }
 
@@ -55,6 +77,8 @@ class AudioCue {
     this.reading,
     this.meaningMn,
     this.meaning,
+    this.sentence,
+    this.sentenceEn,
   });
   final int startMs;
   final String term;
@@ -62,12 +86,18 @@ class AudioCue {
   final String? meaningMn;
   final String? meaning;
 
+  /// The example sentence spoken after the word, and its translation.
+  final String? sentence;
+  final String? sentenceEn;
+
   Map<String, dynamic> toJson() => {
     'startMs': startMs,
     'term': term,
     'reading': ?reading,
     'meaningMn': ?meaningMn,
     'meaning': ?meaning,
+    'sentence': ?sentence,
+    'sentenceEn': ?sentenceEn,
   };
 
   factory AudioCue.fromJson(Map<String, dynamic> j) => AudioCue(
@@ -76,6 +106,8 @@ class AudioCue {
     reading: j['reading'] as String?,
     meaningMn: j['meaningMn'] as String?,
     meaning: j['meaning'] as String?,
+    sentence: j['sentence'] as String?,
+    sentenceEn: j['sentenceEn'] as String?,
   );
 }
 
@@ -140,19 +172,32 @@ class AudioDeck {
   );
 }
 
+/// What a spoken part is, which decides what its loss costs: no word means
+/// the whole entry goes; no sentence means only the sentence (and its
+/// translation) goes.
+enum PartKind { word, meaning, sentence, sentenceEn }
+
 /// One spoken part of the deck, before fetching.
 class SpokenPart {
-  const SpokenPart(this.wordIndex, this.text, this.lang);
+  const SpokenPart(this.wordIndex, this.text, this.lang, [this.kind = PartKind.word]);
   final int wordIndex;
   final String text;
   final String lang;
+  final PartKind kind;
 }
 
 /// What gets spoken, in order: for each word, its Japanese (the reading when
 /// there is one — kana says how it's pronounced, where kanji can be misread by
-/// the voice), then its English meaning, repeated [AudioOptions.repeat] times.
-List<SpokenPart> planParts(List<Word> words, AudioOptions o) => [
-  for (var w = 0; w < words.length; w++)
+/// the voice), then its English meaning, repeated [AudioOptions.repeat] times;
+/// then, with [AudioOptions.sentences], its example sentence once, followed
+/// by the translation when English is on. [examples] runs parallel to
+/// [words]; a word without one just has no sentence.
+List<SpokenPart> planParts(
+  List<Word> words,
+  AudioOptions o, {
+  List<Example?> examples = const [],
+}) => [
+  for (var w = 0; w < words.length; w++) ...[
     for (var r = 0; r < o.repeat; r++) ...[
       SpokenPart(
         w,
@@ -162,14 +207,20 @@ List<SpokenPart> planParts(List<Word> words, AudioOptions o) => [
         'ja',
       ),
       if (o.english && (words[w].meaning?.isNotEmpty ?? false))
-        SpokenPart(w, words[w].meaning!, 'en'),
+        SpokenPart(w, words[w].meaning!, 'en', PartKind.meaning),
     ],
+    if (o.sentences && w < examples.length && examples[w] != null) ...[
+      SpokenPart(w, examples[w]!.ja, 'ja', PartKind.sentence),
+      if (o.english) SpokenPart(w, examples[w]!.en, 'en', PartKind.sentenceEn),
+    ],
+  ],
 ];
 
 /// Joins fetched clips into one MP3 with [AudioOptions.pauseMs] of silence
 /// after each, and records where each word starts. A word whose Japanese
 /// clip is missing is left out whole (its meaning alone would be confusing);
-/// a missing English clip just drops the meaning.
+/// a missing English clip just drops the meaning; a missing sentence drops
+/// the sentence and its translation, never the word.
 ({Uint8List mp3, List<int> starts, List<int> kept}) assemble(
   List<Word> words,
   List<SpokenPart> parts,
@@ -188,7 +239,12 @@ List<SpokenPart> planParts(List<Word> words, AudioOptions o) => [
   final gap = silence(format, o.pauseMs.toDouble());
   final missingJa = {
     for (var i = 0; i < parts.length; i++)
-      if (parts[i].lang == 'ja' && clips[i] == null) parts[i].wordIndex,
+      if (parts[i].kind == PartKind.word && clips[i] == null) parts[i].wordIndex,
+  };
+  final missingSentence = {
+    for (var i = 0; i < parts.length; i++)
+      if (parts[i].kind == PartKind.sentence && clips[i] == null)
+        parts[i].wordIndex,
   };
   var ms = 0.0;
   var lastWord = -1;
@@ -196,6 +252,10 @@ List<SpokenPart> planParts(List<Word> words, AudioOptions o) => [
     final p = parts[i];
     final clip = clips[i];
     if (missingJa.contains(p.wordIndex) || clip == null) continue;
+    if (p.kind == PartKind.sentenceEn &&
+        missingSentence.contains(p.wordIndex)) {
+      continue;
+    }
     final frames = audioFrames(clip);
     final f = firstFrame(clip);
     if (frames.isEmpty || f == null || !f.sameFormat(format)) continue;
@@ -227,17 +287,22 @@ _assembleOffThread(
 });
 
 final audioDeckStoreProvider = Provider<AudioDeckStore>(
-  (ref) => AudioDeckStore(TtsClips()),
+  (ref) => AudioDeckStore(TtsClips(), sentences: ExampleSentences()),
 );
 
 /// Builds, lists and deletes audio decks: `audio_decks/<deckId>.mp3` plus a
 /// `.json` beside it with the options, length and word cues. Files, not a
 /// table — nothing queries them, and the MP3 has to be a file to be shared.
 class AudioDeckStore {
-  AudioDeckStore(this._clips, {Future<Directory> Function()? dir})
-    : _dir = dir ?? getApplicationDocumentsDirectory;
+  AudioDeckStore(
+    this._clips, {
+    ExampleSentences? sentences,
+    Future<Directory> Function()? dir,
+  }) : _sentences = sentences ?? ExampleSentences(),
+       _dir = dir ?? getApplicationDocumentsDirectory;
 
   final TtsClips _clips;
+  final ExampleSentences _sentences;
   final Future<Directory> Function() _dir;
 
   /// At most this many clip requests at once: a deck of a hundred words is
@@ -281,7 +346,8 @@ class AudioDeckStore {
     }
   }
 
-  /// Builds the deck's audio, reporting `(done, total)` clips as it goes.
+  /// Builds the deck's audio, reporting `(done, total)` clips as it goes —
+  /// and before that, with sentences on, `(done, total)` words looked up.
   /// Returns null when nothing could be fetched at all (offline with an empty
   /// cache).
   Future<AudioDeck?> build({
@@ -290,9 +356,23 @@ class AudioDeckStore {
     required List<Word> words,
     required AudioOptions options,
     void Function(int done, int total)? onProgress,
+    void Function(int done, int total)? onSentenceProgress,
   }) async {
     final ordered = options.shuffle ? ([...words]..shuffle(Random())) : words;
-    final parts = planParts(ordered, options);
+    final examples = List<Example?>.filled(ordered.length, null);
+    if (options.sentences) {
+      var nextWord = 0, found = 0;
+      Future<void> finder() async {
+        while (nextWord < ordered.length) {
+          final i = nextWord++;
+          examples[i] = await _sentences.find(ordered[i].term);
+          onSentenceProgress?.call(++found, ordered.length);
+        }
+      }
+
+      await Future.wait([for (var w = 0; w < _concurrency; w++) finder()]);
+    }
+    final parts = planParts(ordered, options, examples: examples);
     final clips = List<Uint8List?>.filled(parts.length, null);
     // The same text (a repeat, a shared meaning) is fetched once.
     final unique = <String, Future<Uint8List?>>{};
@@ -334,6 +414,8 @@ class AudioDeckStore {
             reading: ordered[result.kept[k]].reading,
             meaningMn: ordered[result.kept[k]].meaningMn,
             meaning: ordered[result.kept[k]].meaning,
+            sentence: examples[result.kept[k]]?.ja,
+            sentenceEn: examples[result.kept[k]]?.en,
           ),
       ],
       skipped: ordered.length - result.kept.length,

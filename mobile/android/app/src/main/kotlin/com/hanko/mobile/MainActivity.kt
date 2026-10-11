@@ -1,6 +1,7 @@
 package com.hanko.mobile
 
 import android.content.ComponentName
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -42,7 +43,13 @@ class MainActivity : FlutterActivity() {
 
     override fun onStop() {
         super.onStop()
-        pendingIcon?.let { applyIcon(it) }
+        // Debug builds stay on (and fall back to) the default icon: `flutter
+        // run` launches the manifest's first launcher entry, .IconPaper, and
+        // if a theme switch has disabled it the launch is refused and the tool
+        // waits for the app forever without saying why.
+        val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        val icon = if (debuggable) "paper" else pendingIcon
+        icon?.let { applyIcon(it) }
         pendingIcon = null
     }
 

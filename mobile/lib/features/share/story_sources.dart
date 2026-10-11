@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/strings.dart';
@@ -21,6 +23,13 @@ Future<StoryCard?> todayStory({required int streak}) async {
   final day = DateTime.parse(m['day'] as String);
   final recalled = (m['recalled'] as num?)?.toInt() ?? words.length;
   final added = (m['added'] as num?)?.toInt() ?? 0;
+  // The streak chain: the seven SRS days ending today. Today counts (there are
+  // recalls, or there'd be no card), and the streak covers the run before it.
+  final run = math.max(1, streak);
+  final week = [
+    for (var back = 6; back >= 0; back--)
+      StoryDay(weekdayMn[DateTime(day.year, day.month, day.day - back).weekday % 7], back < run),
+  ];
   return StoryCard(
     kicker: '${monthMn[day.month - 1]} сарын ${day.day}',
     heading: T.storyTodayHeading,
@@ -32,6 +41,8 @@ Future<StoryCard?> todayStory({required int streak}) async {
     words: words.take(storyMaxWords).toList(),
     total: recalled,
     moreLabel: T.storyMore,
+    week: week,
+    bubble: streak > 1 ? T.storyBubbleStreak(streak) : T.storyBubbleToday(recalled),
   );
 }
 
@@ -60,5 +71,6 @@ Future<StoryCard?> deckStory(Deck deck) async {
     words: words,
     total: count,
     moreLabel: T.storyMore,
+    bubble: T.storyBubbleDeck,
   );
 }

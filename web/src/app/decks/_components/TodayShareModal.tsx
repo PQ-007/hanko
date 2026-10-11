@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "@/ui/icons";
 import { supabase } from "../_lib/db";
-import { formatDateMn } from "../_lib/dates";
+import { formatDateMn, WEEKDAY_MN } from "../_lib/dates";
 import { T } from "../_lib/strings";
 import { STORY_MAX_WORDS, type StoryCard } from "../_lib/storyCard";
 import StoryImagePanel from "./StoryImagePanel";
@@ -35,6 +35,15 @@ export default function TodayShareModal({ streak, onClose }: { streak: number; o
   let card: StoryCard | null = null;
   if (today && today !== "failed" && today.words.length > 0) {
     const [y, m, d] = today.day.split("-").map(Number);
+    // The streak chain: the seven SRS days ending today. Today counts (there
+    // are recalls, or there'd be no card), and the streak covers the run of
+    // days before it — freezes included, as the dashboard counts them.
+    const run = Math.max(1, streak);
+    const week = Array.from({ length: 7 }, (_, i) => {
+      const back = 6 - i;
+      const date = new Date(y, m - 1, d - back);
+      return { label: WEEKDAY_MN[date.getDay()], active: back < run };
+    });
     card = {
       kicker: formatDateMn(new Date(y, m - 1, d)),
       heading: T.storyTodayHeading,
@@ -51,6 +60,8 @@ export default function TodayShareModal({ streak, onClose }: { streak: number; o
       })),
       total: today.recalled,
       moreLabel: T.storyMore,
+      week,
+      bubble: streak > 1 ? T.storyBubbleStreak(streak) : T.storyBubbleToday(today.recalled),
     };
   }
 

@@ -27,6 +27,36 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Phones are ARM. The Flutter plugin packages all three ABIs whatever
+        // the build targets, and the plugins' native code (ML Kit OCR + digital
+        // ink, ~20 MB per ABI) rides along, so the release APK carried a whole
+        // x86_64 copy only emulators and Chromebooks can run. Keep the ARM ABIs
+        // this build targets (`flutter run` on a phone passes just its own); an
+        // x86_64-only build (`flutter run` on an emulator) keeps x86_64.
+        if (!project.hasProperty("split-per-abi")) {
+            val flutterAbis = mapOf(
+                "android-arm" to "armeabi-v7a",
+                "android-arm64" to "arm64-v8a",
+                "android-x64" to "x86_64",
+            )
+            val targetAbis = (project.findProperty("target-platform") as String?
+                ?: "android-arm,android-arm64,android-x64")
+                .split(",").mapNotNull { flutterAbis[it.trim()] }
+            val armAbis = targetAbis.filter { it != "x86_64" }.ifEmpty { targetAbis }
+            ndk {
+                abiFilters.clear()
+                abiFilters += armAbis
+            }
+        }
+    }
+
+    // Store native libraries compressed: about 40% of their size in the APK,
+    // which is what people download. They are unpacked once at install.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     buildTypes {

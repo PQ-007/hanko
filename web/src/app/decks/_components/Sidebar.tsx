@@ -8,6 +8,7 @@ import {
   FolderOpen,
   FolderPlus,
   Layers,
+  Pencil,
   Search,
   Trash2,
   X,
@@ -164,6 +165,21 @@ export default function Sidebar({
     await supabase.from("folders").update({ deleted: true }).eq("id", f.id);
     onFoldersChanged();
     onDecksChanged();
+  }
+
+  // Pre-filled with the current name; an unchanged or empty answer is a no-op.
+  async function renameDeck(d: DeckWithCount) {
+    const name = await askText({ title: T.renameDeckTitle, initial: d.name, confirmLabel: T.save });
+    if (!name || name === d.name) return;
+    await supabase.from("decks").update({ name }).eq("id", d.id);
+    onDecksChanged();
+  }
+
+  async function renameFolder(f: Folder) {
+    const name = await askText({ title: T.renameFolderTitle, initial: f.name, confirmLabel: T.save });
+    if (!name || name === f.name) return;
+    await supabase.from("folders").update({ name }).eq("id", f.id);
+    onFoldersChanged();
   }
 
   // Same semantics as DeckHeader's delete: tombstone the words, then the deck
@@ -429,6 +445,19 @@ export default function Sidebar({
               {T.newSubfolder}
             </button>
           )}
+          <button
+            role="menuitem"
+            onClick={() => {
+              const { deck, folder } = menu;
+              setMenu(null);
+              if (deck) renameDeck(deck);
+              else if (folder) renameFolder(folder);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm transition text-ink hover:bg-paper-dim"
+          >
+            <Pencil size={16} className="text-ink-mute" />
+            {T.rename}
+          </button>
           <div className="my-1 h-px bg-line-soft" />
           <button
             role="menuitem"

@@ -297,6 +297,17 @@ capture — but only the extension is positioned to collect it.
   rebuilding is cheap. Each deck is `audio_decks/<deckId>.mp3` plus a JSON
   sidecar with the options and per-word cues (start ms), which is how the
   player shows the word being spoken.
+- **Example sentences** (option "Жишээ өгүүлбэр", off by default): after a
+  word's repeats, one Tatoeba sentence (keyless API, CC BY) then its English
+  translation when English is on — fetched at build time and cached per word
+  on disk (`example_sentences.dart`), not stored in the database. Tatoeba
+  search matches substrings, so `pickExample` requires the word itself (or
+  its stem: 食べ, 担) with **no kanji touching its kanji edges** — that
+  rejects 抜群 for 群 and 無軌道 ("reckless") for 軌道, at the cost of
+  sometimes rejecting a fine sentence (今軌道). Deliberate: one of ~50
+  candidates lost costs nothing; speaking the wrong word doesn't. A word
+  with no good sentence is spoken without one; a failed sentence clip never
+  drops the word.
 - Playback is plain `just_audio` in the app (`deck_player.dart`), with its
   own player separate from word pronunciation in `core/audio.dart`. **Do not
   add `audio_service` back** without testing on a device: on Flutter 3.44 it
@@ -711,6 +722,16 @@ Two traps found doing this:
   `storyCard.test.ts` and `story_card_test.dart`. "Өөр үг" bumps the seed for
   Нэг үг / Асуулт. Three styles, Монгол / English / Хоёул, and the layout
   are remembered per browser / per phone.
+  **Амжилт** (the default) is the Strava-style one: your Monster Hunt hero
+  mid-swing in a burst of rays and confetti, one huge number in the accent,
+  a stat row, the week as a streak chain (the SRS day back seven days,
+  filled by the streak) and word chips. Every layout has the hero as a
+  mascot with a speech bubble, and the first kanji as a faint watermark.
+  The figures fill a third of their 100×100 frame or less, so the renderer
+  measures each frame's opaque outline (`spriteBox` / `_frameBox`) and
+  scales the *figure* by whole pixels — sizing by the frame drew a stamp.
+  Content stays out of Instagram's own chrome: nothing above ~10.5% of the
+  height (profile row) or below ~9% from the bottom (reply bar).
 - **Mobile offline decks** (Drift schema v4: `OfflineDecks`,
   `OfflineDeckCards`): "Офлайнд татах" in a deck's menu saves every card
   (practice_cards), flags which ones review_queue() was serving, refreshes
@@ -745,7 +766,11 @@ Two traps found doing this:
   switched in `MainActivity.onStop` so a launcher refresh never hits mid-use.
   They are real `<activity>`s, not `activity-alias`es, because the Flutter
   tool only finds MAIN/LAUNCHER on `<activity>` — aliases broke `flutter
-  run`. iOS: primary `AppIcon` is Цайвар, `AppIconDark`/`AppIconBlue` are
+  run`. **Debug builds never switch** (they reset to `.IconPaper` on stop):
+  `flutter run` always launches `.IconPaper`, and once a theme had disabled
+  it the launch was refused and the tool sat on "Waiting for VM Service"
+  forever, looking like a stuck install. `adb shell pm enable` can't undo it
+  (Android 14 refuses the shell); only the app can. iOS: primary `AppIcon` is Цайвар, `AppIconDark`/`AppIconBlue` are
   alternate sets (`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), set via
   `setAlternateIconName`, which shows iOS's own one-line notice.
 - **Story images on mobile too** (`features/share/`): `story_card.dart`
@@ -758,6 +783,17 @@ Two traps found doing this:
   public `avatars` bucket (`0029_avatars.sql`), resized client-side to 256px
   WebP; `profiles.image` may only be a Google photo or that bucket (a free
   URL would let someone track who views their profile).
+- **Adding words on the web is one dialog** (`AddWordModal.tsx`), opened from
+  a deck (deck fixed, list refreshes behind it) and from the dashboard (deck
+  picker). The term is looked up as it changes; `/api/lookup` now also
+  returns `results` (up to 5 matches, first = the old top-level fields, so
+  the extension and mobile are unaffected) to pick from. Matches fill only
+  fields the user hasn't typed into (`_lib/addWord.ts`, tested); the term is
+  swapped for the dictionary form only on Enter/Tab, never mid-typing.
+  **Handwriting search** (`HandwritingPad.tsx`, `_lib/handwriting.ts`) uses
+  Google Input Tools' keyless handwriting endpoint, called straight from the
+  browser (it answers CORS `*`) — no route of ours, so no new open proxy.
+  The stroke grader can't do this: it checks ink against one known kanji.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a
@@ -820,6 +856,20 @@ Two traps found doing this:
   rules in the same file were added. Build `--release` **and launch it on a
   device** after adding any ML Kit or native plugin; debug builds don't
   shrink, so they show neither problem.
+- **Mobile sprites step on a timer, not an AnimationController**
+  (`features/battle/sprite_view.dart`). A controller drove a full frame on
+  every vsync while any sprite was visible — the home hero and the loading
+  fight never stop, so the app never idled. Frames now repaint only when the
+  picture changes, paused under `TickerMode` off. The decoded sheet cache is
+  capped at 10 character/projectile folders (all sheets are 72 MB decoded;
+  Android had been killing the app for low memory). `sprite_view_test.dart`
+  pins the one-shot timing battle/duel rely on.
+- **Mobile APK size** (`android/app/build.gradle.kts`): the Flutter Gradle
+  plugin packs all three ABIs no matter what the build targets, and ML Kit's
+  native code is ~20 MB per ABI. The build now keeps only the ARM ABIs it
+  targets (x86_64 only for an emulator-only build) and stores native libs
+  compressed — release APK 125 MB → 36 MB. Still ships 32-bit `armeabi-v7a`
+  for Android Go phones; arm64-only would be ~22 MB.
 - The extension has **no build step** — edits to `src/sync.js` and
   `src/ui.js` must be copied verbatim into both `chrome/` and `firefox/`, and
   every other file except `manifest.json` is identical in the two folders.

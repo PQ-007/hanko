@@ -6,6 +6,7 @@ import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { T } from "../_lib/strings";
 import { playWordAudio } from "../_lib/audio";
+import { askConfirm } from "@/ui/Dialog";
 import GradeBadge from "./GradeBadge";
 
 export default function WordRow({
@@ -22,6 +23,12 @@ export default function WordRow({
   const [genAudio, setGenAudio] = useState(false);
 
   async function remove() {
+    const ok = await askConfirm({
+      title: T.deleteWordTitle,
+      body: T.deleteWordConfirm(word.term),
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from("words").update({ deleted: true }).eq("id", word.id);
     onChanged();
   }
