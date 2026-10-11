@@ -154,6 +154,19 @@ class T {
   static const quickAddSaveFailed = 'Үгийг хадгалж чадсангүй.';
   static String quickAddedCount(int n) => '$n үг нэмлээ';
   static const quickAddDone = 'Дуусгах';
+  // Add-word sheet: dictionary matches and the handwriting pad (same copy as
+  // the web's AddWordModal).
+  static const addMatches = 'Jisho-гийн үр дүн';
+  static const addMatchesNone = 'Jisho-оос олдсонгүй';
+  static const handwrite = 'Гараар бичих';
+  static const handwriteHint = 'Ханзаа энд зурна уу';
+  static const handwritePick = 'Зурсан тэмдэгтээ сонгоно уу';
+  static const addTermLabel = 'Үг';
+  static const clearForm = 'Цэвэрлэх';
+  static String addedFlash(String t) => '$t нэмэгдлээ';
+  static const autoFilled = 'Авто';
+  static const autoFilledTitle = 'Jisho-оос автоматаар бөглөсөн — засаж болно';
+  static const closeLabel = 'Хаах';
   static const goalModalTitle = 'Өдрийн шинэ үгийн зорилго';
   static const goalModalDesc = 'Өдөрт хэдэн шинэ үг сурахыг зорих вэ?';
   static const goalModalLabel = 'Шинэ үг / өдөр';
@@ -276,6 +289,17 @@ class T {
   static const duelIntroKicker = 'Нүүр тулах тулаан';
   static String duelIntroStarting(int n) => '$n секундын дараа эхэлнэ…';
   static const duelIntroGo = 'Эхэллээ!';
+  // Ready room + chat (same copy as the web's strings.ts).
+  static const duelReady = 'Бэлэн';
+  static const duelWaitingFoe = 'Өрсөлдөгчийг хүлээж байна…';
+  static String duelReadyAuto(int n) => '$n секундын дараа автоматаар эхэлнэ';
+  static const duelFoeReady = 'Бэлэн';
+  static const duelFoeWaiting = 'Бэлдэж байна…';
+  static const duelFoeAway = 'Холбогдож байна…';
+  static const duelChatEmpty = 'Эмотикон эсвэл бэлэн үг илгээгээрэй.';
+  static const duelChatPlaceholder = 'Мессеж бичих…';
+  static const duelChatSend = 'Илгээх';
+  static const duelChatStrangers = 'Найз биш тоглогчтой зөвхөн эмотикон, бэлэн үг илгээх боломжтой.';
   static String duelRematchWaiting(String name) => '$name-г хүлээж байна…';
   static const duelRematchCancel = 'Болих';
   static String duelRematchIncoming(String name) => '$name дахин тулах гэж байна';
@@ -558,6 +582,31 @@ class T {
   static const newFolderInside = 'Дотор нь хавтас нэмэх';
   static const rename = 'Нэр солих';
   static const moveTo = 'Зөөх';
+  // Several words at once: the last batch, selection, sort and filter.
+  static String selectedCount(int n) => '$n сонгосон';
+  static const selectAll = 'Бүгдийг сонгох';
+  static const selectWords = 'Сонгох';
+  static const moveWordsTo = 'Өөр багц руу зөөх';
+  static const deleteSelected = 'Устгах';
+  static String deleteWordsTitle(int n) => '$n үг устгах уу?';
+  static const deleteWordsBody = 'Сонгосон үгс энэ багцаас устгагдана. Доор гарах «Буцаах»-аар сэргээж болно.';
+  static String wordsDeleted(int n) => '$n үг устгагдлаа';
+  static String wordsMoved(int n, String deck) => '$n үг «$deck» руу зөөгдлөө';
+  static const wordsUndone = 'Буцаалаа';
+  static const wordsActionFailed = 'Амжилтгүй боллоо. Интернэтээ шалгаад дахин оролдоно уу.';
+  static const pickTargetDeck = 'Аль багц руу зөөх вэ?';
+  static String lastBatch(int n) => 'Сүүлд $n үг зэрэг нэмэгдсэн';
+  static String lastBatchUndo(int n) => '$n үгийг буцаах';
+  static const lastBatchHint = 'Буруу багц руу орсон бол буцаах эсвэл сонгоод зөөнө үү.';
+  static const sortNewest = 'Шинэ нь эхэндээ';
+  static const sortOldest = 'Хуучин нь эхэндээ';
+  static const sortAlphabetical = 'Үсгийн дараалал';
+  static const addedAny = 'Бүх хугацаа';
+  static const addedToday = 'Өнөөдөр нэмсэн';
+  static const addedWeek = 'Энэ 7 хоногт';
+  static const addedFilterEmpty = 'Энэ хугацаанд нэмсэн үг алга.';
+  static String agoMinutes(int m) => m < 1 ? 'дөнгөж сая' : '$m мин өмнө';
+  static String agoHours(int h) => '$h цагийн өмнө';
   static const moveToRoot = 'Үндсэн түвшин';
   static const name = 'Нэр';
   static const create = 'Үүсгэх';

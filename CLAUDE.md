@@ -268,6 +268,15 @@ How it's built, so nobody re-litigates it:
   conflict make replay idempotent, same reasoning as the answer outbox.
   Flushed on app start and resume (`AppShell`). It writes `words` only; the
   trigger creates the cards.
+- **Undoing a capture** (pushed into the wrong deck): the save's snackbar
+  has Буцаах (`WordOutbox.undo` — drops still-queued words *and* tombstones
+  sent ones, since a flush can land in between). The deck screen shows the
+  last batch with "undo all" / "select" (then move or delete, both with
+  undo), plus sort and an "added today / this week" filter
+  (`library/word_batches.dart`, `word_bulk.dart`). **A batch needs no
+  column**: one insert gives every row the same `date_added` (now() is fixed
+  per transaction) to the microsecond, and the outbox flushes each deck's
+  queue as one insert too; manual and extension adds arrive one per insert.
 - `image_picker` (system camera/gallery) rather than a live `camera` preview:
   fewer permissions to manage, and screenshots work too.
 
@@ -563,6 +572,25 @@ web + mobile).** Owner's call, reversing the "own deck" rule below for PvP:
   someone else's invitation by id or by code, and direct calls to the
   planners are refused; re-running the migration is safe.
 
+**Ready room + chat (web + mobile, no migration).** The 4.5 s intro is now a
+ready room: the match starts when both press Бэлэн, or at
+`matches.started_at + 30 s` whatever happens (shared clock, so nobody can
+stall). Chat lives there and on the result screen: six emotes that play on
+the sender's own sprite (`emotePose` picks the first clip the character has),
+seven preset phrases, and typed text **between friends only**
+(`duel_opponent().is_friend`). Transport is Realtime broadcast + presence on
+`duel-chat:<matchId>` — nothing stored. **The receiver enforces the rules**
+(`acceptIncoming` in `duel/_lib/chat.ts` / `duel_chat_rules.dart`, same
+cases): only the opponent's messages, only known ids, text only from a
+friend, cleaned and rate-limited — a modified client can't put free text on a
+stranger's screen. Verified live: browser↔browser and phone↔browser.
+Two traps found doing it:
+- "Ready" is sent as a broadcast **and** tracked in presence: presence alone
+  took 2–3 s to arrive, starting one player's round 1 that much early.
+- realtime_client's `sendBroadcastMessage` sends its map flat; supabase-js
+  sends `{payload: {...}}`. Dart wraps in `{'payload': …}` and reads
+  `m['payload']` — change one side and phone↔browser chat silently breaks.
+
 - Two players (or player vs. bot), each with an HP bar; center timer and a
   multiple-choice question box
 - ~~Each round both players are quizzed from their own deck~~ — superseded by
@@ -794,6 +822,22 @@ Two traps found doing this:
   Google Input Tools' keyless handwriting endpoint, called straight from the
   browser (it answers CORS `*`) — no route of ours, so no new open proxy.
   The stroke grader can't do this: it checks ink against one known kanji.
+  **Mobile has the same sheet** (`features/shell/quick_add_sheet.dart`, from
+  quick add and from a deck with `lockDeck`); `WordForm` is now edit-only.
+  The fill rules and multi-match parsing are ports pinned by the same cases
+  (`add_word_rules.dart` / `addWord.ts`, `parseJishoResults` in both
+  `dictionary_test.dart` and `jisho.test.ts`). Its pad
+  (`decks/handwriting_pad.dart`) uses ML Kit digital ink on the phone — the
+  writing lessons' model, offline once downloaded — and claims the pointer
+  on touch-down (`_EagerPan`), or a downward stroke scrolls the sheet.
+- **User guide at `/doc`** (Mongolian, for users): a static page,
+  `web/public/doc/index.html` + `public/doc/img/*.webp` (real screenshots;
+  the phone ones have a friend's name and the owner's photo blurred). Served
+  at `/doc` by a rewrite in `next.config.ts`; outside `/decks`, so it opens
+  signed out. Linked from the app header («Заавар», `HelpCircle` icon) and
+  the login page — as a plain `<a>`, not `<Link>`: it isn't an app-router
+  route. It follows the site theme from `localStorage["hanko.theme"]`.
+  When a feature changes, update its section there too.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a

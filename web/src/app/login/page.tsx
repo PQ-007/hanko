@@ -50,6 +50,11 @@ function LoginInner() {
         <GoogleIcon />
         {loading ? "Шилжүүлж байна…" : "Google-ээр нэвтрэх"}
       </button>
+
+      {/* Public, so it works before signing in (static page, see next.config.ts). */}
+      <a href="/doc" className="text-sm font-medium text-seal underline-offset-4 hover:underline">
+        Хэрхэн ашиглах вэ? →
+      </a>
     </main>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { HEATMAP_EMPTY, HEATMAP_STEPS, heatmapColor } from "../_lib/chartColors";
 import {
   addDays,
@@ -22,9 +23,10 @@ export interface DayActivity {
 
 // Calendar heatmap of daily review volume over the trailing `weeks` weeks.
 // Magnitude data -> one validated blue hue, light->dark, with "no activity"
-// as a neutral outside the ramp. Cells carry a hover tooltip and a title
-// attribute, and the same numbers are available in the summary line below,
-// so the color is never the only channel.
+// as a neutral outside the ramp. Cells carry a hover tooltip and an
+// aria-label, and the same numbers are available in the summary line below,
+// so the color is never the only channel. (Not a `title`: the browser's own
+// tooltip showed on top of this one.)
 export default function ActivityHeatmap({
   counts,
   title,
@@ -40,12 +42,31 @@ export default function ActivityHeatmap({
 }) {
   const [ref, inView] = useInView<HTMLDivElement>();
   const reduced = usePrefersReducedMotion();
-  // Tooltip coordinates are measured against this element, so the lookup
-  // can't break if an intermediate wrapper ever gains a `relative` class.
-  const plotRef = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<{ day: Date; count: number; x: number; y: number } | null>(
-    null
-  );
+  // The tooltip is portalled to <body> at viewport coordinates: inside the
+  // plot it was clipped, because a horizontally scrolling box clips
+  // vertically too, and the top rows' tooltips sit above it.
+  const [hover, setHover] = useState<{
+    day: Date;
+    count: number;
+    /** The cell's viewport rect. */
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  } | null>(null);
+
+  // A fixed-position tooltip would be left floating if the page scrolled
+  // under the pointer.
+  useEffect(() => {
+    if (!hover) return;
+    const clear = () => setHover(null);
+    window.addEventListener("scroll", clear, true);
+    window.addEventListener("resize", clear);
+    return () => {
+      window.removeEventListener("scroll", clear, true);
+      window.removeEventListener("resize", clear);
+    };
+  }, [hover]);
 
   // Build columns of 7 days ending on today, aligned so each column starts on
   // Sunday (matching the weekday rail on the left).
@@ -95,7 +116,7 @@ export default function ActivityHeatmap({
         </p>
       </div>
 
-      <div ref={plotRef} className="relative overflow-x-auto pb-1">
+      <div className="overflow-x-auto pb-1">
         {/* w-max keeps the grid at its natural size; mx-auto centers it when
             the card is wider than the calendar, instead of stranding a block
             of dead space on the right. */}
@@ -132,20 +153,11 @@ export default function ActivityHeatmap({
                 return (
                   <div
                     key={di}
-                    title={`${formatDateMn(day)} — ${formatCount(count)}`}
+                    role="img"
+                    aria-label={`${formatDateMn(day)} — ${formatCount(count)}`}
                     onMouseEnter={(e) => {
-                      const host = plotRef.current;
-                      if (!host) return;
                       const r = e.currentTarget.getBoundingClientRect();
-                      const h = host.getBoundingClientRect();
-                      setHover({
-                        day,
-                        count,
-                        // Offset by scroll so the tooltip tracks the cell
-                        // inside the horizontally scrollable plot.
-                        x: r.left - h.left + host.scrollLeft + r.width / 2,
-                        y: r.top - h.top,
-                      });
+                      setHover({ day, count, left: r.left, right: r.right, top: r.top, bottom: r.bottom });
                     }}
                     onMouseLeave={() => setHover(null)}
                     style={{
@@ -166,15 +178,9 @@ export default function ActivityHeatmap({
           ))}
         </div>
 
-        {hover && (
-          <div
-            style={{ left: hover.x, top: hover.y - 8 }}
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-control bg-ink px-2 py-1 text-[11px] font-medium text-paper shadow-lift"
-          >
-            {formatDateMn(hover.day)} — {formatCount(hover.count)}
-          </div>
-        )}
       </div>
+
+      {hover && typeof document !== "undefined" && createPortal(<HeatTip hover={hover} text={`${formatDateMn(hover.day)} — ${formatCount(hover.count)}`} />, document.body)}
 
       {/* Sequential scale legend */}
       <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-ink-mute">
@@ -189,6 +195,47 @@ export default function ActivityHeatmap({
         ))}
         <span>{T.more}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The hover tooltip, at viewport coordinates: above the cell, or below it
+ * when there's no room above; centred on it, or pinned to the cell's side
+ * near a screen edge so it never runs off.
+ */
+function HeatTip({
+  hover,
+  text,
+}: {
+  hover: { left: number; right: number; top: number; bottom: number };
+  text: string;
+}) {
+  const GAP = 6;
+  const EDGE = 120; // about half the widest tooltip
+  const vw = typeof window === "undefined" ? 1024 : window.innerWidth;
+  const center = (hover.left + hover.right) / 2;
+  const below = hover.top < 44;
+  const style: React.CSSProperties = below ? { top: hover.bottom + GAP } : { top: hover.top - GAP };
+  let shift = "-translate-x-1/2";
+  if (center < EDGE) {
+    style.left = hover.left;
+    shift = "";
+  } else if (center > vw - EDGE) {
+    style.right = vw - hover.right;
+    shift = "";
+  } else {
+    style.left = center;
+  }
+  return (
+    <div
+      role="tooltip"
+      style={style}
+      className={`pointer-events-none fixed z-[60] whitespace-nowrap rounded-control bg-ink px-2 py-1 text-[11px] font-medium text-paper shadow-lift ${shift} ${
+        below ? "" : "-translate-y-full"
+      }`}
+    >
+      {text}
     </div>
   );
 }

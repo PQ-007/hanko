@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hanko хэрэглэгчийн гарын авлага</title>
+<meta name="description" content="Hanko-ийн өргөтгөл, вэб апп, мобайл аппыг ашиглах заавар.">
+<link rel="icon" type="image/svg+xml" href="/favicon-paper.svg">
+<script>
+  // Follow the theme chosen on the site (decks/_lib/theme.ts, key "hanko.theme").
+  // The site defaults to Цайвар, so no choice means light, not the OS setting.
+  (function () {
+    var v = "paper";
+    try { v = localStorage.getItem("hanko.theme") || "paper"; } catch (e) {}
+    document.documentElement.setAttribute("data-theme", v === "dark" || v === "blue" ? "dark" : "light");
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: the Hanko web app's own chrome — frosted header with pill tabs
+   (bottom tab bar on phones), one guide per tab, each a contents card on the
+   left and a column of white cards on the right. Tokens are the site's
+   Цайвар theme; dark mirrors the site's Бараан (blue accent). */
+:root {
+  --paper: #f7eedd;
+  --paper-dim: #efe0c4;
+  --paper-deep: #e6d3b1;
+  --line: #dcc7a2;
+  --line-soft: #ecdfc6;
+  --ink: #1c232b;
+  --ink-soft: #5f5546;
+  --ink-mute: #75685a;
+  --seal: #c8442f;
+  --seal-dark: #a83623;
+  --seal-tint: #f6ddd6;
+  --seal-text: #b53b27;
+  --surface: #ffffff;
+  --on-seal: #ffffff;
+  --good: #2f7d4f;
+  --grade-new: #b9ad98;
+  --grade-f: #efa898;
+  --grade-d: #e07a63;
+  --grade-c: #c8442f;
+  --grade-b: #a83623;
+  --grade-a: #7a2414;
+  --shadow-card: 0 1px 2px rgba(31, 41, 51, 0.04), 0 4px 16px rgba(31, 41, 51, 0.06);
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-jp: "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --bezel: #1f242b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14171c; --paper-dim: #1c2027; --paper-deep: #262b33; --line: #363d48; --line-soft: #2b313a;
+    --ink: #ece9e2; --ink-soft: #b9b3a8; --ink-mute: #9a9488;
+    --seal: #2f6bb8; --seal-dark: #3a78c9; --seal-tint: #1d2d44; --seal-text: #6fa3e6;
+    --surface: #1e232b; --on-seal: #ffffff; --good: #6fcf97;
+    --grade-new: #4a505b; --grade-f: #1f3a5f; --grade-d: #24528c; --grade-c: #2f6bb8; --grade-b: #5b92d6; --grade-a: #9cc0ee;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --bezel: #0b0d10;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14171c; --paper-dim: #1c2027; --paper-deep: #262b33; --line: #363d48; --line-soft: #2b313a;
+  --ink: #ece9e2; --ink-soft: #b9b3a8; --ink-mute: #9a9488;
+  --seal: #2f6bb8; --seal-dark: #3a78c9; --seal-tint: #1d2d44; --seal-text: #6fa3e6;
+  --surface: #1e232b; --on-seal: #ffffff; --good: #6fcf97;
+  --grade-new: #4a505b; --grade-f: #1f3a5f; --grade-d: #24528c; --grade-c: #2f6bb8; --grade-b: #5b92d6; --grade-a: #9cc0ee;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --bezel: #0b0d10;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 76px; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(to bottom, var(--paper), var(--paper-dim)) fixed;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+a { color: var(--seal-text); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; border-radius: 6px; }
+.jp { font-family: var(--font-jp); }
+code { font-size: 0.9em; padding: 1px 6px; border-radius: 6px; background: var(--paper-dim); border: 1px solid var(--line-soft); overflow-wrap: anywhere; }
+
+/* ---------- Site chrome ---------- */
+.chrome {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.chrome-in {
+  max-width: 1240px; margin-inline: auto;
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-width: 0; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.brand b { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.brand i { font-size: 12px; color: var(--ink-mute); white-space: nowrap; }
+.brand .doc { font-size: 12px; color: var(--ink-mute); padding-left: 10px; border-left: 1px solid var(--line); white-space: nowrap; }
+.tabs { display: flex; gap: 4px; }
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--radius-control);
+  color: var(--ink-soft); text-decoration: none; font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+.tab svg { width: 15px; height: 15px; }
+.tab:hover { background: var(--paper-dim); color: var(--ink); }
+.tab[aria-current="page"] { background: var(--seal); color: var(--on-seal); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+
+.tabbar { display: none; }
+.open-app {
+  flex: none; display: inline-flex; align-items: center;
+  padding: 6px 14px; border-radius: var(--radius-control);
+  background: var(--seal); color: var(--on-seal); text-decoration: none;
+  font-size: 13.5px; font-weight: 600; white-space: nowrap;
+}
+.open-app:hover { background: var(--seal-dark); }
+
+/* ---------- Page ---------- */
+.wrap { max-width: 1240px; margin-inline: auto; padding: 28px 24px 72px; }
+.page[hidden] { display: none !important; }
+
+.hero {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start;
+  padding: 24px; margin-bottom: 24px;
+}
+.hero-icon {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: var(--seal-tint); color: var(--seal-text);
+  display: grid; place-items: center;
+}
+.hero-icon svg { width: 28px; height: 28px; }
+.kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 4px; }
+.hero h1 { margin: 0; font-size: clamp(24px, 3.4vw, 32px); line-height: 1.2; letter-spacing: -0.02em; font-weight: 700; text-wrap: balance; }
+.hero p.lead { margin: 8px 0 0; color: var(--ink-soft); max-width: 70ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.chip {
+  font-size: 12.5px; font-weight: 500; padding: 3px 10px; border-radius: 99px;
+  background: var(--paper-dim); color: var(--ink-soft); border: 1px solid var(--line-soft);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; align-items: start; }
+.toc { position: sticky; top: 76px; padding: 14px 10px; max-height: calc(100vh - 100px); overflow: auto; }
+.toc p { margin: 0 8px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-mute); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.toc a {
+  display: block; padding: 6px 10px; border-radius: 8px;
+  font-size: 13.5px; line-height: 1.35; color: var(--ink-soft); text-decoration: none;
+}
+.toc a:hover { background: var(--paper-dim); color: var(--ink); }
+.toc a.on { background: var(--seal-tint); color: var(--seal-text); font-weight: 600; }
+
+.sections { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sec { padding: 22px 26px 18px; min-width: 0; }
+.sec h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.sec .sub { margin: 0 0 14px; color: var(--ink-soft); font-size: 14.5px; }
+.sec h3 { margin: 20px 0 6px; font-size: 15.5px; font-weight: 650; }
+.sec p, .sec li { max-width: 72ch; }
+.sec ul, .sec ol { padding-left: 22px; margin: 6px 0 12px; }
+.sec li { margin-bottom: 5px; }
+.sec li::marker { color: var(--seal); }
+
+/* A real on-screen control, named the way the app names it */
+.ui {
+  display: inline-block; font-size: 0.88em; font-weight: 600; line-height: 1.5;
+  padding: 0 8px; border-radius: 7px;
+  background: var(--seal-tint); color: var(--seal-text); white-space: nowrap;
+}
+kbd {
+  font-family: var(--font); font-size: 12.5px; font-weight: 600;
+  padding: 1px 7px; border-radius: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px; white-space: nowrap;
+}
+
+.steps { counter-reset: s; list-style: none; padding: 0 !important; display: grid; gap: 8px; margin: 10px 0 14px !important; }
+.steps > li {
+  counter-increment: s; position: relative; max-width: none !important;
+  padding: 10px 14px 10px 46px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line-soft); margin: 0 !important;
+}
+.steps > li::before {
+  content: counter(s); position: absolute; left: 12px; top: 10px;
+  width: 24px; height: 24px; border-radius: 50%; background: var(--seal); color: var(--on-seal);
+  display: grid; place-items: center; font-weight: 700; font-size: 12.5px; line-height: 1;
+}
+.note {
+  margin: 12px 0; padding: 10px 14px; border-radius: 12px;
+  background: var(--seal-tint); color: var(--ink); font-size: 14.5px; max-width: 72ch;
+}
+.note b:first-child { color: var(--seal-text); }
+
+.tbl { overflow-x: auto; margin: 10px 0 14px; border: 1px solid var(--line-soft); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); background: var(--paper); font-weight: 700; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.c { text-align: center; }
+td.num { text-align: right; font-weight: 700; white-space: nowrap; }
+.yes { color: var(--good); font-weight: 800; }
+.no { color: var(--ink-mute); }
+
+.apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 6px 0 4px; }
+.app {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 12px;
+  background: var(--paper); border: 1px solid var(--line-soft); color: var(--ink); text-decoration: none;
+}
+.app:hover { border-color: var(--seal); }
+.app .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--seal-tint); color: var(--seal-text); display: grid; place-items: center; }
+.app .ico svg { width: 20px; height: 20px; }
+.app b { font-size: 15.5px; }
+.app span { font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; }
+.app em { margin-top: auto; font-style: normal; font-size: 13px; font-weight: 600; color: var(--seal-text); }
+
+.ratings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; }
+.rate { padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line-soft); background: var(--paper); }
+.rate b { display: block; font-size: 14.5px; }
+.rate span { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
+.rate.again b { color: var(--seal-text); }
+.rate.easy b { color: var(--good); }
+
+.grades { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 10px 0 4px; }
+.grade { border-radius: 10px; overflow: hidden; border: 1px solid var(--line-soft); background: var(--paper); text-align: center; }
+.grade i { display: block; height: 8px; }
+.grade b { display: block; padding-top: 5px; font-size: 15px; }
+.grade span { display: block; padding: 0 4px 7px; font-size: 11.5px; color: var(--ink-soft); }
+
+.example {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin: 10px 0 12px; padding: 10px 14px; border-radius: 12px;
+  border: 1px dashed var(--line); background: var(--paper);
+}
+.example .jp { font-size: 20px; font-weight: 600; }
+.example .arrow { color: var(--seal-text); font-weight: 700; }
+.example small { flex-basis: 100%; color: var(--ink-mute); font-size: 12.5px; }
+
+.emotes { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.emote { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; border-radius: 99px; background: var(--paper); border: 1px solid var(--line-soft); font-size: 13.5px; }
+.emote span:first-child { font-size: 18px; }
+
+.faqgroup h2 { margin-bottom: 10px; }
+details.q { border-top: 1px solid var(--line-soft); }
+details.q:first-of-type { border-top: none; }
+details.q summary {
+  cursor: pointer; list-style: none; padding: 11px 0; font-weight: 600;
+  display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px;
+}
+details.q summary::-webkit-details-marker { display: none; }
+details.q summary::before { content: "+"; color: var(--seal-text); font-weight: 800; }
+details.q[open] summary::before { content: "−"; }
+details.q > div { padding: 0 0 12px 26px; color: var(--ink-soft); }
+details.q > div p { margin: 0 0 6px; }
+
+/* ---------- Screenshots ---------- */
+.hero.has-shot { grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.95fr); }
+.hero-shot { min-width: 0; align-self: center; }
+.frame-browser { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-card); }
+.frame-browser .bar { display: flex; gap: 5px; padding: 7px 10px; background: var(--paper-dim); border-bottom: 1px solid var(--line-soft); }
+.frame-browser .bar i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.frame-browser img { display: block; width: 100%; height: auto; }
+.phone { flex: none; width: 200px; padding: 5px; border-radius: 26px; background: var(--bezel); box-shadow: var(--shadow-card); }
+.phone img { display: block; width: 100%; height: auto; border-radius: 21px; }
+.popup-shot { flex: none; width: 240px; max-width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-card); background: var(--surface); }
+.popup-shot img { display: block; width: 100%; height: auto; }
+.gallery { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 12px; margin: 10px 0 8px; scroll-snap-type: x proximity; }
+.gallery figure { margin: 0; scroll-snap-align: start; display: flex; flex-direction: column; gap: 6px; }
+figure.shot { margin: 12px 0 10px; }
+figure.shot.narrow { max-width: 420px; }
+figcaption { font-size: 12.5px; color: var(--ink-mute); line-height: 1.4; max-width: 240px; }
+figure.shot figcaption { max-width: none; margin-top: 6px; }
+.collage { position: relative; padding: 0 0 34px 0; }
+.collage .frame-browser { width: 86%; margin-left: 8%; }
+.collage .c-phone { position: absolute; right: 0; bottom: 0; width: 27%; padding: 4px; border-radius: 18px; background: var(--bezel); box-shadow: var(--shadow-card); }
+.collage .c-phone img { display: block; width: 100%; border-radius: 14px; }
+.collage .c-popup { position: absolute; left: 0; bottom: 6px; width: 30%; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-card); }
+.collage .c-popup img { display: block; width: 100%; }
+.duo { display: flex; gap: 14px; justify-content: center; }
+.duo .phone { width: 46%; max-width: 210px; }
+.app .thumb { margin: -16px -16px 6px; height: 150px; overflow: hidden; border-radius: 12px 12px 0 0; border-bottom: 1px solid var(--line-soft); background: var(--paper-dim); }
+.app .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+
+.foot { text-align: center; color: var(--ink-mute); font-size: 12.5px; margin-top: 28px; }
+
+/* ---------- Phones: the site's bottom tab bar ---------- */
+@media (max-width: 900px) {
+  .tabs { display: none; }
+  .brand .doc { display: none; }
+  .chrome-in { padding: 10px 16px; }
+  .wrap { padding: 18px 16px calc(100px + env(safe-area-inset-bottom, 0px)); }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .toc { position: static; max-height: none; }
+  .toc ol { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .toc a { background: var(--paper); border: 1px solid var(--line-soft); padding: 4px 10px; font-size: 13px; }
+  .hero, .hero.has-shot { grid-template-columns: minmax(0, 1fr); padding: 18px; gap: 12px; }
+  .phone { width: 168px; }
+  .popup-shot { width: 210px; }
+  .sec { padding: 18px 16px 14px; }
+  .apps { grid-template-columns: minmax(0, 1fr); }
+  .ratings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grades { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line-soft);
+  }
+  .tabbar a {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 2px; border-radius: 10px; text-decoration: none;
+    color: var(--ink-mute); font-size: 11px; font-weight: 600; text-align: center; line-height: 1.2;
+  }
+  .tabbar svg { width: 22px; height: 22px; }
+  .tabbar a[aria-current="page"] { color: var(--seal-text); }
+  .tabbar a[aria-current="page"] svg { background: var(--seal-tint); border-radius: 99px; padding: 2px 10px; width: 44px; box-sizing: border-box; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page:not([hidden]) { animation: rise 220ms ease-out; }
+  @keyframes rise { from { opacity: 0.4; transform: translateY(4px); } }
+}
+</style>
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-start" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M9 4h6v3a2 2 0 1 0 0 0h4v5h-3a2 2 0 1 0 0 4h3v4H5v-4h3a2 2 0 1 0 0-4H5V7h4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"/></symbol>
+    <symbol id="i-web" viewBox="0 0 24 24"><path d="M3.5 5.5h17v13h-17zM3.5 9.5h17M7 7.5h.01M10 7.5h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+    <symbol id="i-mobile" viewBox="0 0 24 24"><path d="M7 3.5h10v17H7zM11 17.5h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+    <symbol id="i-faq" viewBox="0 0 24 24"><path d="M12 20.5a8.5 8.5 0 1 0-8.5-8.5c0 1.5.4 2.9 1.1 4.1L3.5 20.5l4.4-1.1A8.5 8.5 0 0 0 12 20.5zM9.6 9.6a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.6-.8 1.1v.6M12 16.2h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+  </defs>
+</svg>
+
+<header class="chrome">
+  <div class="chrome-in">
+    <a class="brand" href="#start" aria-label="Hanko гарын авлага — эхлэл">
+      <svg viewBox="0 0 128 128" aria-hidden="true">
+        <circle cx="64" cy="64" r="64" fill="var(--seal)"/>
+        <g transform="translate(64 64) scale(3.4) translate(-12 -12)"><path d="M17.6 5.6A8 8 0 1 0 20 11.2" fill="none" stroke="var(--on-seal)" stroke-width="2.7" stroke-linecap="square"/></g>
+      </svg>
+      <b>Hanko</b><i>Verba non Acta</i><span class="doc">Гарын авлага</span>
+    </a>
+    <nav class="tabs" aria-label="Гарын авлагын хэсгүүд">
+      <a class="tab" href="#start" data-tab="start"><svg aria-hidden="true"><use href="#i-start"/></svg>Эхлэх</a>
+      <a class="tab" href="#extension" data-tab="extension"><svg aria-hidden="true"><use href="#i-ext"/></svg>Өргөтгөл</a>
+      <a class="tab" href="#web" data-tab="web"><svg aria-hidden="true"><use href="#i-web"/></svg>Вэб апп</a>
+      <a class="tab" href="#mobile" data-tab="mobile"><svg aria-hidden="true"><use href="#i-mobile"/></svg>Мобайл апп</a>
+      <a class="tab" href="#faq" data-tab="faq"><svg aria-hidden="true"><use href="#i-faq"/></svg>Асуулт</a>
+    </nav>
+    <a class="open-app" href="/decks/stats">Апп нээх</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- =============================================================== START -->
+<div class="page" data-page="start" id="start">
+  <div class="hero card has-shot">
+    <div class="hero-icon"><svg aria-hidden="true"><use href="#i-start"/></svg></div>
+    <div>
+      <p class="kicker">Эхлэх</p>
+      <h1>Hanko гэж юу вэ</h1>
+      <p class="lead">Япон үг цээжлэх систем. Үгээ хаанаас ч цуглуулж, үг бүрийг яг мартах дөхөх үед нь дахин асууж, хэдэн өдөр, долоо хоног, сарын зайтайгаар давтуулна. Гурван апп, нэг бүртгэл.</p>
+      <div class="chips"><span class="chip">Монгол хэлтэй</span><span class="chip">Google-ээр нэвтэрнэ</span><span class="chip">Үнэгүй толь, орчуулга</span></div>
+    </div>
+    <div class="hero-shot collage" aria-hidden="true">
+      <div class="frame-browser"><div class="bar"><i></i><i></i><i></i></div><img src="/doc/img/w-deck.webp" alt=""></div>
+      <div class="c-popup"><img src="/doc/img/e-popup.webp" alt=""></div>
+      <div class="c-phone"><img src="/doc/img/m-home.webp" alt=""></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc card" aria-label="Энэ хэсэгт"><p>Энэ хэсэгт</p><ol>
+      <li><a href="#start-apps">Гурван апп</a></li>
+      <li><a href="#start-account">Бүртгэл ба синк</a></li>
+      <li><a href="#start-matrix">Аль апп юу хийдэг</a></li>
+      <li><a href="#start-srs">Давталт хэрхэн ажилладаг</a></li>
+      <li><a href="#start-grades">Түвшин</a></li>
+      <li><a href="#start-day">Өдөр ба хязгаар</a></li>
+      <li><a href="#start-themes">Загвар</a></li>
+    </ol></nav>
+
+    <div class="sections">
+      <section class="sec card" id="start-apps">
+        <h2>Гурван апп</h2>
+        <p class="sub">Тус бүр өөр ажилд зориулагдсан. Дэлгэрэнгүй зааврыг нээнэ үү.</p>
+        <div class="apps">
+          <a class="app" href="#extension"><div class="thumb"><img src="/doc/img/e-popup.webp" alt=""></div><span class="ico"><svg aria-hidden="true"><use href="#i-ext"/></svg></span><b>Өргөтгөл</b><span>Chrome, Firefox. Вэб хуудас уншиж байхдаа үгээ хоёр товшилтоор хадгална.</span><em>Өргөтгөлийн заавар →</em></a>
+          <a class="app" href="#web"><div class="thumb"><img src="/doc/img/w-deck.webp" alt=""></div><span class="ico"><svg aria-hidden="true"><use href="#i-web"/></svg></span><b>Вэб апп</b><span>Багц удирдах, давтах, статистик, найзууд, тулаан. Утасны browser-т ч бүрэн ажиллана.</span><em>Вэб аппын заавар →</em></a>
+          <a class="app" href="#mobile"><div class="thumb"><img src="/doc/img/m-home.webp" alt=""></div><span class="ico"><svg aria-hidden="true"><use href="#i-mobile"/></svg></span><b>Мобайл апп</b><span>Android. Явж байхдаа давтах, камераар үг авах, интернэтгүй давтах, аудио багц.</span><em>Мобайл аппын заавар →</em></a>
+        </div>
+      </section>
+
+      <section class="sec card" id="start-account">
+        <h2>Бүртгэл ба синк</h2>
+        <ul>
+          <li>Бүх апп <strong>Google бүртгэлээр</strong> нэвтэрнэ. И-мэйл, нууц үгээр нэвтрэх боломжгүй.</li>
+          <li>Нэг бүртгэлтэй тул аль нэгэнд нь нэмсэн үг, хийсэн давталт бусад дээр шууд харагдана.</li>
+          <li>Нэвтрэхгүйгээр зөвхөн <strong>өргөтгөл</strong> ажиллана — үгс тухайн browser-т л хадгалагдана.</li>
+          <li>Нэвтэрсний дараа <span class="ui">Тохиргоо</span>-нд <strong>хэрэглэгчийн нэр</strong> (@handle) тавиарай. Найзууд таныг үүгээр олно.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="start-matrix">
+        <h2>Аль апп юу хийдэг</h2>
+        <p class="sub">✓ — боломжтой. — — тухайн апп дээр байхгүй.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Боломж</th><th style="text-align:center">Өргөтгөл</th><th style="text-align:center">Вэб</th><th style="text-align:center">Мобайл</th></tr></thead>
+          <tbody>
+            <tr><td>Вэб хуудаснаас үг хадгалах</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td></tr>
+            <tr><td>Гараар үг нэмэх, Jisho-оос хайх</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Ханзаа зурж хайх</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Камераар үг унших</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+            <tr><td>Багц, хавтас удирдах</td><td class="c">багц</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Өнөөдөр давтах үгийн тоо</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Давтах, Мангас агнах, Ханз бичих</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Leech аврах</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+            <tr><td>Интернэтгүй давтах</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+            <tr><td>Аудио багц (MP3)</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+            <tr><td>Өдөр тутмын сануулга</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+            <tr><td>Статистик, цуврал</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Найзууд, тэргүүлэгчид</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Тулаан (хүн, бот)</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Багцаа линкээр хуваалцах, story зураг</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+            <tr><td>Anki руу экспорт</td><td class="c no">—</td><td class="c">.apkg, .txt</td><td class="c">.txt</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section class="sec card" id="start-srs">
+        <h2>Давталт хэрхэн ажилладаг</h2>
+        <p class="sub">Spaced repetition: санасан үг улам хол, мартсан үг ойрхон дахин гарна.</p>
+        <p>Үгийг харсны дараа хэр амархан санаснаа дөрвөн товчоор хэлнэ:</p>
+        <div class="ratings">
+          <div class="rate again"><b>Дахин</b><span>Санасангүй. Хэдэн минутын дараа дахин гарна.</span></div>
+          <div class="rate"><b>Хэцүү</b><span>Арай гэж санав. Зай бага зэрэг өснө.</span></div>
+          <div class="rate"><b>Сайн</b><span>Санав. Ердийн зайгаар өснө.</span></div>
+          <div class="rate easy"><b>Амархан</b><span>Шууд санав. Зай их өснө.</span></div>
+        </div>
+        <ul>
+          <li><strong>Шинэ үг</strong> эхлээд 1 минут, 10 минутын зайтай хоёр алхмаар давтагдаад өдрийн зайд шилжинэ.</li>
+          <li>Хуваарийг сервер тооцдог. Вэб дээр давтсан ч, утсан дээр давтсан ч дараагийн өдөр нь яг адилхан.</li>
+          <li>Мангас агнах нь энгийн давталттай адил хуваарь өөрчилнө. <strong>Чөлөөт дасгал</strong>, <strong>ханз бичих</strong>, <strong>тулаан</strong> хуваарийг өөрчлөхгүй.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="start-grades">
+        <h2>Түвшин</h2>
+        <p class="sub">Үг бүр дараагийн давталт хүртэлх зайгаараа түвшинтэй.</p>
+        <div class="grades" role="list">
+          <div class="grade" role="listitem"><i style="background:var(--grade-new)"></i><b>Шинэ</b><span>давтаагүй</span></div>
+          <div class="grade" role="listitem"><i style="background:var(--grade-f)"></i><b>F</b><span>≤ 1 өдөр</span></div>
+          <div class="grade" role="listitem"><i style="background:var(--grade-d)"></i><b>D</b><span>2–6 өдөр</span></div>
+          <div class="grade" role="listitem"><i style="background:var(--grade-c)"></i><b>C</b><span>7–21 өдөр</span></div>
+          <div class="grade" role="listitem"><i style="background:var(--grade-b)"></i><b>B</b><span>22–60 өдөр</span></div>
+          <div class="grade" role="listitem"><i style="background:var(--grade-a)"></i><b>A</b><span>60+ өдөр</span></div>
+        </div>
+      </section>
+
+      <section class="sec card" id="start-day">
+        <h2>Өдөр ба хязгаар</h2>
+        <ul>
+          <li>Шинэ өдөр <strong>өглөөний 4 цагт</strong> эхэлдэг (тохиргооноос өөрчилнө). Шөнийн 12–4 цагийн давталт өмнөх өдөрт тооцогдоно.</li>
+          <li>Өдөрт <strong>20 шинэ үг</strong>, <strong>200 давталт</strong> хүртэл. 500 үг нэг дор нэмсэн ч нэг өдөр бүгд асуугдахгүй — өдөр өдрөөр хуваагдана.</li>
+          <li><strong>Цуврал</strong> — дараалан давтсан өдрүүд. Хүн бүр <strong>2 хөлдөөлттэй</strong>: ганц өдөр алгасахад цуврал тасрахгүй, гэхдээ дараа нь үргэлжлүүлсэн тохиолдолд л.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="start-themes">
+        <h2>Загвар</h2>
+        <p>Гурван загвар: <strong>Цайвар</strong> (анхдагч, цаасан өнгө), <strong>Бараан</strong>, <strong>Цэнхэр</strong>. Вэб, мобайл, өргөтгөл бүрт тусад нь сонгоно. Өргөтгөлийн дүрс, утасны нүүрний дүрс хамт солигдоно.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================== EXTENSION -->
+<div class="page" data-page="extension" id="extension" hidden>
+  <div class="hero card has-shot">
+    <div class="hero-icon"><svg aria-hidden="true"><use href="#i-ext"/></svg></div>
+    <div>
+      <p class="kicker">Өргөтгөл</p>
+      <h1>Хуудаснаас үг барьж авах</h1>
+      <p class="lead">Япон текст уншиж байхдаа үгээ сонгоод хадгална. Дуудлага, англи утга, монгол орчуулга нь өөрөө бөглөгдөнө. Давталт, статистикийг вэб апп эсвэл утсаараа хийнэ.</p>
+      <div class="chips"><span class="chip">Chrome</span><span class="chip">Firefox</span><span class="chip">PDF дээр ажиллана</span><span class="chip">Нэвтрэхгүйгээр ч ажиллана</span></div>
+    </div>
+    <figure class="hero-shot" style="margin:0"><div class="frame-browser"><div class="bar"><i></i><i></i><i></i></div><img src="/doc/img/e-panel.webp" alt="Япон нийтлэл дээр нээгдсэн хадгалах цонх: 担う, дуудлага になう, монгол, англи утга, багц сонгох"></div></figure>
+  </div>
+
+  <div class="layout">
+    <nav class="toc card" aria-label="Энэ хэсэгт"><p>Энэ хэсэгт</p><ol>
+      <li><a href="#ext-install">Суулгах</a></li>
+      <li><a href="#ext-signin">Нэвтрэх ба синк</a></li>
+      <li><a href="#ext-save">Үг хадгалах</a></li>
+      <li><a href="#ext-panel">Хадгалах цонх</a></li>
+      <li><a href="#ext-pdf">PDF ба файл</a></li>
+      <li><a href="#ext-popup">Өргөтгөлийн цонх</a></li>
+      <li><a href="#ext-words">Үгээ засах, устгах</a></li>
+      <li><a href="#ext-badge">Дүрсэн дээрх тоо</a></li>
+      <li><a href="#ext-settings">Загвар, товчлол</a></li>
+    </ol></nav>
+
+    <div class="sections">
+      <section class="sec card" id="ext-install">
+        <h2>Суулгах</h2>
+        <h3>Chrome</h3>
+        <ol class="steps">
+          <li>Хаягийн мөрөнд <code>chrome://extensions</code> гэж бичнэ.</li>
+          <li>Баруун дээд буланд <span class="ui">Developer mode</span>-ыг асаана.</li>
+          <li><span class="ui">Load unpacked</span> дараад Hanko-ийн <code>chrome</code> хавтсыг сонгоно.</li>
+          <li>Пазл дүрсээс Hanko-г <strong>pin</strong> хийвэл хэрэгслийн мөрөнд байнга харагдана.</li>
+        </ol>
+        <h3>Firefox</h3>
+        <ol class="steps">
+          <li><code>about:debugging#/runtime/this-firefox</code> нээнэ.</li>
+          <li><span class="ui">Load Temporary Add-on…</span> → <code>firefox/manifest.json</code> файлыг сонгоно.</li>
+        </ol>
+        <div class="note"><b>Анхаар:</b> Firefox-т ингэж суулгасан өргөтгөл browser-ээ хаахад устдаг. Дахин нээх бүрт дахин ачаална.</div>
+      </section>
+
+      <section class="sec card" id="ext-signin">
+        <h2>Нэвтрэх ба синк</h2>
+        <ol class="steps">
+          <li>Өргөтгөлийн цонхонд <span class="ui">Нэвтрэх</span> дарна.</li>
+          <li>Шинэ табд Hanko вэб нээгдэнэ — Google-ээр нэвтэрнэ.</li>
+          <li>«Нэвтэрлээ» гэж гарвал таб хаагдаж, багцууд тань синк хийгдэж эхэлнэ.</li>
+        </ol>
+        <ul>
+          <li><strong>Синкийн төлөв</strong> цонхны дээд хэсэгт: «Синк хийсэн», «Синк хийгдэж байна», «Синк хийж чадсангүй — сүлжээгээ шалгана уу». <span class="ui">Синк хийх</span>-ээр гараар синк хийнэ.</li>
+          <li><strong>Нэвтрээгүй үед</strong> өргөтгөл бүрэн ажиллана, гэхдээ үгс зөвхөн тухайн browser-т хадгалагдана. Дараа нэвтрэхэд бүртгэл рүү чинь синк хийгдэнэ.</li>
+          <li><span class="ui">Гарах</span> — энэ төхөөрөмж дээрх үгс хэвээр үлдэнэ, зөвхөн синк зогсоно.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="ext-save">
+        <h2>Үг хадгалах</h2>
+        <ol class="steps">
+          <li>Хуудсан дээрх япон үгээ хулганаар <strong>сонгоно</strong>.</li>
+          <li><strong>Баруун товч</strong> → <span class="ui">“…”-г багцад хадгалах</span>, эсвэл <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>.</li>
+          <li>Хуудсан дээр хадгалах цонх гарч ирнэ (дараагийн хэсгийг үзнэ үү).</li>
+        </ol>
+        <div class="example">
+          <span class="jp">担っています</span><span class="arrow">→</span><span class="jp">担う</span>
+          <small>Хувирсан үгийг Jisho-ийн тусламжтайгаар толь бичгийн хэлбэрт нь (普通形) оруулж хадгална.</small>
+        </div>
+        <p>Хуудаснаас хадгалсан үг тухайн хуудасны хаягийг санадаг тул хожим хаанаас олсноо нээж харж болно.</p>
+      </section>
+
+      <section class="sec card" id="ext-panel">
+        <h2>Хадгалах цонх</h2>
+        <p class="sub">Хуудасны баруун доод буланд гарна.</p>
+        <figure class="shot narrow"><div class="popup-shot" style="width:300px"><img src="/doc/img/e-panel-crop.webp" alt="Хадгалах цонх: 担う, дуудлага, монгол, англи утга, багц, Болих, Хадгалах"></div><figcaption>«担っています»-г сонгоход толь бичгийн хэлбэр «担う»-аар нээгдсэн нь.</figcaption></figure>
+        <ul>
+          <li>Дээд хэсэгт үг өөрөө, <strong>дуудах</strong> товч, <strong>хаах</strong> товч.</li>
+          <li><strong>Дуудлага</strong>, <strong>Утга (монгол)</strong>, <strong>Утга (англи)</strong> — Jisho, Google Translate-ээс автоматаар бөглөгдөнө. Бүгдийг засаж болно. Англи утгыг засаад <kbd>Enter</kbd> дарвал монгол нь дахин орчуулагдана.</li>
+          <li><strong>Багц</strong> — сүүлд ашигласан багц урьдчилан сонгогдсон. Жагсаалтын <span class="ui">+ Шинэ багц…</span>-аар шууд шинэ багц үүсгэнэ.</li>
+          <li><span class="ui">Хадгалах</span> (<kbd>Ctrl</kbd> + <kbd>Enter</kbd>) → «“багц”-д хадгаллаа ✓». <span class="ui">Болих</span> эсвэл <kbd>Esc</kbd> — хаана.</li>
+          <li>Үг тухайн багцад аль хэдийн байвал <strong>«Давхардсан үг»</strong> анхааруулга гарна — <span class="ui">Дахин нэмэх</span> эсвэл болих.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="ext-pdf">
+        <h2>PDF ба файл</h2>
+        <p>PDF болон компьютер дээрх файл (<code>file://</code>) дээр хуудсан дотор цонх гарах боломжгүй тул ижил хадгалах цонх <strong>тусдаа жижиг цонхоор</strong> нээгдэнэ.</p>
+        <div class="note"><b>Цонх нээгдэж чадахгүй бол</b> үг таны сүүлд ашигласан багц руу (эсвэл <strong>«Шуурхай хадгалсан»</strong> багц руу) шууд хадгалагдаж, мэдэгдэл гарна. Дараа нь өргөтгөлийн цонхноос засна.</div>
+      </section>
+
+      <section class="sec card" id="ext-popup">
+        <h2>Өргөтгөлийн цонх</h2>
+        <p class="sub">Хэрэгслийн мөрөн дэх Hanko дүрсийг дарахад нээгдэнэ.</p>
+        <div class="gallery">
+          <figure><div class="popup-shot"><img src="/doc/img/e-popup.webp" alt="Өргөтгөлийн цонх: нэвтрэх, хайлт, багц сонгох, үгсийн жагсаалт"></div><figcaption>Цонх (нэвтрээгүй үед).</figcaption></figure>
+          <figure><div class="popup-shot"><img src="/doc/img/e-search.webp" alt="Хайлт: зам гэж хайхад 軌道 олдсон"></div><figcaption>Бүх багцаас хайх — олдсон хэсгийг тодруулж, багцын нэрийг харуулна.</figcaption></figure>
+        </div>
+        <h3>Дээд хэсэг</h3>
+        <ul>
+          <li>Нэвтрэлтийн төлөв, <span class="ui">Нэвтрэх</span> / <span class="ui">Гарах</span>.</li>
+          <li>Баруун дээд буланд <strong>гурван өнгөт цэг</strong> — загвар сонгох.</li>
+          <li>Нэвтэрсэн үед <strong>«Өнөөдөр давтах»</strong> карт: хэдэн үг давтах, <span class="ui">Давтах</span> (вэб аппын давталт) ба <span class="ui">Статистик</span> (вэбийн хяналтын самбар). Нэвтрээгүй үед оронд нь нэвтрэх санал гарна.</li>
+        </ul>
+        <h3>Багцууд</h3>
+        <ul>
+          <li>Багцаа <strong>унждаг жагсаалтаас</strong> сонгоно (үгийн тоотойгоо). Доор нь тухайн багцын үгс.</li>
+          <li><span class="ui">+</span> — шинэ багц үүсгэнэ.</li>
+          <li>Доод хэсгийн <strong>хогийн сав</strong> — сонгосон багцыг доторх бүх үгтэй нь устгана (асуугаад, буцаах боломжгүй).</li>
+          <li><span class="ui">Вэб дээр нээх</span> — вэб аппыг шинэ табд нээнэ.</li>
+        </ul>
+        <h3>Хайлт</h3>
+        <p><span class="ui">Үг хайх…</span> талбарт (<kbd>/</kbd> дарахад шууд очно) бичихэд бүх багцаас үг, дуудлага, англи, монгол утгаар хайна.</p>
+      </section>
+
+      <section class="sec card" id="ext-words">
+        <h2>Үгээ засах, устгах</h2>
+        <figure class="shot narrow"><div class="popup-shot"><img src="/doc/img/e-hover.webp" alt="Үг дээр хулгана аваачихад засах, дуудах товч гарсан нь"></div><figcaption>Үг дээр хулгана аваачихад хэрэгслүүд гарна.</figcaption></figure>
+        <p>Үгийн мөр бүрт хэрэгслүүд:</p>
+        <ul>
+          <li><span class="ui">Дуудах</span> — япон дуудлагыг чангаар уншина.</li>
+          <li><span class="ui">Засах</span> — тэр дор нь засна.</li>
+          <li><span class="ui">Эх хуудас нээх</span> — үгийг хадгалсан хуудсыг нээнэ (хуудаснаас хадгалсан үгэнд л).</li>
+          <li><strong>Устгах</strong> — «“үг” устгагдлаа» гэж гарах үед хэдэн секундын дотор <span class="ui">Буцаах</span> дарвал сэргэнэ. Буцаасан устгал серверт хүрэхгүй.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="ext-badge">
+        <h2>Дүрсэн дээрх тоо</h2>
+        <p>Hanko дүрсэн дээрх тоо = <strong>өнөөдөр давтах үг</strong>. Вэбийн хяналтын самбар дээрх тоотой яг адил. Синк хийх бүрт шинэчлэгдэнэ. Хулгана аваачвал «Hanko — давтах N карт» гэж бичигдэнэ.</p>
+      </section>
+
+      <section class="sec card" id="ext-settings">
+        <h2>Загвар, товчлол</h2>
+        <ul>
+          <li><strong>Загвар</strong> — цонхны баруун дээд буланд гурван цэг: Цайвар, Бараан, Цэнхэр. Хэрэгслийн мөрөн дэх дүрс хамт солигдоно.</li>
+          <li><strong>Товчлол өөрчлөх</strong> — Chrome: <code>chrome://extensions/shortcuts</code>. Firefox: <code>about:addons</code> → араа дүрс → <em>Manage Extension Shortcuts</em>.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================= WEB -->
+<div class="page" data-page="web" id="web" hidden>
+  <div class="hero card has-shot">
+    <div class="hero-icon"><svg aria-hidden="true"><use href="#i-web"/></svg></div>
+    <div>
+      <p class="kicker">Вэб апп</p>
+      <h1>Багц удирдах, давтах, тулалдах</h1>
+      <p class="lead">Hanko-ийн бүрэн хувилбар. Компьютер дээр дээд цэстэй, утасны browser-т доод цэстэй апп шиг ажиллана.</p>
+      <div class="chips"><span class="chip">hanko-amber.vercel.app</span><span class="chip">Компьютер, таблет, утас</span><span class="chip">Нүүр дэлгэцэнд нэмж болно</span></div>
+    </div>
+    <figure class="hero-shot" style="margin:0"><div class="frame-browser"><div class="bar"><i></i><i></i><i></i></div><img src="/doc/img/w-deck.webp" alt="Багцын хуудас: түвшний график, үгсийн картууд, Давтах ба Үг нэмэх товч"></div></figure>
+  </div>
+
+  <div class="layout">
+    <nav class="toc card" aria-label="Энэ хэсэгт"><p>Энэ хэсэгт</p><ol>
+      <li><a href="#web-nav">Нэвтрэх ба цэс</a></li>
+      <li><a href="#web-home">Хяналтын самбар</a></li>
+      <li><a href="#web-decks">Багц ба хавтас</a></li>
+      <li><a href="#web-deck">Багц дотор</a></li>
+      <li><a href="#web-add">Үг нэмэх</a></li>
+      <li><a href="#web-review">Давтах</a></li>
+      <li><a href="#web-hunt">Мангас агнах</a></li>
+      <li><a href="#web-writing">Ханз бичих</a></li>
+      <li><a href="#web-duel">Тулаан</a></li>
+      <li><a href="#web-friends">Найзууд</a></li>
+      <li><a href="#web-share">Хуваалцах, экспорт</a></li>
+      <li><a href="#web-settings">Тохиргоо</a></li>
+    </ol></nav>
+
+    <div class="sections">
+      <section class="sec card" id="web-nav">
+        <h2>Нэвтрэх ба цэс</h2>
+        <ol class="steps">
+          <li><strong>hanko-amber.vercel.app</strong> нээгээд <span class="ui">Google-ээр нэвтрэх</span>.</li>
+          <li>Анх удаа бол <span class="ui">Тохиргоо</span>-нд хэрэглэгчийн нэрээ тавина.</li>
+        </ol>
+        <h3>Компьютер дээр</h3>
+        <p>Дээд цэс: <span class="ui">Хяналтын самбар</span> · <span class="ui">Багцууд</span> · <span class="ui">Давтах</span> · <span class="ui">Найзууд</span>. Баруун талд <span class="ui">Тохиргоо</span>. <strong>Тулаан</strong> руу <span class="ui">Давтах</span> → <span class="ui">Найзтайгаа тулах</span>-аар орно.</p>
+        <h3>Утас, таблет дээр</h3>
+        <p>Доод цэс: <span class="ui">Нүүр</span> · <span class="ui">Багцууд</span> · голд нь <span class="ui">Давтах</span> · <span class="ui">Тулаан</span> · <span class="ui">Найзууд</span>. Давталт, тулаан эхлэхэд цэсүүд нуугдаж, дэлгэц бүтнээрээ ашиглагдана.</p>
+        <div class="note"><b>Апп шиг ашиглах:</b> утасны browser-ийн цэснээс <em>Add to Home Screen</em> дарвал нүүр дэлгэцнээс тусдаа апп шиг нээгдэнэ.</div>
+      </section>
+
+      <section class="sec card" id="web-home">
+        <h2>Хяналтын самбар</h2>
+        <p class="sub">Нэвтэрсний дараах эхний хуудас — өнөөдрийн ажил, явцаа нэг дор.</p>
+        <figure class="shot"><div class="frame-browser"><img src="/doc/img/w-heat.webp" alt="Давталтын хуанли: сүүлийн хагас жилийн өдөр бүр"></div><figcaption>Давталтын хуанли — өнгө их байх тусам тэр өдөр их давтсан.</figcaption></figure>
+        <ul>
+          <li><strong>Цуврал</strong> — одоогийн цуврал, үлдсэн хөлдөөлт, хамгийн урт цуврал.</li>
+          <li><strong>Өнөөдрийн давталт</strong> — хэдэн үг давтах ёстой, <span class="ui">Давтах</span> товч.</li>
+          <li><span class="ui">Үг нэмэх</span> — багц руу орохгүйгээр шууд үг нэмнэ.</li>
+          <li><strong>Шинэ үгийн зорилго</strong> — өдөрт хэдэн шинэ үг сурахаа тавина, цагираг дүүрэх нь харагдана.</li>
+          <li><strong>Таны үгсээс</strong> — санамсаргүй нэг үгийг сануулна, <span class="ui">Өөр үг</span>.</li>
+          <li><strong>Өнөөдрийн үгсээ хуваалцах</strong> — story зураг (<a href="#web-share">Хуваалцах</a>).</li>
+          <li><strong>Идэвхийн хуанли</strong> — сүүлийн хагас жил. Өдөр дээр хулгана аваачвал тухайн өдрийн тоо гарна.</li>
+          <li><strong>Графикууд</strong> — түвшний хуваарилалт, сүүлийн өдрүүдийн өсөлт, долоо хоногийн өдрүүдээр давталт.</li>
+          <li><strong>Багцуудын хүснэгт</strong> — багц бүрийн үг, давтах тоо. Мөр дээр дарвал багц нээгдэнэ.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="web-decks">
+        <h2>Багц ба хавтас</h2>
+        <p class="sub"><span class="ui">Багцууд</span> хуудасны зүүн талд багц, хавтасны мод.</p>
+        <figure class="shot narrow"><div class="popup-shot" style="width:300px"><img src="/doc/img/w-sidebar.webp" alt="Хавтас, багцын мод, баруун товчны цэс: Нээх, Нэр солих, Устгах"></div><figcaption>Багц дээр баруун товч дарсан нь.</figcaption></figure>
+        <h3>Үүсгэх</h3>
+        <p>Доод талын <strong>Багц / Хавтас</strong> сэлгүүрээр юу үүсгэхээ сонгоод нэр бичнэ.</p>
+        <h3>Зөөх</h3>
+        <p>Багцыг хавтас руу, хавтсыг өөр хавтас руу <strong>чирж</strong> оруулна. Хавтасгүй хэсэг рүү чирвэл гарна.</p>
+        <h3>Баруун товчны цэс</h3>
+        <ul>
+          <li>Багц дээр: <span class="ui">Нээх</span> · <span class="ui">Нэр солих</span> · <span class="ui">Устгах</span>.</li>
+          <li>Хавтас дээр: <span class="ui">Дотор нь хавтас нэмэх</span> · <span class="ui">Нэр солих</span> · <span class="ui">Устгах</span>. Хавтас устгахад доторх багцууд устахгүй, хавтасгүй болно.</li>
+        </ul>
+        <h3>Хайлт</h3>
+        <p>Дээд талын хайлтаар бүх багцын үгсээс үг, дуудлага, англи, монголоор хайна. Багц олон болоход sidebar дотор шүүлтүүр гарч ирнэ.</p>
+        <div class="note"><b>Утсан дээр:</b> эхлээд багцын жагсаалт, багц дарвал дотор нь нээгдэнэ. Буцах товч эсвэл гар утасны буцах дохиогоор жагсаалт руу буцна.</div>
+      </section>
+
+      <section class="sec card" id="web-deck">
+        <h2>Багц дотор</h2>
+        <ul>
+          <li><strong>Гарчиг</strong> дээр дарж нэрийг солино.</li>
+          <li><strong>Карт / жагсаалт</strong> харагдац. Карт дээр хулгана аваачихад эргэж ар талд нь монгол, англи утга гарна.</li>
+          <li><strong>Түвшний график</strong> — баганыг дарвал тухайн түвшний үгсээр шүүнэ.</li>
+          <li><span class="ui">Давтах</span> — зөвхөн энэ багцаар давтана. <span class="ui">Үг нэмэх</span> — <a href="#web-add">дэлгэрэнгүй</a>.</li>
+          <li><span class="ui">⋯</span> цэс: хавтас руу зөөх · <span class="ui">Хуваалцах</span> · <span class="ui">.apkg</span> · <span class="ui">.txt</span> · <span class="ui">Шинэчлэх</span> · <span class="ui">Устгах</span>.</li>
+        </ul>
+        <h3>Үг засах</h3>
+        <p>Үг дээр дарахад засах цонх нээгдэнэ. <span class="ui">Jisho-оос дахин хайх</span> — дуудлага, англи утгыг дахин татна. Англи утгыг засахад монгол нь автоматаар орчуулагдана.</p>
+        <h3>Үг устгах</h3>
+        <p>Хогийн сав дүрс → <strong>«Үг устгах уу?»</strong> гэж асууна. Устгасан үг давталтаас хасагдана.</p>
+      </section>
+
+      <section class="sec card" id="web-add">
+        <h2>Үг нэмэх</h2>
+        <p class="sub">Багц дотроос эсвэл хяналтын самбараас. Цонх нэмсний дараа хаагдахгүй — олон үгийг дараалан нэмнэ.</p>
+        <figure class="shot narrow"><div class="popup-shot" style="width:360px"><img src="/doc/img/w-add.webp" alt="Үг нэмэх цонх: 生 гэж зурж оруулсан, Jisho-гийн үр дүн, Авто бөглөгдсөн талбарууд"></div><figcaption>«生»-г зурж оруулсны дараа: Jisho-гийн үр дүн, ✧ Авто бөглөгдсөн дуудлага, утга.</figcaption></figure>
+        <h3>Бичих зуураа хайх</h3>
+        <ul>
+          <li>Үгээ бичихэд <strong>Jisho-гийн үр дүн</strong> (5 хүртэл) доор нь гарна. Тохирохыг дарвал дуудлага, утга бөглөгдөнө.</li>
+          <li>Хамгийн тохирох үр дүн хоосон талбаруудыг өөрөө бөглөж, <strong>✧ Авто</strong> тэмдэг тавина. Та өөрөө бичсэн талбарыг дарж бичихгүй.</li>
+          <li>Монгол утга англиас автоматаар орчуулагдана.</li>
+          <li>Үгийн талбарын <span class="ui">×</span> — бүх талбарыг цэвэрлэнэ.</li>
+        </ul>
+        <div class="example"><span class="jp">生</span><span class="arrow">→</span><span>なま · せい · き · ふ · いく</span><small>Нэг ханз олон үг болдог тул жагсаалтаас хэрэгтэйгээ сонгоно.</small></div>
+        <h3>Гараар зурж хайх</h3>
+        <ol class="steps">
+          <li>Үгийн талбарын хажуух <strong>үзэг</strong> дүрсийг дарна.</li>
+          <li>Ханзаа талбар дээр зурна. Санал болгосон тэмдэгтүүд баруун талд гарна.</li>
+          <li>Зөвийг нь дарвал үгийн талбарт орно. Дараагийн ханзаа зурж үгээ үргэлжлүүлнэ.</li>
+        </ol>
+        <p><span class="ui">Буцаах</span> — сүүлийн зурлагыг, <span class="ui">Арилгах</span> — бүгдийг арилгана.</p>
+        <h3>Товчлол</h3>
+        <ul>
+          <li><kbd>Enter</kbd> (үгийн талбарт) — эхний удаа толь бичгийн хэлбэрийг авна, дараагийн удаа үгийг нэмнэ.</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> (<kbd>⌘</kbd> + <kbd>Enter</kbd>) — аль ч талбараас нэмнэ.</li>
+          <li>Нэмсэн үгс цонхны дээд хэсэгт жагсана.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="web-review">
+        <h2>Давтах</h2>
+        <p class="sub"><span class="ui">Давтах</span> дарахад хэлбэрээ сонгох цонх гарна.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Хэлбэр</th><th>Юу хийдэг</th><th>Хуваарь</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Мангас агнах</strong></td><td>4 сонголттой асуултаар мангастай тулна</td><td>Өөрчилнө</td></tr>
+            <tr><td><strong>Энгийн давталт</strong></td><td>Карт эргүүлж өөрийгөө үнэлнэ</td><td>Өөрчилнө</td></tr>
+            <tr><td><strong>Чөлөөт дасгал</strong></td><td>Хуваарьгүй, хүссэн үедээ</td><td>Өөрчлөхгүй</td></tr>
+            <tr><td><strong>Ханз бичих</strong></td><td>Зурлагын дарааллаар бичиж сурна</td><td>Өөрчлөхгүй</td></tr>
+          </tbody>
+        </table></div>
+        <p><span class="ui">Багц сонгох, баатраа солих</span> — тодорхой багцаар давтах, Мангас агнахын баатраа солих.</p>
+        <h3>Энгийн давталт</h3>
+        <ol class="steps">
+          <li>Үгийг харж утгыг нь санана.</li>
+          <li>Карт эргүүлж зөв эсэхийг шалгана.</li>
+          <li><strong>Дахин</strong> · <strong>Хэцүү</strong> · <strong>Сайн</strong> · <strong>Амархан</strong>-аас сонгоно. Үг бүрийн дуудлагыг сонсож болно.</li>
+        </ol>
+        <p>Сүүлийн хариултаа андуурвал <span class="ui">Буцаах</span>. Өнөөдрийн ажил дуусахад «Өнөөдрийн ажил дууслаа» гэж гарна.</p>
+      </section>
+
+      <section class="sec card" id="web-hunt">
+        <h2>Мангас агнах</h2>
+        <p class="sub">Давталтыг тоглоом болгосон хэлбэр. Хамгийн багадаа 4 үг хэрэгтэй.</p>
+        <ul>
+          <li>Асуулт бүр <strong>4 сонголттой</strong>, <strong>10 секундын</strong> хугацаатай. Хурдан хариулах тусам их цохино.</li>
+          <li>Дараалсан зөв хариулт <strong>цуврал</strong> болж, хүчтэй цохилт гаргана. Буруу хариулт, хугацаа дуусах нь таныг шархдуулна.</li>
+          <li><strong>Ханз бичих асуулт</strong> — Ханз бичих хичээлээр сурсан ханзтай үгийг дуудлага, утгаар нь өгөөд ханзаар нь бичүүлнэ. Ханз бүрт 12 секунд, зөв бичвэл 1.5 дахин их цохино. Буруу бичвэл зөвийг нь харуулж, та үргэлжлүүлэхийг хүлээнэ.</li>
+          <li>Мангас ялагдах бүрт шинэ мангас гарна. Тулаан дуусахад дүнгээ харна.</li>
+          <li>Энгийн давталттай адил хуваарь, цуврал, статистикт тооцогдоно.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="web-writing">
+        <h2>Ханз бичих</h2>
+        <ol class="steps">
+          <li>Үг эсвэл ханзаа сонгоно.</li>
+          <li><strong>Дагаж бичих</strong> — зурлагын дараалал хөдөлгөөнөөр харагдана.</li>
+          <li><strong>Хагас харж бичих</strong> — заримаас нь л сануулна.</li>
+          <li><strong>Санаж бичих</strong> — хоосон талбарт өөрөө.</li>
+          <li>Эцэст нь <strong>бүтэн үгээ</strong> бичнэ.</li>
+        </ol>
+        <ul>
+          <li>Нэг хичээлд хамгийн ихдээ <strong>10 шинэ ханз</strong>. Үлдсэн нь дараагийн хичээлд.</li>
+          <li>Зурлагын тоо, дараалал, чиглэл, байрлалыг шалгаж, алдааг улаанаар заана.</li>
+          <li>Зурлагын мэдээлэлгүй ханзыг өөрөө үнэлнэ.</li>
+          <li>Сурсан ханз Мангас агнахад бичих асуулт болж гарна. Хуваарь өөрчлөгдөхгүй.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="web-duel">
+        <h2>Тулаан</h2>
+        <p class="sub">Хоёр тоглогч ижил асуултад зэрэг хариулна. Вэб, мобайл тоглогчид хоорондоо тулна. Компьютер дээр <span class="ui">Давтах</span> → <span class="ui">Найзтайгаа тулах</span>, утсан дээр доод цэсний <span class="ui">Тулаан</span>.</p>
+        <h3>Тулаан эхлүүлэх</h3>
+        <ul>
+          <li><strong>Боттой</strong> — <span class="ui">Дасгалжигч</span> (удаан, олон алддаг) · <span class="ui">Өрсөлдөгч</span> (тэнцүү) · <span class="ui">Мастер</span>.</li>
+          <li><strong>Код үүсгэх</strong> — гарсан кодыг өрсөлдөгчдөө өгч, тэр орохыг хүлээнэ.</li>
+          <li><strong>Кодоор орох</strong> — найзын тань өгсөн кодыг оруулна.</li>
+          <li><strong>Найзаа урих</strong> — жагсаалтаас найзаа сонгоно. Урилга нь сайтын аль ч хуудсанд мэдэгдэл болж очно.</li>
+        </ul>
+        <h3>Бэлтгэлийн өрөө</h3>
+        <figure class="shot narrow"><div class="popup-shot" style="width:380px"><img src="/doc/img/w-ready.webp" alt="Бэлтгэлийн өрөө: хоёр дүр, яриан хөөс, хоорондын түүх, чат, Бэлэн товч"></div><figcaption>Өрсөлдөгч «Сайн уу!» гэж, та 😤 эмотикон илгээсэн нь. Та бэлэн, өрсөлдөгчийг хүлээж байна.</figcaption></figure>
+        <p>Хоёулаа ороход нэр, хоорондын тулааны түүх, чат харагдана. Хоёулаа <span class="ui">Бэлэн</span> дарахад эхэлнэ. Хэн нэг нь удаавал <strong>30 секундийн</strong> дараа автоматаар эхэлнэ.</p>
+        <h3>Чат</h3>
+        <div class="emotes">
+          <div class="emote"><span>👋</span><span>Мэндлэх</span></div>
+          <div class="emote"><span>😤</span><span>Сүрдүүлэх</span></div>
+          <div class="emote"><span>🎉</span><span>Баярлах</span></div>
+          <div class="emote"><span>😵</span><span>Өвдөх</span></div>
+          <div class="emote"><span>🛡️</span><span>Хамгаалах</span></div>
+          <div class="emote"><span>💀</span><span>Үхсэн дүр</span></div>
+        </div>
+        <ul>
+          <li>Эмотикон таны дүр дээр хөдөлгөөнөөр гарна. Бэлэн үгс: «Сайн уу!», «Амжилт хүсье!», «Сайн тоглолт!», «Дахиад нэг үү?» г.м.</li>
+          <li><strong>Бичиж ярих</strong> — зөвхөн <strong>найзуудын</strong> хооронд. Чат хадгалагдахгүй.</li>
+        </ul>
+        <h3>Тулааны үеэр</h3>
+        <ul>
+          <li><strong>12 тойрог</strong>. Тойргийн хугацаа 10 секундээс 6 секунд хүртэл богиносно.</li>
+          <li>Цохилт таны өөрийн дундаж хариултын хурдтай харьцуулж хэмжигдэнэ. Цуврал хэмжүүр дүүрэхэд хүчтэй цохилт.</li>
+          <li>Дунд нь гарвал <strong>ялагдал</strong> болно (асуугаад гаргана). Өрсөлдөгч алга болбол та ялна.</li>
+        </ul>
+        <h3>Дууссаны дараа</h3>
+        <p>Дүн, хоорондын түүх, чат. <span class="ui">Дахин тулах</span> — хоёулаа дарахад шинэ тулаан. <span class="ui">Буцах</span> — тулааны лобби руу. Тулаан давталтын хуваарийг өөрчлөхгүй.</p>
+      </section>
+
+      <section class="sec card" id="web-friends">
+        <h2>Найзууд</h2>
+        <ul>
+          <li><strong>Найз нэмэх</strong> — @handle-аар хайж хүсэлт илгээнэ. Ирсэн хүсэлтийг зөвшөөрөх эсвэл татгалзана.</li>
+          <li><strong>Тэргүүлэгчид</strong> — найзуудын дунд: <span class="ui">7 хоног</span> · <span class="ui">Нийт XP</span> · <span class="ui">ELO</span>. Найзыг дарвал түүнтэй хийсэн тулааны түүх гарна.</li>
+          <li>Найз бүрийн өдрийн идэвх, цуврал харагдана (тэр нуугаагүй бол).</li>
+        </ul>
+        <h3>XP</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Үйлдэл</th><th style="text-align:right">XP</th></tr></thead>
+          <tbody>
+            <tr><td>Давталтын хариулт</td><td class="num">10</td></tr>
+            <tr><td>Давталтын хариулт — «Дахин»</td><td class="num">2</td></tr>
+            <tr><td>Чөлөөт дасгал, тулааны хариулт (өдөрт ≤ 100)</td><td class="num">2</td></tr>
+            <tr><td>Шинэ үг нэмэх</td><td class="num">5</td></tr>
+            <tr><td>Ханз сурах</td><td class="num">20</td></tr>
+            <tr><td>Тулаан: ялалт / тэнцээ / ялагдал</td><td class="num">50 / 25 / 10</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>ELO</strong> — тулааны үнэлгээ, 1000-аас эхэлнэ. Хүчтэй өрсөлдөгчийг ялах тусам их өснө.</p>
+      </section>
+
+      <section class="sec card" id="web-share">
+        <h2>Хуваалцах, экспорт</h2>
+        <h3>Багцын линк</h3>
+        <ol class="steps">
+          <li>Багцын <span class="ui">⋯</span> → <span class="ui">Хуваалцах</span> → линкийг асаана.</li>
+          <li>Линкийг хуулж илгээнэ. Үлдсэн хугацаа харагдана — <strong>24 цагийн</strong> дараа хүчингүй.</li>
+        </ol>
+        <p>Линк нээсэн хүн бүртгэлгүйгээр үгсийг харж, картаар дасгал хийнэ (юу ч хадгалагдахгүй). Нэвтэрсэн бол багцыг <strong>өөртөө хуулна</strong> — таны явц хуулагдахгүй, бүх үг шинээр эхэлнэ.</p>
+        <h3>Story зураг</h3>
+        <p>Хяналтын самбараас өнөөдрийн үгс, амжилтаа Instagram story (1080×1920) болгоно:</p>
+        <ul>
+          <li>Хэлбэр: <strong>Амжилт</strong> · <strong>Тор</strong> · <strong>Жагсаалт</strong> · <strong>Нэг үг</strong> · <strong>Асуулт</strong> (дагагчдад зориулсан 4 сонголттой асуулт, хариулт нь доор урвуу).</li>
+          <li>Хэл: Монгол · English · Хоёул. <span class="ui">Өөр үг</span> — өөр үг сонгоно.</li>
+          <li>Утсанд хуваалцах цонхоор, компьютерт файл болж татагдана.</li>
+        </ul>
+        <h3>Anki руу</h3>
+        <ul>
+          <li><span class="ui">.apkg</span> — дуудлагын аудиотой. Anki-д <em>File → Import</em>. Урд тал: үг (дуудлага), ар тал: англи + монгол.</li>
+          <li><span class="ui">.txt</span> — tab-аар тусгаарласан текст.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="web-settings">
+        <h2>Тохиргоо</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Хэсэг</th><th>Юу тохируулах</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Профайл</strong></td><td>Зураг (квадрат болгож багасгана, найзууд харна), нэр, хэрэглэгчийн нэр. И-мэйл Google-ээс тул солигдохгүй.</td></tr>
+            <tr><td><strong>Өнгө төрх</strong></td><td>Цайвар · Бараан · Цэнхэр. Тухайн төхөөрөмж дээр хадгалагдана.</td></tr>
+            <tr><td><strong>Суралцах</strong></td><td>Шинэ үг / өдөр (0–999), давталт / өдөр (0–9999), шинэ өдөр эхлэх цаг.</td></tr>
+            <tr><td><strong>Нууцлал</strong></td><td>Идэвх хуваалцах — унтраавал найзууд ч таны тоог харахгүй.</td></tr>
+            <tr><td><strong>Гарах</strong></td><td>Бүртгэлээсээ гарна.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================== MOBILE -->
+<div class="page" data-page="mobile" id="mobile" hidden>
+  <div class="hero card has-shot">
+    <div class="hero-icon"><svg aria-hidden="true"><use href="#i-mobile"/></svg></div>
+    <div>
+      <p class="kicker">Мобайл апп</p>
+      <h1>Явж байхдаа давтах</h1>
+      <p class="lead">Вэбтэй ижил бүртгэл, ижил багцууд. Утсанд л байдаг боломжууд: камераар үг унших, интернэтгүй давтах, аудио багц, сануулга.</p>
+      <div class="chips"><span class="chip">Android</span><span class="chip">Интернэтгүй давтана</span><span class="chip">Камер</span><span class="chip">Аудио</span></div>
+    </div>
+    <div class="hero-shot duo">
+      <div class="phone"><img src="/doc/img/m-home.webp" alt="Нүүр: цуврал, өнөөдрийн давталт, зорилго"></div>
+      <div class="phone"><img src="/doc/img/m-stats.webp" alt="Статистик: санах чадвар, давталтын хуанли"></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc card" aria-label="Энэ хэсэгт"><p>Энэ хэсэгт</p><ol>
+      <li><a href="#mob-start">Нэвтрэх ба цэс</a></li>
+      <li><a href="#mob-home">Нүүр</a></li>
+      <li><a href="#mob-library">Сан</a></li>
+      <li><a href="#mob-deck">Багц дотор</a></li>
+      <li><a href="#mob-add">Үг нэмэх</a></li>
+      <li><a href="#mob-camera">Камераар унших</a></li>
+      <li><a href="#mob-undo">Буруу багц руу нэмчихвэл</a></li>
+      <li><a href="#mob-review">Давтах</a></li>
+      <li><a href="#mob-offline">Интернэтгүй</a></li>
+      <li><a href="#mob-audio">Аудио багц</a></li>
+      <li><a href="#mob-social">Тулаан, найзууд</a></li>
+      <li><a href="#mob-share">Хуваалцах</a></li>
+      <li><a href="#mob-settings">Тохиргоо</a></li>
+    </ol></nav>
+
+    <div class="sections">
+      <section class="sec card" id="mob-start">
+        <h2>Нэвтрэх ба цэс</h2>
+        <ol class="steps">
+          <li>Hanko аппыг нээгээд <span class="ui">Google-ээр нэвтрэх</span> — утсан дээрх Google бүртгэлээ сонгоно.</li>
+          <li>Вэб дээр нэмсэн багцууд тань шууд гарч ирнэ.</li>
+        </ol>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-actions.webp" alt="Голын товчны цэс: Давталт эхлүүлэх, Үг нэмэх, Камераар унших, Аудио багц"></div><figcaption>Голын товч дарахад.</figcaption></figure>
+        </div>
+        <h3>Доод цэс</h3>
+        <ul>
+          <li><span class="ui">Нүүр</span> — өнөөдрийн давталт, цуврал, баатар.</li>
+          <li><span class="ui">Статистик</span> — идэвхийн хуанли, цуврал, түвшин, өсөлт.</li>
+          <li>Голын <strong>товч</strong> — <span class="ui">Давталт эхлүүлэх</span> · <span class="ui">Үг нэмэх</span> · <span class="ui">Камераар унших</span> · <span class="ui">Аудио багц</span>.</li>
+          <li><span class="ui">Тулаан</span> — Найзууд · Тэргүүлэгчид · Тулаан.</li>
+          <li><span class="ui">Сан</span> — хавтас, багцууд.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="mob-home">
+        <h2>Нүүр</h2>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-home.webp" alt="Нүүр"></div><figcaption>Нүүр.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-stats.webp" alt="Статистик"></div><figcaption>Статистик таб — санах чадвар, хуанлиуд.</figcaption></figure>
+        </div>
+
+        <ul>
+          <li><strong>Өнөөдрийн давталт</strong> — давтах үгийн тоо, нэг товчоор эхлүүлнэ. Хязгаар хэтэрвэл «Өдрийн хязгаараас N үг хойшлов» гэж бичигдэнэ.</li>
+          <li><strong>Цуврал</strong> — одоогийн, хамгийн урт, үлдсэн хөлдөөлт.</li>
+          <li><strong>Цагирагууд</strong> — шинэ үгийн зорилго, өнөөдөр нэмсэн үг. Зорилгын цагирагийг товшиж <strong>өдөрт хэдэн шинэ үг</strong> авахаа тохируулна.</li>
+          <li><strong>Баатар</strong> — Мангас агнахын баатар тань.</li>
+          <li><strong>✦</strong> — өнөөдрийн үгсээ story зураг болгоно.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="mob-library">
+        <h2>Сан</h2>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-library.webp" alt="Сан: аудио багц, хавтас, багцууд"></div><figcaption>Хавтас, багцууд, дээр нь аудио багц.</figcaption></figure>
+        </div>
+
+        <ul>
+          <li>Хавтас, багцууд модоор. Хавтсыг нээж хаана.</li>
+          <li>Шинэ <strong>багц</strong>, <strong>хавтас</strong> үүсгэнэ.</li>
+          <li>Багц эсвэл хавтас дээр <strong>удаан дарвал</strong> үйлдлийн цэс: нэр солих, зөөх, устгах г.м.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="mob-deck">
+        <h2>Багц дотор</h2>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-deck.webp" alt="Багц: түвшин, шүүлтүүр, үгсийн жагсаалт"></div><figcaption>Жагсаалт, шүүлтүүр, эрэмбэ.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-grid.webp" alt="Картаар харах, нэг карт эргэсэн"></div><figcaption>Карт — товшвол эргэнэ.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-select.webp" alt="2 үг сонгосон: зөөх, устгах"></div><figcaption>Удаан дарж сонгосон нь.</figcaption></figure>
+        </div>
+
+        <h3>Харах</h3>
+        <ul>
+          <li><strong>Түвшний график</strong> — баганыг товшвол тухайн түвшний үгсээр шүүнэ.</li>
+          <li><strong>Жагсаалт / карт</strong> — дээд хэсгийн товчоор солино. Картыг товшвол эргэж ар талд нь утга гарна, тэндээс дуудах, засах, устгах.</li>
+          <li><strong>Шүүлтүүр</strong>: <span class="ui">Бүх хугацаа</span> · <span class="ui">Өнөөдөр нэмсэн</span> · <span class="ui">Энэ 7 хоногт</span>.</li>
+          <li><strong>Эрэмбэ</strong> (эрэмбийн дүрс): шинэ нь эхэндээ · хуучин нь эхэндээ · үсгийн дараалал.</li>
+        </ul>
+        <h3>Олон үг зэрэг</h3>
+        <ol class="steps">
+          <li>Аль нэг үг дээр <strong>удаан дарна</strong> — сонгох горим асна.</li>
+          <li>Бусад үгсээ товшиж нэмнэ, эсвэл <span class="ui">Бүгдийг сонгох</span>.</li>
+          <li><span class="ui">Өөр багц руу зөөх</span> эсвэл <span class="ui">Устгах</span>. Дараа нь гарах <span class="ui">Буцаах</span>-аар буцаана.</li>
+        </ol>
+        <h3>⋯ цэс</h3>
+        <p><span class="ui">Хуваалцах</span> · <span class="ui">Офлайнд татах</span> · <span class="ui">Нэр солих</span> · <span class="ui">Зөөх</span> · <span class="ui">.txt</span> · <span class="ui">Устгах</span>. <span class="ui">▶</span> — зөвхөн энэ багцаар давтана.</p>
+      </section>
+
+      <section class="sec card" id="mob-add">
+        <h2>Үг нэмэх</h2>
+        <p class="sub">Голын товч → <span class="ui">Үг нэмэх</span>, эсвэл багц доторх <span class="ui">+</span>. Нэмсний дараа хаагдахгүй.</p>
+        <ul>
+          <li>Бичих зуураа <strong>Jisho-гийн үр дүн</strong> гарна, тохирохыг товшино. Хоосон талбарууд <strong>✧ Авто</strong> бөглөгдөнө.</li>
+          <li>Гарны <strong>Done</strong> — эхний удаа толь бичгийн хэлбэрийг авна, дараагийн удаа нэмнэ.</li>
+          <li><span class="ui">Үг нэмэх</span> товч доод талд үргэлж харагдана. Нэмсний дараа «… нэмэгдлээ» гэж гарна.</li>
+        </ul>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-handwrite.webp" alt="日 зурсан, 10 санал"></div><figcaption>«日» зурсан — утас өөрөө таньсан.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-matches.webp" alt="Jisho-гийн үр дүн"></div><figcaption>Сонгосны дараа Jisho-гийн үр дүн.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-auto.webp" alt="Авто бөглөгдсөн дуудлага, утга, монгол"></div><figcaption>✧ Авто бөглөгдсөн талбарууд.</figcaption></figure>
+        </div>
+        <h3>Гараар зурж хайх</h3>
+        <ol class="steps">
+          <li>Үгийн талбарын хажуух <strong>үзэг</strong> дүрс. Анх удаа таних загвар татагдана («зөвхөн анх удаа»).</li>
+          <li>Ханзаа хуруугаараа зурна — дэлгэц гүйхгүй.</li>
+          <li>Санал болгосон 10 тэмдэгтээс зөвийг нь товшино. Гар нээгдэхгүй, зурсаар үргэлжлүүлнэ.</li>
+        </ol>
+        <div class="note"><b>Интернэтгүй:</b> загвар татагдсаны дараа гар бичмэлийг утас өөрөө таньдаг.</div>
+      </section>
+
+      <section class="sec card" id="mob-camera">
+        <h2>Камераар унших</h2>
+        <p class="sub">Ном, цэс, дэлгэцний зургаас япон үгсийг танина. Таних нь утсан дотор, интернэтгүй.</p>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-camera.webp" alt="Камераар унших: Зураг авах, Зургийн сангаас"></div><figcaption>Эхлэх дэлгэц.</figcaption></figure>
+        </div>
+
+        <ol class="steps">
+          <li>Голын товч → <span class="ui">Камераар унших</span> → <span class="ui">Зураг авах</span> эсвэл <span class="ui">Зургийн сангаас</span>. <span class="ui">Өөр зураг нэмэх</span>-ээр олон зураг.</li>
+          <li><span class="ui">Тайрах, сонгох</span> — <strong>Тайрах</strong>: хэрэгтэй хэсгээ үлдээнэ. <strong>Сонгох</strong>: үгсийн дээгүүр хуруугаараа зурж сонгоно.</li>
+          <li><strong>Санал болгох үгс</strong> бүгд сонгогдсон байна — хэрэггүйг нь товшиж болиулна.</li>
+          <li>Санал болгоогүй үг байвал <strong>Танигдсан текст</strong>-ээс тэмдэглээд <span class="ui">Үг болгох</span>.</li>
+          <li><span class="ui">Үргэлжлүүлэх</span> → <strong>Үгсээ шалгах</strong>: үг бүрийг толь бичгээс хайна. Багцад байгаа үгэнд «Багцад байгаа» гэж гарна. Олдоогүйг гараар засна.</li>
+          <li>Багцаа сонгоно, эсвэл <span class="ui">Шинэ багц</span> («Скан 10/11» гэх мэт нэртэй, хавтас сонгож болно).</li>
+          <li><span class="ui">N үг хадгалах</span>.</li>
+        </ol>
+        <p>Интернэтгүй үед үгс утсанд хадгалагдаж, холбогдмогц илгээгдэнэ.</p>
+      </section>
+
+      <section class="sec card" id="mob-undo">
+        <h2>Буруу багц руу нэмчихвэл</h2>
+        <p class="sub">Камераар олон үгийг нэг дор хадгалдаг тул буцаах гурван арга бий.</p>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-batch.webp" alt="Сүүлд 52 үг зэрэг нэмэгдсэн карт, доор нь Буцаах"></div><figcaption>«Сүүлд 52 үг зэрэг нэмэгдсэн» карт, доор нь хадгалсны дараах Буцаах.</figcaption></figure>
+        </div>
+
+        <ol class="steps">
+          <li><strong>Шууд:</strong> хадгалсны дараа доор гарах «N үг хадгалагдлаа» мөрийн <span class="ui">Буцаах</span> — бүгдийг буцаана.</li>
+          <li><strong>Дараа нь:</strong> багцын дээд хэсэгт <strong>«Сүүлд N үг зэрэг нэмэгдсэн»</strong> карт гарна (24 цагийн турш). <span class="ui">N үгийг буцаах</span> — бүгдийг устгана.</li>
+          <li><strong>Зөв багц руу зөөх:</strong> тэр картын <span class="ui">Сонгох</span> → <span class="ui">Өөр багц руу зөөх</span>. Явц нь хамт зөөгдөнө.</li>
+        </ol>
+      </section>
+
+      <section class="sec card" id="mob-review">
+        <h2>Давтах</h2>
+        <p class="sub">Голын товч → <span class="ui">Давталт эхлүүлэх</span>, эсвэл Нүүрнээс.</p>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-modes.webp" alt="Давталтын хэлбэр сонгох: Мангас агнах, Энгийн давталт, Ханз бичих"></div><figcaption>Хэлбэр сонгох — багцаар шүүж болно.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-hunt.webp" alt="Мангас агнах: 即座 гэсэн асуулт, 4 сонголт"></div><figcaption>Мангас агнах — 4 сонголт, хугацаа.</figcaption></figure>
+        </div>
+
+        <ul>
+          <li><strong>Мангас агнах</strong> — вэбтэй ижил (<a href="#web-hunt">дэлгэрэнгүй</a>). Ханз бичих асуултыг утасны гар бичмэл танигч шалгана.</li>
+          <li><strong>Энгийн карт</strong> — Дахин · Хэцүү · Сайн · Амархан.</li>
+          <li><strong>Ханз бичих</strong> — хичээл (<a href="#web-writing">дэлгэрэнгүй</a>).</li>
+          <li><strong>Leech аврах</strong> — дахин дахин алддаг (4+ удаа) үгс байвал «N хэцүү үг давтах →» холбоос гарна. Тусад нь давтаж, хуваарьт нь тооцогдоно.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="mob-offline">
+        <h2>Интернэтгүй</h2>
+        <ol class="steps">
+          <li>Багцын <span class="ui">⋯</span> → <span class="ui">Офлайнд татах</span>. Бүх карт, дуудлага татагдана.</li>
+          <li>Холболтгүй үед тухайн багцаа ердийнхөөрөө давтана.</li>
+          <li>Хариултууд утсанд хадгалагдаж («Офлайн — хариултууд хадгалагдаж, дараа илгээгдэнэ»), холбогдмогц илгээгдэнэ. Давхар тоологдохгүй.</li>
+        </ol>
+        <p><span class="ui">Офлайн хуулбар шинэчлэх</span> — сүүлийн байдлаар дахин татна. <span class="ui">Офлайн хуулбар устгах</span> — утаснаас устгана.</p>
+      </section>
+
+      <section class="sec card" id="mob-audio">
+        <h2>Аудио багц</h2>
+        <p class="sub">Багцаа MP3 болгоод алхаж, явж байхдаа сонсоно.</p>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-audio.webp" alt="Аудио багц: багц бүрийн Үүсгэх товч"></div><figcaption>Багц бүр «Үүсгэх» товчтой.</figcaption></figure>
+          <figure><div class="phone"><img src="/doc/img/m-audio-opts.webp" alt="Аудио тохиргоо: англи, жишээ өгүүлбэр, санамсаргүй, давтах, завсарлага"></div><figcaption>Үүсгэхийн өмнөх тохиргоо.</figcaption></figure>
+        </div>
+
+        <ol class="steps">
+          <li>Голын товч → <span class="ui">Аудио багц</span> → багцаа сонгоно.</li>
+          <li>Тохиргоо: <strong>Англи утгыг уншуулах</strong> · <strong>Жишээ өгүүлбэр</strong> · <strong>Санамсаргүй дараалал</strong> · <strong>Үг бүрийг давтах</strong> (1/2/3 удаа) · <strong>Завсарлага</strong> (1 / 1.5 / 3 сек).</li>
+          <li><span class="ui">Үүсгэх</span> — бэлдэх явц харагдана.</li>
+        </ol>
+        <ul>
+          <li><strong>Дараалал:</strong> япон үг (дуудлагаар) → англи утга. Жишээ өгүүлбэр асаавал → япон өгүүлбэр → англи орчуулга. Өгүүлбэр олдоогүй үг өгүүлбэргүй уншигдана.</li>
+          <li><strong>Тоглуулагч</strong> — уншиж буй үг томоор, дуудлага, монгол, англи утга, өгүүлбэртэйгээ. Үгээр нь алгасна.</li>
+          <li>Монгол дуу хоолой байхгүй тул монгол утга <strong>бичгээр</strong> харагдана.</li>
+          <li><span class="ui">Хөгжмийн аппаар сонсох</span> — дэлгэц түгжээтэй үед сонсоно. <span class="ui">MP3 хуваалцах</span> · <span class="ui">Дахин үүсгэх</span> · <span class="ui">Аудиог устгах</span>.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="mob-social">
+        <h2>Тулаан, найзууд</h2>
+        <p class="sub"><span class="ui">Тулаан</span> цэс гурван хэсэгтэй.</p>
+        <div class="gallery">
+          <figure><div class="phone"><img src="/doc/img/m-duel.webp" alt="Тулааны лобби: боттой тулах гурван түвшин, найзтайгаа тулах"></div><figcaption>Тулаан хэсэг — бот, найзаа урих.</figcaption></figure>
+        </div>
+
+        <ul>
+          <li><strong>Найзууд</strong> — @handle-аар нэмэх, хүсэлт, найз бүрийн идэвх. Найзын мөрийн <span class="ui">Тулах</span> — шууд урина.</li>
+          <li><strong>Тэргүүлэгчид</strong> — найзуудын дунд, эсвэл <span class="ui">Бүгд</span> (бүх тоглогчийн топ 50 ба таны байр). Танихгүй хүмүүст зөвхөн handle, оноо харагдана.</li>
+          <li><strong>Тулаан</strong> — бот (3 түвшин), код, найзаа урих. Бэлтгэлийн өрөө, чат, дүрэм вэбтэй ижил (<a href="#web-duel">дэлгэрэнгүй</a>).</li>
+        </ul>
+        <div class="note"><b>Урилга:</b> найз тань урихад аппын дээд хэсэгт мөр гарна — зөвшөөрөх эсвэл татгалзана.</div>
+      </section>
+
+      <section class="sec card" id="mob-share">
+        <h2>Хуваалцах</h2>
+        <ul>
+          <li><strong>Багцын линк</strong> — багцын <span class="ui">⋯</span> → <span class="ui">Хуваалцах</span>. Вэбийн линктэй ижил, 24 цаг хүчинтэй.</li>
+          <li><strong>Story зураг</strong> — Нүүрний <strong>✦</strong> (өнөөдрийн үгс), эсвэл хуваалцах цонхны <span class="ui">Story зураг</span>. Хэлбэр, хэл вэбтэй ижил.</li>
+          <li><strong>.txt экспорт</strong> — багцын цэснээс.</li>
+        </ul>
+      </section>
+
+      <section class="sec card" id="mob-settings">
+        <h2>Тохиргоо</h2>
+        <ul>
+          <li><strong>Баатар</strong> — Мангас агнах, тулааны дүрээ 42-оос сонгоно.</li>
+          <li><strong>Загвар</strong> — Цайвар · Бараан · Цэнхэр. Утасны <strong>нүүрний дүрс</strong> хамт солигдоно (аппаас гарах үед).</li>
+          <li><span class="ui">Өдөр тутмын сануулга</span> — давтах үг байгааг мэдэгдэлээр сануулна.</li>
+          <li><strong>Нууцлалын бодлого</strong>, <span class="ui">Гарах</span>.</li>
+        </ul>
+        <p>Тохиргоо руу <span class="ui">Нүүр</span>-ээс орно. Шинэ үгийн тоог Нүүрний зорилгоос, давталтын хязгаар, шинэ өдөр эхлэх цаг, идэвх хуваалцахыг <a href="#web-settings">вэбийн тохиргооноос</a> өөрчилнө — утсанд ч мөн үйлчилнэ.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================= FAQ -->
+<div class="page" data-page="faq" id="faq" hidden>
+  <div class="hero card">
+    <div class="hero-icon"><svg aria-hidden="true"><use href="#i-faq"/></svg></div>
+    <div>
+      <p class="kicker">Асуулт</p>
+      <h1>Түгээмэл асуулт</h1>
+      <p class="lead">Аппаар нь ангилсан. Хариулт олдохгүй бол тухайн аппын зааврыг үзнэ үү.</p>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc card" aria-label="Энэ хэсэгт"><p>Энэ хэсэгт</p><ol>
+      <li><a href="#faq-general">Ерөнхий</a></li>
+      <li><a href="#faq-ext">Өргөтгөл</a></li>
+      <li><a href="#faq-web">Вэб апп</a></li>
+      <li><a href="#faq-mobile">Мобайл апп</a></li>
+    </ol></nav>
+
+    <div class="sections">
+      <section class="sec card faqgroup" id="faq-general">
+        <h2>Ерөнхий</h2>
+        <details class="q"><summary>Өнөөдөр давтах үг алга гэж байна.</summary><div><p>Өнөөдрийн хуваарьтай үгсээ дуусгасан эсвэл өдрийн хязгаартаа хүрсэн байна. Илүү давтмаар байвал <strong>Чөлөөт дасгал</strong> — хуваарийг өөрчлөхгүй.</p></div></details>
+        <details class="q"><summary>Шөнө давтсан ч цуврал нэмэгдсэнгүй.</summary><div><p>Өдөр өглөөний 4 цагт шилждэг. Шөнийн 12–4 цагийн давталт өмнөх өдөрт тооцогдоно.</p></div></details>
+        <details class="q"><summary>Монгол орчуулга хоосон гарлаа.</summary><div><p>Орчуулгын үйлчилгээ түр хариу өгөөгүй байж болно. Англи утгыг засаад Enter дарах, эсвэл монголыг гараар бичнэ.</p></div></details>
+        <details class="q"><summary>Вэб дээр давтсан нь утсан дээр харагдахгүй байна.</summary><div><p>Хоёулаа нэг бүртгэлээр нэвтэрсэн эсэхээ шалгана. Апп нээгдэхэд өгөгдлөө шинэчилдэг — багцын жагсаалтыг доош татаж шинэчилнэ.</p></div></details>
+      </section>
+
+      <section class="sec card faqgroup" id="faq-ext">
+        <h2>Өргөтгөл</h2>
+        <details class="q"><summary>Ctrl+Shift+L дарахад юу ч болохгүй байна.</summary><div><p>Өөр өргөтгөл энэ товчлолыг эзэлсэн байж болно. <code>chrome://extensions/shortcuts</code>-оос Hanko-д өөр товчлол өгнө. Эсвэл баруун товчны цэсийг ашиглана.</p></div></details>
+        <details class="q"><summary>«Шуурхай хадгалсан» гэдэг багц хаанаас гарав?</summary><div><p>Хадгалах цонх нээгдэж чадаагүй үед үг шууд энэ багц руу орсон. Өргөтгөлийн цонхноос зөв багц руу засаж шилжүүлнэ.</p></div></details>
+        <details class="q"><summary>Гарсны дараа үгс маань устах уу?</summary><div><p>Үгүй. Энэ төхөөрөмж дээрх үгс хэвээр үлдэнэ, зөвхөн синк зогсоно. Аль хэдийн синк хийгдсэн үгс бүртгэлд тань байгаа.</p></div></details>
+        <details class="q"><summary>Firefox-оо дахин нээхэд өргөтгөл алга болжээ.</summary><div><p>Түр (Temporary) суулгасан өргөтгөл browser хаахад устдаг. <a href="#ext-install">Суулгах</a> алхмыг дахин хийнэ.</p></div></details>
+      </section>
+
+      <section class="sec card faqgroup" id="faq-web">
+        <h2>Вэб апп</h2>
+        <details class="q"><summary>Мангас агнахад яагаад ханз бичүүлэхгүй байна?</summary><div><p>Зөвхөн <strong>Ханз бичих</strong> хичээлээр сурсан ханзаа бичүүлнэ. Эхлээд хичээлээ хийгээрэй.</p></div></details>
+        <details class="q"><summary>Тулаанд өрсөлдөгч рүүгээ бичиж чадахгүй байна.</summary><div><p>Бичиж ярих зөвхөн найзуудын хооронд. Эхлээд найзын хүсэлт илгээнэ — бусад үед эмотикон, бэлэн үг ашиглана.</p></div></details>
+        <details class="q"><summary>Тулааны дундуур гарвал яах вэ?</summary><div><p>Ялагдал гэж тооцогдоно, ELO тань буурна. Гарахаас өмнө асуудаг.</p></div></details>
+        <details class="q"><summary>Хуваалцсан линк ажиллахгүй байна.</summary><div><p>Линк 24 цагийн дараа хүчингүй болдог. Багцын <span class="ui">⋯</span> → <span class="ui">Хуваалцах</span>-аас шинэ линк авна.</p></div></details>
+        <details class="q"><summary>Устгасан үгээ сэргээж болох уу?</summary><div><p>Вэб дээр устгахаас өмнө асуудаг. Устгасан үгийг дахин нэмж болно, гэхдээ түүний явц шинээр эхэлнэ.</p></div></details>
+      </section>
+
+      <section class="sec card faqgroup" id="faq-mobile">
+        <h2>Мобайл апп</h2>
+        <details class="q"><summary>Камераар олон үгийг буруу багц руу хадгалчихлаа.</summary><div><p>Шууд бол доор гарах <span class="ui">Буцаах</span>. Хожим бол багцын дээрх «Сүүлд N үг зэрэг нэмэгдсэн» картаас бүгдийг буцаах, эсвэл сонгоод зөв багц руу зөөнө (<a href="#mob-undo">дэлгэрэнгүй</a>).</p></div></details>
+        <details class="q"><summary>Интернэтгүй давтсан хариулт алга болох уу?</summary><div><p>Үгүй. Утсанд хадгалагдаад холбогдмогц илгээгдэнэ, давхар тоологдохгүй.</p></div></details>
+        <details class="q"><summary>Гар бичмэл танихгүй байна.</summary><div><p>Анх удаа таних загвар татагдах ёстой — интернэттэй үед үзэг дүрсийг дахин дарна. Татагдсаны дараа интернэтгүй ажиллана.</p></div></details>
+        <details class="q"><summary>Аудио багцад монгол утга уншигдахгүй байна.</summary><div><p>Монгол дуу хоолой байхгүй тул монгол утгыг тоглуулагч дээр бичгээр харуулдаг.</p></div></details>
+        <details class="q"><summary>Дэлгэц түгжээтэй үед аудио зогсчихлоо.</summary><div><p><span class="ui">Хөгжмийн аппаар сонсох</span>-оор MP3-аа утасныхаа хөгжмийн апп руу илгээгээрэй — түгжээтэй дэлгэцнээс удирдана.</p></div></details>
+      </section>
+    </div>
+  </div>
+</div>
+
+<p class="foot">Hanko · Verba non Acta</p>
+</div>
+
+<nav class="tabbar" aria-label="Гарын авлагын хэсгүүд">
+  <a href="#start" data-tab="start"><svg aria-hidden="true"><use href="#i-start"/></svg>Эхлэх</a>
+  <a href="#extension" data-tab="extension"><svg aria-hidden="true"><use href="#i-ext"/></svg>Өргөтгөл</a>
+  <a href="#web" data-tab="web"><svg aria-hidden="true"><use href="#i-web"/></svg>Вэб</a>
+  <a href="#mobile" data-tab="mobile"><svg aria-hidden="true"><use href="#i-mobile"/></svg>Мобайл</a>
+  <a href="#faq" data-tab="faq"><svg aria-hidden="true"><use href="#i-faq"/></svg>Асуулт</a>
+</nav>
+
+<script>
+(function () {
+  var pages = Array.prototype.slice.call(document.querySelectorAll(".page"));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll("[data-tab]"));
+  var observer = null;
+
+  function pageFor(id) {
+    if (!id) return "start";
+    var el = document.getElementById(id);
+    if (!el) return "start";
+    var page = el.closest(".page");
+    return page ? page.getAttribute("data-page") : "start";
+  }
+
+  function spy(page) {
+    if (observer) observer.disconnect();
+    if (!("IntersectionObserver" in window)) return;
+    var links = Array.prototype.slice.call(page.querySelectorAll(".toc a"));
+    var secs = Array.prototype.slice.call(page.querySelectorAll(".sec"));
+    var seen = {};
+    observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var cur = secs.find(function (s) { return seen[s.id]; });
+      links.forEach(function (a) { a.classList.toggle("on", !!cur && a.getAttribute("href") === "#" + cur.id); });
+    }, { rootMargin: "-80px 0px -65% 0px" });
+    secs.forEach(function (s) { observer.observe(s); });
+  }
+
+  function route() {
+    var id = decodeURIComponent(location.hash.slice(1));
+    var name = pageFor(id);
+    pages.forEach(function (p) { p.hidden = p.getAttribute("data-page") !== name; });
+    tabs.forEach(function (t) {
+      if (t.getAttribute("data-tab") === name) t.setAttribute("aria-current", "page");
+      else t.removeAttribute("aria-current");
+    });
+    var page = pages.find(function (p) { return !p.hidden; });
+    if (page) spy(page);
+    var target = id ? document.getElementById(id) : null;
+    if (target && target !== page) target.scrollIntoView({ block: "start" });
+    else window.scrollTo(0, 0);
+    try { document.title = "Hanko хэрэглэгчийн гарын авлага"; } catch (e) {}
+  }
+
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
+
+</body>
+</html>

@@ -506,6 +506,17 @@ textarea:focus-visible {
   }
 }
 
+/* Screens whose card is narrower than the arena's (the duel intro): the
+   fighters stop growing at the tablet size, or two of them outgrow the card.
+   Two classes, so it beats the wider breakpoints below whatever their order. */
+@media (min-width: 1024px) {
+  .hanko-fighter-slot.hanko-fighter-slot-compact {
+    --hanko-fighter-scale: 3.4;
+    width: 231px;
+    height: 245px;
+  }
+}
+
 @media (min-width: 1024px) {
   .hanko-fighter-slot {
     --hanko-fighter-scale: 3.5;

@@ -26,11 +26,13 @@ class WordOutbox {
   final LocalDb _db;
   static const _uuid = Uuid();
 
-  Future<SaveOutcome> save(String deckId, List<WordDraft> drafts) async {
+  /// Saves [drafts] into [deckId]; returns how, and the words' ids — what
+  /// [undo] takes back.
+  Future<(SaveOutcome, List<String>)> save(String deckId, List<WordDraft> drafts) async {
     final ids = [for (final _ in drafts) _uuid.v4()];
     try {
       await _repo.addWords(deckId, drafts, ids: ids);
-      return SaveOutcome.saved;
+      return (SaveOutcome.saved, ids);
     } catch (e) {
       debugPrint('Words queued for later: $e');
       final now = DateTime.now();
@@ -46,8 +48,17 @@ class WordOutbox {
             createdAt: now,
           ),
       ]);
-      return SaveOutcome.queued;
+      return (SaveOutcome.queued, ids);
     }
+  }
+
+  /// Takes a save back, wherever its words are by now: still queued here
+  /// (dropped from the queue), or on the server (tombstoned). Both, because a
+  /// flush can land between the save and the undo — and tombstoning ids the
+  /// server never got matches nothing.
+  Future<void> undo(List<String> ids) async {
+    await _db.clearWords(ids);
+    await _repo.deleteWords(ids);
   }
 
   Future<int> pendingCount() async => (await _db.pendingWordList()).length;

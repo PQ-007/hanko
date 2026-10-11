@@ -34,6 +34,7 @@ export const FolderPlus = make("folder", "FolderPlus");
 export const Globe = make("globe", "Globe");
 export const GraduationCap = make("cards", "GraduationCap");
 export const Grid3x3 = make("grid", "Grid3x3");
+export const HelpCircle = make("guide", "HelpCircle");
 export const Image = make("image", "Image");
 export const Languages = make("languages", "Languages");
 export const Layers = make("library", "Layers");

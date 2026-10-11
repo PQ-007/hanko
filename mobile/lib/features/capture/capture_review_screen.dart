@@ -9,7 +9,6 @@ import '../../core/repository.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../battle/fight_scene.dart';
-import '../decks/word_actions.dart';
 import '../decks/word_editor.dart';
 import '../library/deck_actions.dart';
 import '../shell/quick_add_sheet.dart';
@@ -132,15 +131,42 @@ class _CaptureReviewScreenState extends ConsumerState<CaptureReviewScreen> {
     ];
     if (deckId == null || chosen.isEmpty) return;
     setState(() => _saving = true);
-    final outcome = await ref.read(wordOutboxProvider).save(deckId, chosen);
+    final outbox = ref.read(wordOutboxProvider);
+    final (outcome, ids) = await outbox.save(deckId, chosen);
     if (!mounted) return;
     ref.refreshLibrary(deckId: deckId);
-    toast(
-      context,
-      outcome == SaveOutcome.saved
-          ? T.captureSaved(chosen.length)
-          : T.captureQueued(chosen.length),
-    );
+    // The undo outlives this screen (it closes right away), so it holds the
+    // app's messenger and container rather than this widget's context.
+    final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            outcome == SaveOutcome.saved
+                ? T.captureSaved(chosen.length)
+                : T.captureQueued(chosen.length),
+          ),
+          duration: const Duration(seconds: 8),
+          // Flutter keeps a snackbar with an action up until it's tapped
+          // (persist defaults to true then); this one should time out.
+          persist: false,
+          // A whole capture pushed into the wrong deck, taken back in one tap.
+          action: SnackBarAction(
+            label: T.undo,
+            onPressed: () async {
+              try {
+                await outbox.undo(ids);
+                container.refreshLibrary(deckId: deckId);
+                messenger.showSnackBar(const SnackBar(content: Text(T.wordsUndone)));
+              } catch (_) {
+                messenger.showSnackBar(const SnackBar(content: Text(T.wordsActionFailed)));
+              }
+            },
+          ),
+        ),
+      );
     Navigator.of(context).pop(true);
   }
 

@@ -35,9 +35,18 @@ class Dictionary {
   /// identify the app explicitly rather than rely on Dart's default.
   static const _headers = {'User-Agent': 'Hanko/1.0 (mobile; +vocab app)'};
 
-  Future<LookupResult> lookup(String term) async {
+  Future<LookupResult> lookup(String term) async =>
+      (await lookupAll(term)).firstOrNull ?? LookupResult.empty;
+
+  /// Up to five matches to choose from, [parseJisho]'s pick first. Empty on
+  /// any failure; null only when the request itself failed, so a caller can
+  /// tell "Jisho has nothing" (worth remembering) from "try again".
+  Future<List<LookupResult>> lookupAll(String term) async =>
+      await tryLookupAll(term) ?? const [];
+
+  Future<List<LookupResult>?> tryLookupAll(String term) async {
     final t = term.trim();
-    if (t.isEmpty) return LookupResult.empty;
+    if (t.isEmpty) return const [];
     try {
       final res = await _http
           .get(
@@ -45,10 +54,10 @@ class Dictionary {
             headers: _headers,
           )
           .timeout(const Duration(seconds: 10));
-      if (res.statusCode != 200) return LookupResult.empty;
-      return parseJisho(jsonDecode(utf8.decode(res.bodyBytes)), term: t);
+      if (res.statusCode != 200) return null;
+      return parseJishoResults(jsonDecode(utf8.decode(res.bodyBytes)), term: t);
     } catch (_) {
-      return LookupResult.empty;
+      return null;
     }
   }
 
@@ -95,16 +104,11 @@ LookupResult parseJisho(Object? data, {String term = ''}) {
   final entries = data['data'];
   if (entries is! List || entries.isEmpty || entries.first is! Map) return LookupResult.empty;
 
-  List<Map> writingsOf(Object? entry) {
-    final japanese = entry is Map ? entry['japanese'] : null;
-    return japanese is List ? japanese.whereType<Map>().toList() : const [];
-  }
-
   var entry = entries.first as Map;
-  Map jp = writingsOf(entry).firstOrNull ?? const {};
+  Map jp = _writingsOf(entry).firstOrNull ?? const {};
   if (term.isNotEmpty) {
     for (final e in entries.whereType<Map>()) {
-      final exact = writingsOf(e).where((w) => w['word'] == term).firstOrNull;
+      final exact = _writingsOf(e).where((w) => w['word'] == term).firstOrNull;
       if (exact != null) {
         entry = e;
         jp = exact;
@@ -112,6 +116,15 @@ LookupResult parseJisho(Object? data, {String term = ''}) {
       }
     }
   }
+  return _resultFrom(entry, jp);
+}
+
+List<Map> _writingsOf(Object? entry) {
+  final japanese = entry is Map ? entry['japanese'] : null;
+  return japanese is List ? japanese.whereType<Map>().toList() : const [];
+}
+
+LookupResult _resultFrom(Map entry, Map jp) {
   final reading = jp['reading'] as String? ?? '';
   // Dictionary form: the kanji writing, or the slug, or the reading (kana words).
   final word = jp['word'] as String? ?? entry['slug'] as String? ?? reading;
@@ -127,6 +140,34 @@ LookupResult parseJisho(Object? data, {String term = ''}) {
       : '';
 
   return LookupResult(word: word, reading: reading, meaning: meaning);
+}
+
+/// Several matches for the add-word sheet to choose from: [parseJisho]'s pick
+/// first, so taking the first is the same as the single lookup, then the
+/// other entries under their own main writing (or [term], when it is one of
+/// theirs), without repeats. A port of jisho.ts `parseJishoResults`, same
+/// cases in both tests.
+///
+/// A single kanji drawn on the handwriting pad is why this exists: 生 alone
+/// is a dozen words, and the first is rarely the one meant.
+List<LookupResult> parseJishoResults(Object? data, {String term = '', int max = 5}) {
+  final best = parseJisho(data, term: term);
+  if (best.word.isEmpty) return const [];
+  final out = [best];
+  final seen = {'${best.word}|${best.reading}'};
+  final entries = data is Map && data['data'] is List ? data['data'] as List : const [];
+  for (final e in entries.whereType<Map>()) {
+    if (out.length >= max) break;
+    final ws = _writingsOf(e);
+    final jp = (term.isEmpty ? null : ws.where((w) => w['word'] == term).firstOrNull) ??
+        ws.firstOrNull ??
+        const {};
+    final r = _resultFrom(e, jp);
+    final key = '${r.word}|${r.reading}';
+    if (r.word.isEmpty || !seen.add(key)) continue;
+    out.add(r);
+  }
+  return out;
 }
 
 /// Google's `[[["translated","source",...], ...], ...]` → joined text, then

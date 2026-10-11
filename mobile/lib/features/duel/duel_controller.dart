@@ -42,12 +42,12 @@ class DuelController extends ChangeNotifier {
     this.deckId,
     this.rand = defaultRand,
     this.questions,
-    this.introDelay = Duration.zero,
+    this.introGate,
     this.cardForTerm,
     int Function() now = _wallClockMs,
     // ignore: prefer_initializing_formals
   }) : _now = now,
-       introDone = introDelay == Duration.zero;
+       introDone = introGate == null;
 
   final Repository repo;
   final OpponentDriver opponent;
@@ -62,8 +62,9 @@ class DuelController extends ChangeNotifier {
   /// from their own deck.
   final List<SharedQuestion>? questions;
 
-  /// How long the pre-fight screen (names + record) holds before round 1.
-  final Duration introDelay;
+  /// Completes when the ready room lets the match start (both ready, or its
+  /// deadline). Null for a bot: round 1 starts as soon as the cards are in.
+  final Future<void>? introGate;
   bool introDone;
 
   /// Your own card for a shared question's word, to log the answer against.
@@ -111,9 +112,8 @@ class DuelController extends ChangeNotifier {
   bool get ready => quiz != null;
 
   Future<void> load() async {
-    // Only a real intro waits: a zero-length timer would still push round 1
-    // back a tick, which a bot match has no reason to pay.
-    final intro = introDelay > Duration.zero ? Future<void>.delayed(introDelay) : null;
+    // Cards load while the ready room is up; round 1 waits for it.
+    final intro = introGate;
     if (shared) {
       words = const [];
       cards = const [];

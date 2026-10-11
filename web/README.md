@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hanko — вэбсайт
 
-## Getting Started
+Next.js + Supabase + Tailwind. Багц удирдах, давтах, статистик, найзууд,
+тулаан. Төслийн ерөнхий танилцуулгыг **[үндсэн README](../README.md)**-ээс.
 
-First, run the development server:
+## Ажиллуулах
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm run build
+npm run lint
+npm test         # node --test src/**/*.test.ts — runner, нэмэлт сангүй
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local`-д Supabase URL, publishable key хэрэгтэй (git-д оруулахгүй).
+Supabase төсөл, Google нэвтрэлт, deploy — **[SETUP.md](../SETUP.md)**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Бүтэц
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```text
+src/app/decks/          нэвтэрсэн хэрэглэгчийн хэсэг (proxy нь /login руу илгээнэ)
+  _components/          багц, үг, нэмэх цонх, гар бичмэл, sidebar, график…
+  _lib/                 Supabase client, монгол текст (strings.ts), туслах функцууд
+  review/battle/        Мангас агнах
+  review/duel/          нүүр тулах тулаан (PvP + бот), ready room, чат
+  practice/             энгийн карт давталт
+  writing/              ханз бичих хичээл
+  stats/ friends/ settings/
+src/app/share/          нийтийн багцын линк (нэвтрэлтгүй)
+src/app/extension/      extension-ийн нэвтрэх гүүр (/extension/connect)
+src/app/api/            lookup (Jisho), translate, экспорт (.apkg/.txt), аудио
+src/lib/                srs.ts, jisho.ts, translate.ts, Supabase SSR client
+src/ui/                 Hanko-ийн өөрийн дүрсүүд (Icon.tsx), Dialog
+```
 
-## Learn More
+## Санах зүйлс
 
-To learn more about Next.js, take a look at the following resources:
+- Энэ Next.js-ийн шинэ хувилбар — API, файлын бүтэц таны мэддэгээс
+  өөр байж болно ([AGENTS.md](AGENTS.md)).
+- Хуваарь серверт (`review_card()`) тооцогддог — client-д SM-2 давтан
+  бичихгүй.
+- Өнгийг token-оор (`bg-surface`, `seal`…) — хатуу өнгө бичихгүй; гурван
+  загвар бүгдэд зөв харагдах ёстой.
+- Дүрс нь `@/ui/icons`-оос (lucide-react хэрэглэхгүй).
+- Хуудсыг гүйлгэх бол `window` биш `#hk-main`-ийг гүйлгэнэ.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Архитектур, шийдвэрүүдийн шалтгаан — **[CLAUDE.md](../CLAUDE.md)**.

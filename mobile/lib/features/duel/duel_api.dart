@@ -22,6 +22,7 @@ class MatchRow {
     this.invitedId,
     this.rematchOf,
     this.questions,
+    this.startedAt,
   });
 
   final String id;
@@ -44,6 +45,9 @@ class MatchRow {
   /// The question set both players answer (0030); null on older matches.
   final List<SharedQuestion>? questions;
 
+  /// Set by the server when the guest joined — the ready room's clock.
+  final DateTime? startedAt;
+
   factory MatchRow.fromJson(Map<String, dynamic> j) => MatchRow(
         id: j['id'] as String,
         joinCode: j['join_code'] as String?,
@@ -58,6 +62,7 @@ class MatchRow {
         invitedId: j['invited_id'] as String?,
         rematchOf: j['rematch_of'] as String?,
         questions: parseQuestions(j['questions']),
+        startedAt: DateTime.tryParse(j['started_at'] as String? ?? ''),
       );
 }
 

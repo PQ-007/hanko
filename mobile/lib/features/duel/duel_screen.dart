@@ -12,6 +12,9 @@ import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
 import '../battle/sprite_view.dart';
 import 'duel_api.dart';
+import 'duel_chat.dart';
+import 'duel_chat_rules.dart';
+import 'duel_chat_widgets.dart';
 import 'duel_controller.dart';
 import 'duel_rules.dart';
 import 'duel_shared.dart';
@@ -29,11 +32,19 @@ class DuelOnline {
     required this.opponentId,
     required this.foeName,
     this.foeSub,
+    required this.isFriend,
+    this.startedAt,
     required this.record,
     this.questions,
   });
   final String matchId, meId, opponentId, foeName;
   final String? foeSub;
+
+  /// duel_opponent().is_friend — typed chat is for friends only.
+  final bool isFriend;
+
+  /// matches.started_at: the ready room's shared clock.
+  final DateTime? startedAt;
 
   /// Your record with them BEFORE this match.
   final HeadToHead record;
@@ -41,9 +52,6 @@ class DuelOnline {
   /// The question set both players answer; null on matches from before 0030.
   final List<SharedQuestion>? questions;
 }
-
-/// How long the pre-fight screen holds (web: DuelIntro INTRO_MS).
-const duelIntroMs = 4500;
 
 /// A duel, start to finish: the arena, then the result. [makeOpponent] builds
 /// a fresh opponent (a rematch is a new one); [matchId] is set for PvP, where
@@ -66,9 +74,27 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   int? _baseline;
   bool _starting = true;
 
+  /// Opened by the ready room (both ready, or its deadline); round 1 waits on it.
+  final _gate = Completer<void>();
+
+  /// One chat for the whole match, so the ready room's messages are still
+  /// there on the result screen. PvP only.
+  DuelChat? _chat;
+  late final DateTime _deadline = readyDeadline(widget.online?.startedAt, DateTime.now());
+
   @override
   void initState() {
     super.initState();
+    final o = widget.online;
+    if (o != null) {
+      _chat = DuelChat(
+        db: ref.read(duelApiProvider).db,
+        matchId: o.matchId,
+        meId: o.meId,
+        opponentId: o.opponentId,
+        isFriend: o.isFriend,
+      );
+    }
     _start();
   }
 
@@ -85,7 +111,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
         yourBaselineMs: _baseline,
         deckId: widget.deckId,
         questions: widget.online?.questions,
-        introDelay: widget.online == null ? Duration.zero : const Duration(milliseconds: duelIntroMs),
+        introGate: widget.online == null ? null : _gate.future,
         cardForTerm: widget.online == null ? null : ref.read(duelApiProvider).cardIdForTerm,
       )..load();
     });
@@ -95,6 +121,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   @override
   void dispose() {
     _c?.dispose();
+    _chat?.dispose();
     super.dispose();
   }
 
@@ -145,8 +172,18 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   Widget _body(DuelController c) {
     final online = widget.online;
-    if (online != null && !c.introDone) {
-      return _Intro(hero: ref.read(heroProvider), foeSlug: c.opponent.slug, online: online);
+    final chat = _chat;
+    if (online != null && chat != null && !c.introDone) {
+      return _ReadyRoom(
+        hero: ref.read(heroProvider),
+        foeSlug: c.opponent.slug,
+        online: online,
+        chat: chat,
+        deadline: _deadline,
+        onStart: () {
+          if (!_gate.isCompleted) _gate.complete();
+        },
+      );
     }
     if (c.cards == null) {
       return const DefaultTextStyle(style: TextStyle(color: _paper), child: LoadingScene(label: T.duelLoading));
@@ -163,6 +200,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
         hero: ref.read(heroProvider),
         onRematch: widget.matchId == null ? _start : null,
         onExit: () => Navigator.of(context).pop(),
+        chat: chat,
         online: online == null
             ? null
             : _OnlineEnd(
@@ -431,11 +469,21 @@ class _Option extends StatelessWidget {
 }
 
 class _Result extends StatelessWidget {
-  const _Result({required this.c, required this.hero, required this.onRematch, required this.onExit, this.online});
+  const _Result({
+    required this.c,
+    required this.hero,
+    required this.onRematch,
+    required this.onExit,
+    this.chat,
+    this.online,
+  });
   final DuelController c;
   final String hero;
   final VoidCallback? onRematch;
   final VoidCallback onExit;
+
+  /// PvP: the match's chat, still open after the fight.
+  final DuelChat? chat;
 
   /// The record and the rematch, for a match against a person.
   final Widget? online;
@@ -477,14 +525,33 @@ class _Result extends StatelessWidget {
           const SizedBox(height: 6),
           Text(desc, textAlign: TextAlign.center, style: TextStyle(color: _paper.withValues(alpha: 0.6))),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SpriteView(slug: hero, state: o == DuelOutcome.lost ? 'death' : 'idle', size: 120),
-              const SizedBox(width: 12),
-              SpriteView(slug: c.opponent.slug, state: o == DuelOutcome.won ? 'death' : 'idle', size: 120, flip: true),
-            ],
-          ),
+          if (chat != null)
+            // Rebuilt as the chat changes, so emotes play on the fighters.
+            ListenableBuilder(
+              listenable: chat!,
+              builder: (_, _) => Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ChatFighter(slug: hero, base: o == DuelOutcome.lost ? 'death' : 'idle', beat: chat!.mine),
+                  const SizedBox(width: 12),
+                  ChatFighter(
+                    slug: c.opponent.slug,
+                    base: o == DuelOutcome.won ? 'death' : 'idle',
+                    beat: chat!.foe,
+                    flip: true,
+                  ),
+                ],
+              ),
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SpriteView(slug: hero, state: o == DuelOutcome.lost ? 'death' : 'idle', size: 120),
+                const SizedBox(width: 12),
+                SpriteView(slug: c.opponent.slug, state: o == DuelOutcome.won ? 'death' : 'idle', size: 120, flip: true),
+              ],
+            ),
           const SizedBox(height: 20),
           Row(children: [
             tile(T.duelResultRounds, '${c.state.roundsPlayed}'),
@@ -498,6 +565,13 @@ class _Result extends StatelessWidget {
           const SizedBox(height: 10),
           Text(T.duelNotScheduled, textAlign: TextAlign.center, style: TextStyle(color: _paper.withValues(alpha: 0.4), fontSize: 11)),
           const SizedBox(height: 20),
+          if (chat != null) ...[
+            ListenableBuilder(
+              listenable: chat!,
+              builder: (_, _) => DuelChatPanel(chat: chat!, foeName: c.opponent.name),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (online != null) online!
           else ...[
           if (onRematch != null) ...[
@@ -547,54 +621,85 @@ class _Message extends StatelessWidget {
 
 // ---- Person vs person: intro, record, rematch (0030) -------------------------
 
-/// The screen before a PvP match: who's across, and your record so far.
-class _Intro extends StatefulWidget {
-  const _Intro({required this.hero, required this.foeSlug, required this.online});
+/// Before a PvP match: who's across, your record, and a moment to say hello
+/// (web: DuelReadyRoom.tsx). Starts when both press Ready, or at [deadline]
+/// whatever happens — matches.started_at + 30 s, the same moment on both
+/// screens — so nobody can hold the other hostage. Starting is each phone's
+/// own call; whoever begins round 1 first fixes its server start time for
+/// both (begin_round), so being a moment late costs a moment of round 1.
+class _ReadyRoom extends StatefulWidget {
+  const _ReadyRoom({
+    required this.hero,
+    required this.foeSlug,
+    required this.online,
+    required this.chat,
+    required this.deadline,
+    required this.onStart,
+  });
   final String hero, foeSlug;
   final DuelOnline online;
+  final DuelChat chat;
+  final DateTime deadline;
+  final VoidCallback onStart;
 
   @override
-  State<_Intro> createState() => _IntroState();
+  State<_ReadyRoom> createState() => _ReadyRoomState();
 }
 
-class _IntroState extends State<_Intro> {
-  late final DateTime _start = DateTime.now();
+class _ReadyRoomState extends State<_ReadyRoom> {
   Timer? _tick;
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
-    _tick = Timer.periodic(const Duration(milliseconds: 250), (_) => setState(() {}));
+    _tick = Timer.periodic(const Duration(milliseconds: 250), (_) => _check());
+    widget.chat.addListener(_check);
   }
 
   @override
   void dispose() {
     _tick?.cancel();
+    widget.chat.removeListener(_check);
     super.dispose();
+  }
+
+  void _check() {
+    if (!mounted) return;
+    final chat = widget.chat;
+    if (!_started &&
+        shouldStart(meReady: chat.meReady, foeReady: chat.foeReady, now: DateTime.now(), deadline: widget.deadline)) {
+      _started = true;
+      widget.onStart();
+    }
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final left = ((duelIntroMs - DateTime.now().difference(_start).inMilliseconds) / 1000).ceil();
     final o = widget.online;
-    Widget name(String text, [String? sub]) => Column(
+    final chat = widget.chat;
+    final left = (widget.deadline.difference(DateTime.now()).inMilliseconds / 1000).ceil().clamp(0, 999);
+    Widget name(String text, {String? sub, required bool ready, bool away = false}) => Column(
           children: [
             Text(text, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: _paper, fontWeight: FontWeight.w800, fontSize: 15)),
             if (sub != null)
               Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: _paper.withValues(alpha: 0.45), fontSize: 11)),
+            const SizedBox(height: 4),
+            _ReadyTag(ready: ready, away: away),
           ],
         );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(T.duelIntroKicker.toUpperCase(),
               textAlign: TextAlign.center,
               style: TextStyle(color: _paper.withValues(alpha: 0.4), fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           // Two rows of a three-column table, so the names line up whatever
           // the opponent's extra "@handle · ELO" line does.
           Table(
@@ -602,23 +707,76 @@ class _IntroState extends State<_Intro> {
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
               TableRow(children: [
-                Center(child: SpriteView(slug: widget.hero, size: 120)),
+                Center(child: ChatFighter(slug: widget.hero, base: 'idle', beat: chat.mine)),
                 Text('VS', style: TextStyle(color: _paper.withValues(alpha: 0.3), fontSize: 24, fontWeight: FontWeight.w900)),
-                Center(child: SpriteView(slug: widget.foeSlug, size: 120, flip: true)),
+                Center(child: ChatFighter(slug: widget.foeSlug, base: 'idle', beat: chat.foe, flip: true)),
               ]),
               TableRow(children: [
-                Align(alignment: Alignment.topCenter, child: name(T.duelYou)),
+                Align(alignment: Alignment.topCenter, child: name(T.duelYou, ready: chat.meReady)),
                 const SizedBox(),
-                Align(alignment: Alignment.topCenter, child: name(o.foeName, o.foeSub)),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: name(o.foeName, sub: o.foeSub, ready: chat.foeReady, away: !chat.foePresent),
+                ),
               ]),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           DuelRecordCard(record: o.record, youName: T.duelYou, themName: o.foeName),
-          const SizedBox(height: 18),
-          Text(left > 0 ? T.duelIntroStarting(left) : T.duelIntroGo,
+          const SizedBox(height: 12),
+          DuelChatPanel(chat: chat, foeName: o.foeName),
+          const SizedBox(height: 14),
+          chat.meReady
+              ? OutlinedButton.icon(
+                  onPressed: () => chat.setReady(false),
+                  icon: const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: _paper),
+                  ),
+                  label: const Text(T.duelWaitingFoe),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _paper,
+                    side: BorderSide(color: _paper.withValues(alpha: 0.25)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                )
+              : FilledButton.icon(
+                  onPressed: () => chat.setReady(true),
+                  icon: const Icon(Icons.check),
+                  label: const Text(T.duelReady, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                ),
+          const SizedBox(height: 8),
+          Text(_started ? T.duelIntroGo : T.duelReadyAuto(left),
               textAlign: TextAlign.center,
-              style: TextStyle(color: _paper.withValues(alpha: 0.7), fontWeight: FontWeight.w700)),
+              style: TextStyle(color: _paper.withValues(alpha: 0.55), fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadyTag extends StatelessWidget {
+  const _ReadyTag({required this.ready, this.away = false});
+  final bool ready, away;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = ready ? const Color(0xFF6EE7B7) : _paper.withValues(alpha: 0.45);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: ready ? const Color(0x2634D399) : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (ready) ...[Icon(Icons.check, size: 12, color: color), const SizedBox(width: 3)],
+          Text(
+            ready ? T.duelFoeReady : (away ? T.duelFoeAway : T.duelFoeWaiting),
+            style: TextStyle(color: color, fontSize: 11, fontWeight: ready ? FontWeight.w700 : FontWeight.w500),
+          ),
         ],
       ),
     );

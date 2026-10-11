@@ -354,6 +354,18 @@ export const T = {
   duelIntroKicker: "Нүүр тулах тулаан",
   duelIntroStarting: (n: number) => `${n} секундын дараа эхэлнэ…`,
   duelIntroGo: "Эхэллээ!",
+  // Ready room + chat (same copy on mobile).
+  duelReady: "Бэлэн",
+  duelWaitingFoe: "Өрсөлдөгчийг хүлээж байна…",
+  duelReadyAuto: (n: number) => `${n} секундын дараа автоматаар эхэлнэ`,
+  duelFoeReady: "Бэлэн",
+  duelFoeWaiting: "Бэлдэж байна…",
+  duelFoeAway: "Холбогдож байна…",
+  duelChatTitle: "Чат",
+  duelChatEmpty: "Эмотикон эсвэл бэлэн үг илгээгээрэй.",
+  duelChatPlaceholder: "Мессеж бичих…",
+  duelChatSend: "Илгээх",
+  duelChatStrangers: "Найз биш тоглогчтой зөвхөн эмотикон, бэлэн үг илгээх боломжтой.",
   duelRematchWaiting: (name: string) => `${name}-г хүлээж байна…`,
   duelRematchCancel: "Болих",
   duelRematchIncoming: (name: string) => `${name} дахин тулах гэж байна`,
@@ -553,6 +565,8 @@ export const T = {
 
   // Тохиргоо (settings).
   settingsTitle: "Тохиргоо",
+  guideTitle: "Заавар",
+  guideLong: "Хэрхэн ашиглах вэ?",
   settingsLoadFailed: "Тохиргоог ачаалж чадсангүй.",
   settingsSignedInAs: "Нэвтэрсэн",
   settingsSaved: "Хадгаллаа",

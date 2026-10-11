@@ -301,6 +301,26 @@ class Repository {
     await _db.from('words').update({'deleted': true}).eq('id', wordId);
   }
 
+  /// Ids per request: each goes into the URL, and a capture can be big.
+  static const _idChunk = 100;
+
+  Future<void> _updateWords(List<String> ids, Map<String, Object?> values) async {
+    for (var i = 0; i < ids.length; i += _idChunk) {
+      final chunk = ids.sublist(i, (i + _idChunk).clamp(0, ids.length));
+      await _db.from('words').update(values).inFilter('id', chunk);
+    }
+  }
+
+  /// Many words at once (a batch pushed into the wrong deck) — tombstones,
+  /// like [deleteWord], so [restoreWords] can undo it exactly.
+  Future<void> deleteWords(List<String> ids) => _updateWords(ids, {'deleted': true});
+
+  Future<void> restoreWords(List<String> ids) => _updateWords(ids, {'deleted': false});
+
+  /// Moves words to another deck. Their cards follow (they hang off the word,
+  /// not the deck), so nothing about their schedules changes.
+  Future<void> moveWords(List<String> ids, String deckId) => _updateWords(ids, {'deck_id': deckId});
+
   /// What's due, under the server's day cutoff and daily caps.
   ///
   /// [at] asks for a future moment instead of now — the daily reminder needs
