@@ -25,40 +25,6 @@ class ExampleLine extends StatefulWidget {
 class _ExampleLineState extends State<ExampleLine> {
   var _open = false;
 
-  /// Plain text when there's no reading; otherwise each unit is a little
-  /// column — reading over text — inline, so the line still wraps and
-  /// centres like text. Flutter has no ruby of its own.
-  Widget _sentence(WordExample e, TextStyle base, TextStyle mark, Color readingColor) {
-    final units = rubyUnits(e.ja, e.furigana);
-    if (units.every((u) => u.reading.isEmpty)) {
-      return Text.rich(
-        TextSpan(style: base, children: highlightSpans(e.ja, widget.term, mark)),
-        textAlign: TextAlign.center,
-      );
-    }
-    final range = highlightRange(e.ja, widget.term);
-    final readingStyle = TextStyle(fontSize: 9.5, height: 1.2, color: readingColor);
-    var at = 0;
-    final spans = <InlineSpan>[];
-    for (final u in units) {
-      final start = at;
-      at += u.text.length;
-      final marked = range != null && start < range.$2 && at > range.$1;
-      spans.add(WidgetSpan(
-        alignment: PlaceholderAlignment.bottom,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // A blank reading keeps every unit the same height.
-            Text(u.reading.isEmpty ? ' ' : u.reading, style: readingStyle),
-            Text(u.text, style: marked ? base.merge(mark) : base),
-          ],
-        ),
-      ));
-    }
-    return Text.rich(TextSpan(children: spans), textAlign: TextAlign.center);
-  }
-
   @override
   Widget build(BuildContext context) {
     final hk = context.hk;
@@ -72,7 +38,7 @@ class _ExampleLineState extends State<ExampleLine> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           children: [
-            _sentence(e, base, TextStyle(color: hk.sealText, fontWeight: FontWeight.w600), hk.inkMute),
+            RubySentence(ja: e.ja, furigana: e.furigana, term: widget.term, style: base),
             if (hasTranslation && !_open)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
@@ -122,4 +88,57 @@ List<TextSpan> highlightSpans(String sentence, String term, TextStyle mark) {
     TextSpan(text: sentence.substring(r.$1, r.$2), style: mark),
     TextSpan(text: sentence.substring(r.$2)),
   ];
+}
+
+/// A Japanese sentence with furigana over its kanji (when [furigana]
+/// describes it) and [term] picked out — RubySentence.tsx on the web.
+/// Plain text when there's no reading; otherwise each unit is a little
+/// column — reading over text — inline, so the line still wraps and centres
+/// like text. Flutter has no ruby of its own.
+class RubySentence extends StatelessWidget {
+  const RubySentence({
+    super.key,
+    required this.ja,
+    required this.furigana,
+    required this.term,
+    required this.style,
+    this.textAlign = TextAlign.center,
+  });
+
+  final String ja;
+  final String? furigana;
+  final String term;
+  final TextStyle style;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    final hk = context.hk;
+    final mark = TextStyle(color: hk.sealText, fontWeight: FontWeight.w600);
+    final units = rubyUnits(ja, furigana);
+    if (units.every((u) => u.reading.isEmpty)) {
+      return Text.rich(TextSpan(style: style, children: highlightSpans(ja, term, mark)), textAlign: textAlign);
+    }
+    final range = highlightRange(ja, term);
+    final readingStyle = TextStyle(fontSize: (style.fontSize ?? 15) * 0.62, height: 1.2, color: hk.inkMute);
+    var at = 0;
+    final spans = <InlineSpan>[];
+    for (final u in units) {
+      final start = at;
+      at += u.text.length;
+      final marked = range != null && start < range.$2 && at > range.$1;
+      spans.add(WidgetSpan(
+        alignment: PlaceholderAlignment.bottom,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // A blank reading keeps every unit the same height.
+            Text(u.reading.isEmpty ? ' ' : u.reading, style: readingStyle),
+            Text(u.text, style: marked ? style.merge(mark) : style),
+          ],
+        ),
+      ));
+    }
+    return Text.rich(TextSpan(children: spans), textAlign: textAlign);
+  }
 }

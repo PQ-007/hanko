@@ -192,7 +192,7 @@ export default function WordEditModal({
             </div>
             <textarea value={meaningMn} onChange={(e) => setMeaningMn(e.target.value)} className={areaCls} />
           </div>
-          <ExampleSection store={example} onResearch={() => example.research(term)} />
+          <ExampleSection store={example} term={term} onResearch={() => example.research(term)} />
         </div>
 
         <div className="mt-5 flex justify-end gap-2">

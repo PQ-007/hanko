@@ -640,6 +640,8 @@ class T {
   static const exampleSuggest = 'Tatoeba-с хайх';
   static const exampleClear = 'Арилгах';
   static const exampleShowTranslation = 'Орчуулга харах';
+  static const exampleEdit = 'Өгүүлбэр засах';
+  static const exampleDone = 'Болсон';
   static const fillExamples = 'Жишээ өгүүлбэр нэмэх';
   static String fillExamplesBody(int n) =>
       '$n үгэнд жишээ өгүүлбэр алга. Tatoeba-с хайж, орчуулгатай нь нэмэх үү? Таны бичсэн өгүүлбэрт хүрэхгүй.';

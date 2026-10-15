@@ -605,6 +605,8 @@ export const T = {
   exampleSuggest: "Tatoeba-с хайх",
   exampleClear: "Арилгах",
   exampleShowTranslation: "Орчуулга харах",
+  exampleEdit: "Өгүүлбэр засах",
+  exampleDone: "Болсон",
   fillExamples: "Жишээ өгүүлбэр нэмэх",
   fillExamplesBody: (n: number) =>
     `${n} үгэнд жишээ өгүүлбэр алга. Tatoeba-с хайж, орчуулгатай нь нэмэх үү? Таны бичсэн өгүүлбэрт хүрэхгүй.`,

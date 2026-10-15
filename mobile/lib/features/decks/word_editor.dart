@@ -276,6 +276,7 @@ class WordFormState extends ConsumerState<WordForm> {
             const SizedBox(height: 12),
             ExampleSection(
               controller: _example,
+              term: _term.text.trim(),
               onResearch: () => _example.research(_term.text),
               onSubmitted: _submit,
             ),

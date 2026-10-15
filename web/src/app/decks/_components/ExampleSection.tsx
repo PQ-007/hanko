@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { ChevronDown, Loader2, Search } from "@/ui/icons";
+import { Check, ChevronDown, Loader2, Pencil, Search, Trash2 } from "@/ui/icons";
 import { findExample } from "@/lib/examples";
 import { supabase } from "../_lib/db";
 import { ExampleStore, exampleRow, type WordExample } from "../_lib/exampleStore";
 import { T } from "../_lib/strings";
+import RubySentence from "./RubySentence";
 
 const translated = new Map<string, Promise<string>>();
 
@@ -60,116 +61,187 @@ export function useExample(initial?: WordExample | null): ExampleStore {
 
 /**
  * The example sentence in the add and edit dialogs. Collapsed by default to
- * one line — the sentence, or why there isn't one — so a word with a sentence
- * costs the form a single row; a click opens the three fields. The mobile
- * side is ExampleSection in example_section.dart.
+ * the title and the whole sentence (or why there isn't one), never cut off,
+ * so it can be checked without opening. Opened, it reads first: the sentence with
+ * furigana and the word picked out, then its translations; editing is a
+ * mode you switch into, each field tagged with its language. The mobile side
+ * is ExampleSection in example_section.dart.
  */
 export default function ExampleSection({
   store,
+  term,
   onResearch,
 }: {
   store: ExampleStore;
-  /** Shown as a button when open (the edit dialog): fetch a new suggestion. */
+  /** The word being added or edited, picked out in the sentence. */
+  term: string;
+  /** Fetch a fresh suggestion (Tatoeba), over whatever is there. */
   onResearch?: () => void;
 }) {
   const s = useSyncExternalStore(store.subscribe, store.get, store.get);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const preview = s.ja.trim();
+  const empty = !s.ja.trim() && !s.en.trim() && !s.mn.trim();
   // No "searching…" while closed: the field is optional, so nobody needs to
   // watch it fill — the sentence just appears.
-  const status = preview || (s.looking ? "" : s.none ? T.exampleNone : T.exampleEmpty);
-  const empty = !s.ja.trim() && !s.en.trim() && !s.mn.trim();
+  const status = s.looking ? "" : s.none ? T.exampleNone : T.exampleEmpty;
+  const furigana = store.value.furigana;
+  const busy = s.looking || s.translating;
+  // Nothing to read yet: open straight into the fields.
+  const showFields = editing || (empty && !s.looking);
 
-  const inputCls =
-    "hk-input w-full rounded-control border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-mute focus:border-seal focus:ring-2 focus:ring-seal-tint";
+  const field =
+    "hk-input w-full resize-none rounded-control border border-line bg-paper py-2 pl-3 pr-12 text-sm leading-snug text-ink placeholder:text-ink-mute focus:border-seal focus:ring-2 focus:ring-seal-tint";
+  const iconBtn =
+    "rounded-control p-1.5 text-ink-mute transition hover:bg-paper-dim hover:text-ink disabled:opacity-40";
 
   return (
-    <div className="rounded-card border border-line-soft">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-card px-3 py-2.5 text-left transition hover:bg-paper-dim/60"
-      >
-        <span className="shrink-0 text-xs font-medium text-ink-soft">{T.exampleTitle}</span>
-        <span
-          key={status}
-          lang={preview ? "ja" : undefined}
-          className={`min-w-0 flex-1 animate-[fadeUp_240ms_ease-out] truncate text-sm ${preview ? "text-ink" : "text-ink-mute"}`}
+    <div className={`rounded-card border transition-colors ${open ? "border-line bg-paper-dim/30" : "border-line-soft"}`}>
+      <div className="flex items-start gap-1 pr-1.5">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 flex-col gap-1 rounded-card py-2.5 pl-3 text-left"
         >
-          {status}
-        </span>
-        {open && (s.looking || s.translating) && <Loader2 size={13} className="shrink-0 animate-spin text-ink-mute" />}
-        <ChevronDown size={16} className={`shrink-0 text-ink-mute transition ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="space-y-2.5 px-3 pb-3">
-          <Labelled id="hk-ex-ja" label={T.exampleJa}>
-            <textarea
-              id="hk-ex-ja"
-              lang="ja"
-              rows={2}
-              maxLength={300}
-              value={s.ja}
-              onChange={(e) => store.edit("ja", e.target.value)}
-              className={`${inputCls} resize-y leading-snug`}
-            />
-          </Labelled>
-          <Labelled id="hk-ex-en" label={T.exampleEn}>
-            <textarea
-              id="hk-ex-en"
-              rows={2}
-              maxLength={500}
-              value={s.en}
-              onChange={(e) => store.edit("en", e.target.value)}
-              onBlur={() => store.englishLeft()}
-              className={`${inputCls} resize-y leading-snug`}
-            />
-          </Labelled>
-          <Labelled id="hk-ex-mn" label={T.exampleMn}>
-            <textarea
-              id="hk-ex-mn"
-              rows={2}
-              maxLength={500}
-              value={s.mn}
-              onChange={(e) => store.edit("mn", e.target.value)}
-              className={`${inputCls} resize-y leading-snug`}
-            />
-          </Labelled>
-          <div className="flex justify-end gap-1">
+          <span className="flex items-center gap-2">
+            <ChevronDown size={15} className={`shrink-0 text-ink-mute transition ${open ? "" : "-rotate-90"}`} />
+            <span className="text-xs font-medium text-ink-soft">{T.exampleTitle}</span>
+            {/* No sentence yet: the reason sits on the title line. */}
+            {!open && !preview && status && <span className="text-xs text-ink-mute">· {status}</span>}
+          </span>
+          {/* Closed, the whole sentence — never cut off. Open, it's right below. */}
+          {!open && preview && (
+            <span key={preview} lang="ja" className="animate-[fadeUp_240ms_ease-out] pl-[23px] text-sm leading-snug text-ink">
+              {preview}
+            </span>
+          )}
+        </button>
+        {open && (
+          <div className="flex shrink-0 items-center gap-0.5 pt-1.5">
+            {busy && <Loader2 size={14} className="mx-1 animate-spin text-ink-mute" />}
             {onResearch && (
               <button
                 type="button"
-                onClick={onResearch}
+                onClick={() => {
+                  setEditing(false);
+                  onResearch();
+                }}
                 disabled={s.looking}
-                className="flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-paper-dim disabled:opacity-50"
+                title={T.exampleSuggest}
+                aria-label={T.exampleSuggest}
+                className={iconBtn}
               >
-                <Search size={13} /> {T.exampleSuggest}
+                <Search size={15} />
               </button>
             )}
             {!empty && (
               <button
                 type="button"
-                onClick={() => store.clear()}
-                className="rounded-control px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-paper-dim"
+                onClick={() => setEditing((e) => !e)}
+                aria-pressed={editing}
+                title={editing ? T.exampleDone : T.exampleEdit}
+                aria-label={editing ? T.exampleDone : T.exampleEdit}
+                className={`${iconBtn} ${editing ? "bg-seal-tint text-seal hover:text-seal" : ""}`}
               >
-                {T.exampleClear}
+                {editing ? <Check size={15} /> : <Pencil size={15} />}
+              </button>
+            )}
+            {!empty && (
+              <button
+                type="button"
+                onClick={() => {
+                  store.clear();
+                  setEditing(false);
+                }}
+                title={T.exampleClear}
+                aria-label={T.exampleClear}
+                className={`${iconBtn} hover:text-red-700 dark:hover:text-red-300`}
+              >
+                <Trash2 size={15} />
               </button>
             )}
           </div>
+        )}
+      </div>
+
+      {open && (
+        <div className="px-3 pb-3">
+          {s.looking && empty ? (
+            // Placeholder lines, the shape of what's coming.
+            <div className="space-y-2 py-1" aria-hidden>
+              <div className="h-4 w-4/5 animate-pulse rounded bg-line-soft" />
+              <div className="h-3 w-3/5 animate-pulse rounded bg-line-soft" />
+            </div>
+          ) : showFields ? (
+            <div className="space-y-2">
+              {empty && s.none && <p className="text-xs text-ink-mute">{T.exampleNone}</p>}
+              <Tagged tag="日本語">
+                <textarea
+                  lang="ja"
+                  rows={2}
+                  maxLength={300}
+                  value={s.ja}
+                  placeholder={T.exampleJa}
+                  aria-label={T.exampleJa}
+                  onChange={(e) => store.edit("ja", e.target.value)}
+                  className={`${field} text-[15px]`}
+                />
+              </Tagged>
+              <Tagged tag="EN">
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  value={s.en}
+                  placeholder={T.exampleEn}
+                  aria-label={T.exampleEn}
+                  onChange={(e) => store.edit("en", e.target.value)}
+                  onBlur={() => store.englishLeft()}
+                  className={field}
+                />
+              </Tagged>
+              <Tagged tag="MN">
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  value={s.mn}
+                  placeholder={s.translating ? T.lookingUp : T.exampleMn}
+                  aria-label={T.exampleMn}
+                  onChange={(e) => store.edit("mn", e.target.value)}
+                  className={field}
+                />
+              </Tagged>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              title={T.exampleEdit}
+              className="block w-full rounded-control text-left"
+            >
+              <RubySentence
+                ja={s.ja}
+                furigana={furigana}
+                term={term}
+                className="block text-[17px] leading-[2.1] text-ink"
+              />
+              {s.mn && <span className="mt-1 block text-sm leading-snug text-ink-soft">{s.mn}</span>}
+              {s.en && <span className="mt-0.5 block text-xs leading-snug text-ink-mute">{s.en}</span>}
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function Labelled({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+/** A field with its language in the corner, so a filled one still says what it is. */
+function Tagged({ tag, children }: { tag: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-medium text-ink-soft">
-        {label}
-      </label>
+    <div className="relative">
       {children}
+      <span className="pointer-events-none absolute right-2.5 top-2 text-[10px] font-medium text-ink-mute/80">{tag}</span>
     </div>
   );
 }

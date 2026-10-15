@@ -496,7 +496,12 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
                 const SizedBox(height: 16),
                 _details(hk),
                 const SizedBox(height: 12),
-                ExampleSection(controller: _example, onSubmitted: _add),
+                ExampleSection(
+                  controller: _example,
+                  term: _termKey,
+                  onResearch: () => _example.research(_termKey),
+                  onSubmitted: _add,
+                ),
               ],
             ),
           ),

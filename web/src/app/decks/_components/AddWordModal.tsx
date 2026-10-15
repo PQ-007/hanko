@@ -656,7 +656,7 @@ export default function AddWordModal({
                 </div>
               </div>
 
-              <ExampleSection store={example} />
+              <ExampleSection store={example} term={f.term.trim()} onResearch={() => example.research(f.term)} />
 
               {error !== null && (
                 <p role="alert" className="rounded-control border border-line bg-paper-dim px-3 py-2 text-xs text-red-700 dark:text-red-300">

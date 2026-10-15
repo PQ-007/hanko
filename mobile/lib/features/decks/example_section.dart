@@ -8,6 +8,7 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../models/library.dart';
 import '../audio/example_sentences.dart';
+import '../review/example_line.dart' show RubySentence;
 
 /// The example sentence part of the add and edit forms (0031): a Tatoeba
 /// suggestion for the word with its English translation, the Mongolian
@@ -205,15 +206,26 @@ class ExampleController extends ChangeNotifier {
   }
 }
 
-/// Collapsed by default — one line with the sentence (or why there isn't
-/// one) — so a word with a sentence costs the form a single row. Tapping it
-/// opens the three fields.
+/// Collapsed by default to the title and the whole sentence (or why there
+/// isn't one), never cut off, so it can be checked without opening. Opened, it
+/// reads first: the sentence with furigana and the word picked out, then its
+/// translations; editing is a mode you switch into, each field tagged with
+/// its language. The web side is ExampleSection.tsx.
 class ExampleSection extends StatefulWidget {
-  const ExampleSection({super.key, required this.controller, this.onResearch, this.onSubmitted});
+  const ExampleSection({
+    super.key,
+    required this.controller,
+    required this.term,
+    this.onResearch,
+    this.onSubmitted,
+  });
 
   final ExampleController controller;
 
-  /// Shown as a button when open (the edit form): fetch a new suggestion.
+  /// The word being added or edited, picked out in the sentence.
+  final String term;
+
+  /// Fetch a fresh suggestion (Tatoeba), over whatever is there.
   final VoidCallback? onResearch;
   final VoidCallback? onSubmitted;
 
@@ -223,6 +235,7 @@ class ExampleSection extends StatefulWidget {
 
 class _ExampleSectionState extends State<ExampleSection> {
   var _open = false;
+  var _editing = false;
   final _enFocus = FocusNode();
 
   @override
@@ -248,93 +261,167 @@ class _ExampleSectionState extends State<ExampleSection> {
         final c = widget.controller;
         final busy = c.looking || c.translating;
         final preview = c.ja.text.trim();
+        final empty = c.isEmpty;
         // No "searching…" while closed: the field is optional, so nobody
         // needs to watch it fill — the sentence just appears.
-        final status = preview.isNotEmpty
-            ? preview
-            : c.looking
-                ? ''
-                : c.none
-                    ? T.exampleNone
-                    : T.exampleEmpty;
-        return Container(
+        final status = c.looking
+            ? ''
+            : c.none
+                ? T.exampleNone
+                : T.exampleEmpty;
+        // Nothing to read yet: open straight into the fields.
+        final showFields = _editing || (empty && !c.looking);
+        final value = c.value;
+
+        Widget icon(IconData i, String tip, VoidCallback? onTap, {bool on = false}) => IconButton(
+              tooltip: tip,
+              onPressed: onTap,
+              visualDensity: VisualDensity.compact,
+              iconSize: 19,
+              style: on ? IconButton.styleFrom(backgroundColor: hk.sealTint) : null,
+              icon: Icon(i, color: on ? hk.sealText : hk.inkMute),
+            );
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
+            color: _open ? hk.paperDim.withValues(alpha: 0.3) : null,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: hk.lineSoft),
+            border: Border.all(color: _open ? hk.line : hk.lineSoft),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => setState(() => _open = !_open),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-                  child: Row(
-                    children: [
-                      Icon(Icons.format_quote_rounded, size: 18, color: hk.inkMute),
-                      const SizedBox(width: 6),
-                      Text(
-                        T.exampleTitle,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: hk.inkSoft),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          layoutBuilder: (cur, prev) =>
-                              Stack(alignment: Alignment.centerLeft, children: [...prev, ?cur]),
-                          child: Text(
-                            status,
-                            key: ValueKey(status),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: preview.isNotEmpty ? hk.ink : hk.inkMute,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => setState(() => _open = !_open),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 12, 8, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                AnimatedRotation(
+                                  turns: _open ? 0 : -0.25,
+                                  duration: const Duration(milliseconds: 180),
+                                  child: Icon(Icons.expand_more, size: 18, color: hk.inkMute),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  T.exampleTitle,
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: hk.inkSoft),
+                                ),
+                                // No sentence yet: the reason sits on the title line.
+                                if (!_open && preview.isEmpty && status.isNotEmpty)
+                                  Flexible(
+                                    child: Text(
+                                      '  ·  $status',
+                                      style: TextStyle(fontSize: 12, color: hk.inkMute),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
+                            // Closed, the whole sentence — never cut off. Open, it's right below.
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 200),
+                              alignment: Alignment.topLeft,
+                              child: !_open && preview.isNotEmpty
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(left: 24, top: 4),
+                                      child: Text(preview, style: TextStyle(fontSize: 14, height: 1.4, color: hk.ink)),
+                                    )
+                                  : const SizedBox(width: double.infinity),
+                            ),
+                          ],
                         ),
                       ),
-                      if (busy && _open)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: SizedBox.square(
-                            dimension: 12,
-                            child: CircularProgressIndicator(strokeWidth: 1.5, color: hk.inkMute),
-                          ),
-                        ),
-                      Icon(_open ? Icons.expand_less : Icons.expand_more, size: 20, color: hk.inkMute),
-                    ],
+                    ),
                   ),
-                ),
+                  if (_open) ...[
+                    if (busy)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: SizedBox.square(
+                          dimension: 13,
+                          child: CircularProgressIndicator(strokeWidth: 1.5, color: hk.inkMute),
+                        ),
+                      ),
+                    if (widget.onResearch != null)
+                      icon(Icons.search, T.exampleSuggest, c.looking
+                          ? null
+                          : () {
+                              setState(() => _editing = false);
+                              widget.onResearch!();
+                            }),
+                    if (!empty)
+                      icon(
+                        _editing ? Icons.check : Icons.edit_outlined,
+                        _editing ? T.exampleDone : T.exampleEdit,
+                        () => setState(() => _editing = !_editing),
+                        on: _editing,
+                      ),
+                    if (!empty)
+                      icon(Icons.delete_outline, T.exampleClear, () {
+                        c.clear();
+                        setState(() => _editing = false);
+                      }),
+                    const SizedBox(width: 4),
+                  ],
+                ],
               ),
               if (_open)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _field(c.ja, T.exampleJa, maxLength: 300),
-                      const SizedBox(height: 10),
-                      _field(c.en, T.exampleEn, focus: _enFocus, maxLength: 500),
-                      const SizedBox(height: 10),
-                      _field(c.mn, T.exampleMn, maxLength: 500, onSubmitted: widget.onSubmitted),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (widget.onResearch != null)
-                            TextButton.icon(
-                              onPressed: c.looking ? null : widget.onResearch,
-                              icon: const Icon(Icons.manage_search, size: 18),
-                              label: const Text(T.exampleSuggest),
+                  child: c.looking && empty
+                      ? _placeholder(hk)
+                      : showFields
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (empty && c.none)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text(T.exampleNone, style: TextStyle(fontSize: 12, color: hk.inkMute)),
+                                  ),
+                                _field(c.ja, T.exampleJa, '日本語', maxLength: 300, big: true),
+                                const SizedBox(height: 8),
+                                _field(c.en, T.exampleEn, 'EN', focus: _enFocus, maxLength: 500),
+                                const SizedBox(height: 8),
+                                _field(c.mn, c.translating ? T.lookingUp : T.exampleMn, 'MN',
+                                    maxLength: 500, onSubmitted: widget.onSubmitted),
+                              ],
+                            )
+                          : InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => setState(() => _editing = true),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  RubySentence(
+                                    ja: value.ja,
+                                    furigana: value.furigana,
+                                    term: widget.term,
+                                    textAlign: TextAlign.start,
+                                    style: TextStyle(fontSize: 17, height: 1.4, color: hk.ink),
+                                  ),
+                                  if (value.mn.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(value.mn, style: TextStyle(fontSize: 14, height: 1.35, color: hk.inkSoft)),
+                                    ),
+                                  if (value.en.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(value.en, style: TextStyle(fontSize: 12.5, height: 1.35, color: hk.inkMute)),
+                                    ),
+                                ],
+                              ),
                             ),
-                          if (!c.isEmpty)
-                            TextButton(onPressed: c.clear, child: const Text(T.exampleClear)),
-                        ],
-                      ),
-                    ],
-                  ),
                 ),
             ],
           ),
@@ -343,25 +430,51 @@ class _ExampleSectionState extends State<ExampleSection> {
     );
   }
 
+  /// Placeholder lines, the shape of what's coming.
+  Widget _placeholder(HankoPalette hk) {
+    Widget bar(double f, double h) => FractionallySizedBox(
+          alignment: Alignment.centerLeft,
+          widthFactor: f,
+          child: Container(
+            height: h,
+            decoration: BoxDecoration(color: hk.lineSoft, borderRadius: BorderRadius.circular(4)),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(children: [bar(0.8, 16), const SizedBox(height: 8), bar(0.6, 12)]),
+    );
+  }
+
   Widget _field(
     TextEditingController ctrl,
-    String label, {
+    String hint,
+    String tag, {
     FocusNode? focus,
     required int maxLength,
+    bool big = false,
     VoidCallback? onSubmitted,
   }) {
+    final hk = context.hk;
     return TextField(
       controller: ctrl,
       focusNode: focus,
-      minLines: 1,
-      maxLines: 3,
+      minLines: 2,
+      maxLines: 4,
       maxLength: maxLength,
+      style: TextStyle(fontSize: big ? 16 : 14, height: 1.35),
       textInputAction: onSubmitted != null ? TextInputAction.done : TextInputAction.next,
       decoration: InputDecoration(
-        labelText: label,
+        hintText: hint,
         isDense: true,
         counterText: '',
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        contentPadding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        // The language in the corner, so a filled field still says what it is.
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(top: 10, right: 10),
+          child: Text(tag, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: hk.inkMute)),
+        ),
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       ),
       onChanged: (_) => widget.controller.edited(),
       onSubmitted: onSubmitted == null ? null : (_) => onSubmitted(),
