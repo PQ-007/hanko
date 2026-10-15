@@ -14,7 +14,8 @@ import { compactGloss, stripNotes } from "./gloss.ts";
 // so it goes first and gtx stays as the fallback.
 //
 // The output is compacted (compactGloss, see gloss.ts), like the English it is
-// translated from.
+// translated from — except with `sentence`, for example sentences (0031),
+// which a gloss would cut off at the first comma.
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
@@ -45,20 +46,22 @@ const ENDPOINTS = [
   (q: string) => `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=mn&dt=t&q=${q}`,
 ];
 
-export async function translateToMongolian(text: string): Promise<string> {
+export async function translateToMongolian(text: string, { sentence = false } = {}): Promise<string> {
   const word = text.trim();
   if (!word) return "";
-  if (cache.has(word)) return cache.get(word)!;
+  const key = sentence ? `\u0000${word}` : word;
+  if (cache.has(key)) return cache.get(key)!;
 
-  const q = encodeURIComponent(stripNotes(word) || word);
+  const q = encodeURIComponent(sentence ? word : stripNotes(word) || word);
   let lastError: unknown = null;
   for (const endpoint of ENDPOINTS) {
     try {
       const res = await fetch(endpoint(q), { headers: { "User-Agent": UA } });
       if (!res.ok) throw new Error(`Google Translate ${res.status}`);
-      const result = compactGloss(parseTranslation(await res.json()));
+      const raw = parseTranslation(await res.json());
+      const result = sentence ? raw : compactGloss(raw);
       if (!result) continue;
-      cache.set(word, result);
+      cache.set(key, result);
       return result;
     } catch (e) {
       lastError = e;

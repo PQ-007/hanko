@@ -13,6 +13,7 @@ import '../../models/queue_card.dart';
 import '../battle/fight_scene.dart';
 import '../battle/hero.dart';
 import '../decks/word_actions.dart' show speakWord;
+import 'example_line.dart';
 
 const _uuid = Uuid();
 
@@ -368,6 +369,14 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(color: context.hk.inkMute),
+                          ),
+                        ],
+                        if (card.example != null) ...[
+                          const SizedBox(height: 20),
+                          ExampleLine(
+                            key: ValueKey(card.cardId),
+                            example: card.example!,
+                            term: card.term,
                           ),
                         ],
                       ] else ...[

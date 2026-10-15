@@ -54,6 +54,7 @@ class Word {
     this.meaning,
     this.meaningMn,
     this.audioPath,
+    this.example,
     required this.dateAdded,
     this.repetitions = 0,
     this.intervalDays = 0,
@@ -69,6 +70,9 @@ class Word {
   final String? meaning;
   final String? meaningMn;
   final String? audioPath;
+
+  /// The saved example sentence (0031), null when the word has none.
+  final WordExample? example;
   final DateTime dateAdded;
   final int repetitions;
   final int intervalDays;
@@ -86,6 +90,7 @@ class Word {
         meaning: meaning,
         meaningMn: meaningMn,
         audioPath: path,
+        example: example,
         dateAdded: dateAdded,
         repetitions: repetitions,
         intervalDays: intervalDays,
@@ -104,6 +109,7 @@ class Word {
       meaning: j['meaning'] as String?,
       meaningMn: j['meaning_mn'] as String?,
       audioPath: j['audio_path'] as String?,
+      example: WordExample.fromRow(j),
       dateAdded: DateTime.tryParse(j['date_added'] as String? ?? '')?.toLocal() ??
           DateTime.fromMillisecondsSinceEpoch(0),
       repetitions: (j['repetitions'] as num?)?.toInt() ?? 0,
@@ -180,10 +186,46 @@ class WordDraft {
     this.reading,
     this.meaning,
     this.meaningMn,
+    this.example,
   });
 
   final String term;
   final String? reading;
   final String? meaning;
   final String? meaningMn;
+
+  /// Null leaves the word's sentence as it is; an empty one clears it. Kept
+  /// apart from "empty" so a save never names the 0031 columns unless it has
+  /// to — a database without that migration still takes every other edit.
+  final WordExample? example;
+}
+
+/// A word's example sentence and its translations (`words.example_*`, 0031).
+/// Any part may be empty; a sentence with no translation is still worth
+/// showing.
+class WordExample {
+  const WordExample({this.ja = '', this.en = '', this.mn = ''});
+
+  final String ja;
+  final String en;
+  final String mn;
+
+  bool get isEmpty => ja.isEmpty && en.isEmpty && mn.isEmpty;
+
+  /// Null when the row has no sentence (or predates 0031).
+  static WordExample? fromRow(Map<String, dynamic> j) {
+    final e = WordExample(
+      ja: (j['example_ja'] as String? ?? '').trim(),
+      en: (j['example_en'] as String? ?? '').trim(),
+      mn: (j['example_mn'] as String? ?? '').trim(),
+    );
+    return e.ja.isEmpty ? null : e;
+  }
+
+  /// The row values, empty parts as null.
+  Map<String, String?> toRow() => {
+        'example_ja': ja.isEmpty ? null : ja,
+        'example_en': en.isEmpty ? null : en,
+        'example_mn': mn.isEmpty ? null : mn,
+      };
 }

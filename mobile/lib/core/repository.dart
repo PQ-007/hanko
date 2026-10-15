@@ -213,6 +213,9 @@ class Repository {
   }) async {
     final uid = _uid;
     final rowIds = ids ?? [for (final _ in drafts) _uuid.v4()];
+    // A word with no sentence names no 0031 column, so adding still works on a
+    // database that hasn't had that migration.
+    final withExamples = drafts.any((d) => !(d.example?.isEmpty ?? true));
     final rows = [
       for (var i = 0; i < drafts.length; i++)
         {
@@ -223,6 +226,9 @@ class Repository {
           'reading': drafts[i].reading,
           'meaning': drafts[i].meaning,
           'meaning_mn': drafts[i].meaningMn,
+          // Only when there is one: every row of one insert must name the
+          // same columns, so a batch with any sentence names them on all.
+          if (withExamples) ...(drafts[i].example ?? const WordExample()).toRow(),
         },
     ];
     if (rows.isEmpty) return const [];
@@ -290,6 +296,7 @@ class Repository {
           'reading': draft.reading,
           'meaning': draft.meaning,
           'meaning_mn': draft.meaningMn,
+          ...?draft.example?.toRow(),
         })
         .eq('id', wordId);
   }

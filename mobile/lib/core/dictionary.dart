@@ -61,11 +61,17 @@ class Dictionary {
     }
   }
 
+  /// A whole sentence → Mongolian, kept whole: [translate] trims its result
+  /// to a short gloss (three items, ~40 characters), which would cut an
+  /// example sentence off at its first comma. Empty string on any failure.
+  Future<String> translateSentence(String text) => translate(text, sentence: true);
+
   /// Anything (usually English) → Mongolian. Empty string on any failure.
-  Future<String> translate(String text) async {
+  Future<String> translate(String text, {bool sentence = false}) async {
     final t = text.trim();
     if (t.isEmpty) return '';
-    final cached = _translations[t];
+    final key = sentence ? '\u0000$t' : t;
+    final cached = _translations[key];
     if (cached != null) return cached;
     try {
       final res = await _http
@@ -75,14 +81,15 @@ class Dictionary {
               'sl': 'auto',
               'tl': 'mn',
               'dt': 't',
-              'q': stripNotes(t).isEmpty ? t : stripNotes(t),
+              'q': sentence || stripNotes(t).isEmpty ? t : stripNotes(t),
             }),
             headers: _headers,
           )
           .timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return '';
-      final result = parseTranslation(jsonDecode(utf8.decode(res.bodyBytes)), source: t);
-      if (result.isNotEmpty) _translations[t] = result;
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      final result = sentence ? joinTranslation(data) : parseTranslation(data, source: t);
+      if (result.isNotEmpty) _translations[key] = result;
       return result;
     } catch (_) {
       return '';
@@ -172,14 +179,18 @@ List<LookupResult> parseJishoResults(Object? data, {String term = '', int max = 
 
 /// Google's `[[["translated","source",...], ...], ...]` → joined text, then
 /// [compactGloss] (translate.ts `translateToMongolian`).
-String parseTranslation(Object? data, {required String source}) {
+String parseTranslation(Object? data, {required String source}) =>
+    compactGloss(joinTranslation(data));
+
+/// The translated text as the endpoint returns it, segments joined, nothing
+/// trimmed away — for sentences.
+String joinTranslation(Object? data) {
   if (data is! List || data.isEmpty || data.first is! List) return '';
-  final result = (data.first as List)
+  return (data.first as List)
       .map((seg) => seg is List && seg.isNotEmpty && seg.first is String ? seg.first as String : '')
       .where((s) => s.isNotEmpty)
       .join()
       .trim();
-  return compactGloss(result);
 }
 
 /// Most items a gloss keeps, and the length past which no further item is

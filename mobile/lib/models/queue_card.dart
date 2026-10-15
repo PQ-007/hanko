@@ -1,3 +1,5 @@
+import 'library.dart' show WordExample;
+
 /// One row of the review queue: a card joined to the word it drills.
 ///
 /// The shape is fixed by the `review_queue()` RPC
@@ -23,6 +25,7 @@ class QueueCard {
     this.meaning,
     this.meaningMn,
     this.audioPath,
+    this.example,
   });
 
   final String cardId;
@@ -48,6 +51,9 @@ class QueueCard {
   final String? meaning;
   final String? meaningMn;
   final String? audioPath;
+
+  /// The word's example sentence (0031), shown on the back of the card.
+  final WordExample? example;
 
   /// Applies the scheduling fields returned by `review_card()` / `undo_review()`
   /// to the queue row already on screen, so a re-queued learning card keeps its
@@ -79,6 +85,7 @@ class QueueCard {
         meaning: meaning,
         meaningMn: meaningMn,
         audioPath: audioPath,
+        example: example,
       );
 
   factory QueueCard.fromJson(Map<String, dynamic> json) => QueueCard(
@@ -99,6 +106,7 @@ class QueueCard {
         meaning: json['meaning'] as String?,
         meaningMn: json['meaning_mn'] as String?,
         audioPath: json['audio_path'] as String?,
+        example: WordExample.fromRow(json),
       );
 }
 

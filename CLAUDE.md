@@ -308,8 +308,9 @@ capture — but only the extension is positioned to collect it.
   player shows the word being spoken.
 - **Example sentences** (option "Жишээ өгүүлбэр", off by default): after a
   word's repeats, one Tatoeba sentence (keyless API, CC BY) then its English
-  translation when English is on — fetched at build time and cached per word
-  on disk (`example_sentences.dart`), not stored in the database. Tatoeba
+  translation when English is on. A word's saved sentence (`words.example_*`,
+  0031) is used first; otherwise one is fetched at build time and cached per
+  word on disk (`example_sentences.dart`). Tatoeba
   search matches substrings, so `pickExample` requires the word itself (or
   its stem: 食べ, 担) with **no kanji touching its kanji edges** — that
   rejects 抜群 for 群 and 無軌道 ("reckless") for 軌道, at the cost of
@@ -838,6 +839,25 @@ Two traps found doing this:
   the login page — as a plain `<a>`, not `<Link>`: it isn't an app-router
   route. It follows the site theme from `localStorage["hanko.theme"]`.
   When a feature changes, update its section there too.
+- **Example sentences on words** (`0031_word_examples.sql`, web + mobile):
+  `words.example_ja/_en/_mn`, one per word (the note, not the card), all
+  optional. The add and edit forms suggest one from Tatoeba (keyless, CORS
+  `*`, so the web calls it from the browser — no route of ours) with the
+  same picker on both sides (`lib/examples.ts` ↔ `example_sentences.dart`,
+  same cases), the Mongolian machine-translated from the English. The rules
+  — a suggestion never overwrites what the user typed, and one found for a
+  term they've since typed past is dropped on save — are `ExampleStore`
+  (`_lib/exampleStore.ts`) ↔ `ExampleController` (`example_section.dart`),
+  same cases. **Sentences use the whole-sentence translate**
+  (`translateSentence` / `/api/translate?sentence=1`): the word translate
+  compacts to a 40-char gloss and would cut a sentence at its first comma.
+  Shown collapsed to one line in the forms, and as one line under the
+  answer on classic review (translation behind a tap) — deliberately not in
+  word lists, Monster Hunt or duels. `review_queue`/`practice_cards`/
+  `leech_cards` return the columns (appended), and mobile caches them
+  offline (Drift v5). Saves name the 0031 columns only when there's a
+  sentence, so both clients still add and edit words on a database without
+  the migration. Not copied by `copy_shared_deck` or shown on share pages.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a

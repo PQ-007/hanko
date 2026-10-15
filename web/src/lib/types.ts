@@ -30,6 +30,10 @@ export interface Word {
   meaning: string | null;
   meaning_mn: string | null;
   audio_path: string | null;
+  /** Example sentence and its translations (0031). Absent before that migration. */
+  example_ja?: string | null;
+  example_en?: string | null;
+  example_mn?: string | null;
   date_added: string;
   updated_at: string;
   deleted: boolean;

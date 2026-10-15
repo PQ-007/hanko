@@ -1,10 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import 'tts_clips.dart' show fnv1a64;
+
+/// One instance for the add and edit forms, so their lookups share the
+/// on-disk cache with the audio decks'.
+final exampleSentencesProvider = Provider<ExampleSentences>((ref) => ExampleSentences());
 
 /// An example sentence for a word, with its English translation.
 class Example {

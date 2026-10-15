@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'local_db.dart';
 import 'repository.dart';
 import '../models/queue_card.dart';
+import '../models/library.dart' show WordExample;
 
 final localDbProvider = Provider<LocalDb>((ref) {
   final db = LocalDb();
@@ -229,6 +230,9 @@ class OfflineReview {
         meaning: Value(c.meaning),
         meaningMn: Value(c.meaningMn),
         audioPath: Value(c.audioPath),
+        exampleJa: Value(c.example?.ja),
+        exampleEn: Value(c.example?.en),
+        exampleMn: Value(c.example?.mn),
         inQueue: Value(inQueue),
       );
 
@@ -248,6 +252,11 @@ class OfflineReview {
         meaning: c.meaning,
         meaningMn: c.meaningMn,
         audioPath: c.audioPath,
+        example: WordExample.fromRow({
+          'example_ja': c.exampleJa,
+          'example_en': c.exampleEn,
+          'example_mn': c.exampleMn,
+        }),
       );
 
   static CachedCardsCompanion _toCompanion(QueueCard c, int position) =>
@@ -267,6 +276,9 @@ class OfflineReview {
         meaning: Value(c.meaning),
         meaningMn: Value(c.meaningMn),
         audioPath: Value(c.audioPath),
+        exampleJa: Value(c.example?.ja),
+        exampleEn: Value(c.example?.en),
+        exampleMn: Value(c.example?.mn),
         position: position,
       );
 
@@ -286,5 +298,10 @@ class OfflineReview {
         meaning: c.meaning,
         meaningMn: c.meaningMn,
         audioPath: c.audioPath,
+        example: WordExample.fromRow({
+          'example_ja': c.exampleJa,
+          'example_en': c.exampleEn,
+          'example_mn': c.exampleMn,
+        }),
       );
 }
