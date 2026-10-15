@@ -610,6 +610,17 @@ class $CachedCardsTable extends CachedCards
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _exampleFuriganaMeta = const VerificationMeta(
+    'exampleFurigana',
+  );
+  @override
+  late final GeneratedColumn<String> exampleFurigana = GeneratedColumn<String>(
+    'example_furigana',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _positionMeta = const VerificationMeta(
     'position',
   );
@@ -641,6 +652,7 @@ class $CachedCardsTable extends CachedCards
     exampleJa,
     exampleEn,
     exampleMn,
+    exampleFurigana,
     position,
   ];
   @override
@@ -794,6 +806,15 @@ class $CachedCardsTable extends CachedCards
         exampleMn.isAcceptableOrUnknown(data['example_mn']!, _exampleMnMeta),
       );
     }
+    if (data.containsKey('example_furigana')) {
+      context.handle(
+        _exampleFuriganaMeta,
+        exampleFurigana.isAcceptableOrUnknown(
+          data['example_furigana']!,
+          _exampleFuriganaMeta,
+        ),
+      );
+    }
     if (data.containsKey('position')) {
       context.handle(
         _positionMeta,
@@ -883,6 +904,10 @@ class $CachedCardsTable extends CachedCards
         DriftSqlType.string,
         data['${effectivePrefix}example_mn'],
       ),
+      exampleFurigana: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_furigana'],
+      ),
       position: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}position'],
@@ -915,6 +940,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
   final String? exampleJa;
   final String? exampleEn;
   final String? exampleMn;
+  final String? exampleFurigana;
   final int position;
   const CachedCard({
     required this.cardId,
@@ -935,6 +961,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     this.exampleJa,
     this.exampleEn,
     this.exampleMn,
+    this.exampleFurigana,
     required this.position,
   });
   @override
@@ -971,6 +998,9 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     }
     if (!nullToAbsent || exampleMn != null) {
       map['example_mn'] = Variable<String>(exampleMn);
+    }
+    if (!nullToAbsent || exampleFurigana != null) {
+      map['example_furigana'] = Variable<String>(exampleFurigana);
     }
     map['position'] = Variable<int>(position);
     return map;
@@ -1010,6 +1040,9 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       exampleMn: exampleMn == null && nullToAbsent
           ? const Value.absent()
           : Value(exampleMn),
+      exampleFurigana: exampleFurigana == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleFurigana),
       position: Value(position),
     );
   }
@@ -1038,6 +1071,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       exampleJa: serializer.fromJson<String?>(json['exampleJa']),
       exampleEn: serializer.fromJson<String?>(json['exampleEn']),
       exampleMn: serializer.fromJson<String?>(json['exampleMn']),
+      exampleFurigana: serializer.fromJson<String?>(json['exampleFurigana']),
       position: serializer.fromJson<int>(json['position']),
     );
   }
@@ -1063,6 +1097,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       'exampleJa': serializer.toJson<String?>(exampleJa),
       'exampleEn': serializer.toJson<String?>(exampleEn),
       'exampleMn': serializer.toJson<String?>(exampleMn),
+      'exampleFurigana': serializer.toJson<String?>(exampleFurigana),
       'position': serializer.toJson<int>(position),
     };
   }
@@ -1086,6 +1121,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     Value<String?> exampleJa = const Value.absent(),
     Value<String?> exampleEn = const Value.absent(),
     Value<String?> exampleMn = const Value.absent(),
+    Value<String?> exampleFurigana = const Value.absent(),
     int? position,
   }) => CachedCard(
     cardId: cardId ?? this.cardId,
@@ -1106,6 +1142,9 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     exampleJa: exampleJa.present ? exampleJa.value : this.exampleJa,
     exampleEn: exampleEn.present ? exampleEn.value : this.exampleEn,
     exampleMn: exampleMn.present ? exampleMn.value : this.exampleMn,
+    exampleFurigana: exampleFurigana.present
+        ? exampleFurigana.value
+        : this.exampleFurigana,
     position: position ?? this.position,
   );
   CachedCard copyWithCompanion(CachedCardsCompanion data) {
@@ -1136,6 +1175,9 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       exampleJa: data.exampleJa.present ? data.exampleJa.value : this.exampleJa,
       exampleEn: data.exampleEn.present ? data.exampleEn.value : this.exampleEn,
       exampleMn: data.exampleMn.present ? data.exampleMn.value : this.exampleMn,
+      exampleFurigana: data.exampleFurigana.present
+          ? data.exampleFurigana.value
+          : this.exampleFurigana,
       position: data.position.present ? data.position.value : this.position,
     );
   }
@@ -1161,6 +1203,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleEn: $exampleEn, ')
           ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('position: $position')
           ..write(')'))
         .toString();
@@ -1186,6 +1229,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     exampleJa,
     exampleEn,
     exampleMn,
+    exampleFurigana,
     position,
   );
   @override
@@ -1210,6 +1254,7 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
           other.exampleJa == this.exampleJa &&
           other.exampleEn == this.exampleEn &&
           other.exampleMn == this.exampleMn &&
+          other.exampleFurigana == this.exampleFurigana &&
           other.position == this.position);
 }
 
@@ -1232,6 +1277,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
   final Value<String?> exampleJa;
   final Value<String?> exampleEn;
   final Value<String?> exampleMn;
+  final Value<String?> exampleFurigana;
   final Value<int> position;
   final Value<int> rowid;
   const CachedCardsCompanion({
@@ -1253,6 +1299,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     this.exampleJa = const Value.absent(),
     this.exampleEn = const Value.absent(),
     this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     this.position = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1275,6 +1322,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     this.exampleJa = const Value.absent(),
     this.exampleEn = const Value.absent(),
     this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     required int position,
     this.rowid = const Value.absent(),
   }) : cardId = Value(cardId),
@@ -1308,6 +1356,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     Expression<String>? exampleJa,
     Expression<String>? exampleEn,
     Expression<String>? exampleMn,
+    Expression<String>? exampleFurigana,
     Expression<int>? position,
     Expression<int>? rowid,
   }) {
@@ -1330,6 +1379,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
       if (exampleJa != null) 'example_ja': exampleJa,
       if (exampleEn != null) 'example_en': exampleEn,
       if (exampleMn != null) 'example_mn': exampleMn,
+      if (exampleFurigana != null) 'example_furigana': exampleFurigana,
       if (position != null) 'position': position,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1354,6 +1404,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     Value<String?>? exampleJa,
     Value<String?>? exampleEn,
     Value<String?>? exampleMn,
+    Value<String?>? exampleFurigana,
     Value<int>? position,
     Value<int>? rowid,
   }) {
@@ -1376,6 +1427,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
       exampleJa: exampleJa ?? this.exampleJa,
       exampleEn: exampleEn ?? this.exampleEn,
       exampleMn: exampleMn ?? this.exampleMn,
+      exampleFurigana: exampleFurigana ?? this.exampleFurigana,
       position: position ?? this.position,
       rowid: rowid ?? this.rowid,
     );
@@ -1438,6 +1490,9 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     if (exampleMn.present) {
       map['example_mn'] = Variable<String>(exampleMn.value);
     }
+    if (exampleFurigana.present) {
+      map['example_furigana'] = Variable<String>(exampleFurigana.value);
+    }
     if (position.present) {
       map['position'] = Variable<int>(position.value);
     }
@@ -1468,6 +1523,7 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleEn: $exampleEn, ')
           ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('position: $position, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2796,6 +2852,17 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _exampleFuriganaMeta = const VerificationMeta(
+    'exampleFurigana',
+  );
+  @override
+  late final GeneratedColumn<String> exampleFurigana = GeneratedColumn<String>(
+    'example_furigana',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _inQueueMeta = const VerificationMeta(
     'inQueue',
   );
@@ -2831,6 +2898,7 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
     exampleJa,
     exampleEn,
     exampleMn,
+    exampleFurigana,
     inQueue,
   ];
   @override
@@ -2984,6 +3052,15 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
         exampleMn.isAcceptableOrUnknown(data['example_mn']!, _exampleMnMeta),
       );
     }
+    if (data.containsKey('example_furigana')) {
+      context.handle(
+        _exampleFuriganaMeta,
+        exampleFurigana.isAcceptableOrUnknown(
+          data['example_furigana']!,
+          _exampleFuriganaMeta,
+        ),
+      );
+    }
     if (data.containsKey('in_queue')) {
       context.handle(
         _inQueueMeta,
@@ -3071,6 +3148,10 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
         DriftSqlType.string,
         data['${effectivePrefix}example_mn'],
       ),
+      exampleFurigana: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_furigana'],
+      ),
       inQueue: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}in_queue'],
@@ -3103,6 +3184,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
   final String? exampleJa;
   final String? exampleEn;
   final String? exampleMn;
+  final String? exampleFurigana;
   final bool inQueue;
   const OfflineDeckCard({
     required this.cardId,
@@ -3123,6 +3205,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     this.exampleJa,
     this.exampleEn,
     this.exampleMn,
+    this.exampleFurigana,
     required this.inQueue,
   });
   @override
@@ -3159,6 +3242,9 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     }
     if (!nullToAbsent || exampleMn != null) {
       map['example_mn'] = Variable<String>(exampleMn);
+    }
+    if (!nullToAbsent || exampleFurigana != null) {
+      map['example_furigana'] = Variable<String>(exampleFurigana);
     }
     map['in_queue'] = Variable<bool>(inQueue);
     return map;
@@ -3198,6 +3284,9 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       exampleMn: exampleMn == null && nullToAbsent
           ? const Value.absent()
           : Value(exampleMn),
+      exampleFurigana: exampleFurigana == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleFurigana),
       inQueue: Value(inQueue),
     );
   }
@@ -3226,6 +3315,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       exampleJa: serializer.fromJson<String?>(json['exampleJa']),
       exampleEn: serializer.fromJson<String?>(json['exampleEn']),
       exampleMn: serializer.fromJson<String?>(json['exampleMn']),
+      exampleFurigana: serializer.fromJson<String?>(json['exampleFurigana']),
       inQueue: serializer.fromJson<bool>(json['inQueue']),
     );
   }
@@ -3251,6 +3341,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       'exampleJa': serializer.toJson<String?>(exampleJa),
       'exampleEn': serializer.toJson<String?>(exampleEn),
       'exampleMn': serializer.toJson<String?>(exampleMn),
+      'exampleFurigana': serializer.toJson<String?>(exampleFurigana),
       'inQueue': serializer.toJson<bool>(inQueue),
     };
   }
@@ -3274,6 +3365,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     Value<String?> exampleJa = const Value.absent(),
     Value<String?> exampleEn = const Value.absent(),
     Value<String?> exampleMn = const Value.absent(),
+    Value<String?> exampleFurigana = const Value.absent(),
     bool? inQueue,
   }) => OfflineDeckCard(
     cardId: cardId ?? this.cardId,
@@ -3294,6 +3386,9 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     exampleJa: exampleJa.present ? exampleJa.value : this.exampleJa,
     exampleEn: exampleEn.present ? exampleEn.value : this.exampleEn,
     exampleMn: exampleMn.present ? exampleMn.value : this.exampleMn,
+    exampleFurigana: exampleFurigana.present
+        ? exampleFurigana.value
+        : this.exampleFurigana,
     inQueue: inQueue ?? this.inQueue,
   );
   OfflineDeckCard copyWithCompanion(OfflineDeckCardsCompanion data) {
@@ -3324,6 +3419,9 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       exampleJa: data.exampleJa.present ? data.exampleJa.value : this.exampleJa,
       exampleEn: data.exampleEn.present ? data.exampleEn.value : this.exampleEn,
       exampleMn: data.exampleMn.present ? data.exampleMn.value : this.exampleMn,
+      exampleFurigana: data.exampleFurigana.present
+          ? data.exampleFurigana.value
+          : this.exampleFurigana,
       inQueue: data.inQueue.present ? data.inQueue.value : this.inQueue,
     );
   }
@@ -3349,6 +3447,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleEn: $exampleEn, ')
           ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('inQueue: $inQueue')
           ..write(')'))
         .toString();
@@ -3374,6 +3473,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     exampleJa,
     exampleEn,
     exampleMn,
+    exampleFurigana,
     inQueue,
   );
   @override
@@ -3398,6 +3498,7 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
           other.exampleJa == this.exampleJa &&
           other.exampleEn == this.exampleEn &&
           other.exampleMn == this.exampleMn &&
+          other.exampleFurigana == this.exampleFurigana &&
           other.inQueue == this.inQueue);
 }
 
@@ -3420,6 +3521,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
   final Value<String?> exampleJa;
   final Value<String?> exampleEn;
   final Value<String?> exampleMn;
+  final Value<String?> exampleFurigana;
   final Value<bool> inQueue;
   final Value<int> rowid;
   const OfflineDeckCardsCompanion({
@@ -3441,6 +3543,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     this.exampleJa = const Value.absent(),
     this.exampleEn = const Value.absent(),
     this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     this.inQueue = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3463,6 +3566,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     this.exampleJa = const Value.absent(),
     this.exampleEn = const Value.absent(),
     this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     this.inQueue = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : cardId = Value(cardId),
@@ -3495,6 +3599,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     Expression<String>? exampleJa,
     Expression<String>? exampleEn,
     Expression<String>? exampleMn,
+    Expression<String>? exampleFurigana,
     Expression<bool>? inQueue,
     Expression<int>? rowid,
   }) {
@@ -3517,6 +3622,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
       if (exampleJa != null) 'example_ja': exampleJa,
       if (exampleEn != null) 'example_en': exampleEn,
       if (exampleMn != null) 'example_mn': exampleMn,
+      if (exampleFurigana != null) 'example_furigana': exampleFurigana,
       if (inQueue != null) 'in_queue': inQueue,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3541,6 +3647,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     Value<String?>? exampleJa,
     Value<String?>? exampleEn,
     Value<String?>? exampleMn,
+    Value<String?>? exampleFurigana,
     Value<bool>? inQueue,
     Value<int>? rowid,
   }) {
@@ -3563,6 +3670,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
       exampleJa: exampleJa ?? this.exampleJa,
       exampleEn: exampleEn ?? this.exampleEn,
       exampleMn: exampleMn ?? this.exampleMn,
+      exampleFurigana: exampleFurigana ?? this.exampleFurigana,
       inQueue: inQueue ?? this.inQueue,
       rowid: rowid ?? this.rowid,
     );
@@ -3625,6 +3733,9 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     if (exampleMn.present) {
       map['example_mn'] = Variable<String>(exampleMn.value);
     }
+    if (exampleFurigana.present) {
+      map['example_furigana'] = Variable<String>(exampleFurigana.value);
+    }
     if (inQueue.present) {
       map['in_queue'] = Variable<bool>(inQueue.value);
     }
@@ -3655,6 +3766,7 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleEn: $exampleEn, ')
           ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('inQueue: $inQueue, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3932,6 +4044,7 @@ typedef $$CachedCardsTableCreateCompanionBuilder =
       Value<String?> exampleJa,
       Value<String?> exampleEn,
       Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       required int position,
       Value<int> rowid,
     });
@@ -3955,6 +4068,7 @@ typedef $$CachedCardsTableUpdateCompanionBuilder =
       Value<String?> exampleJa,
       Value<String?> exampleEn,
       Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       Value<int> position,
       Value<int> rowid,
     });
@@ -4055,6 +4169,11 @@ class $$CachedCardsTableFilterComposer
 
   ColumnFilters<String> get exampleMn => $composableBuilder(
     column: $table.exampleMn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4163,6 +4282,11 @@ class $$CachedCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get position => $composableBuilder(
     column: $table.position,
     builder: (column) => ColumnOrderings(column),
@@ -4240,6 +4364,11 @@ class $$CachedCardsTableAnnotationComposer
   GeneratedColumn<String> get exampleMn =>
       $composableBuilder(column: $table.exampleMn, builder: (column) => column);
 
+  GeneratedColumn<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
 }
@@ -4293,6 +4422,7 @@ class $$CachedCardsTableTableManager
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleEn = const Value.absent(),
                 Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedCardsCompanion(
@@ -4314,6 +4444,7 @@ class $$CachedCardsTableTableManager
                 exampleJa: exampleJa,
                 exampleEn: exampleEn,
                 exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 position: position,
                 rowid: rowid,
               ),
@@ -4337,6 +4468,7 @@ class $$CachedCardsTableTableManager
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleEn = const Value.absent(),
                 Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 required int position,
                 Value<int> rowid = const Value.absent(),
               }) => CachedCardsCompanion.insert(
@@ -4358,6 +4490,7 @@ class $$CachedCardsTableTableManager
                 exampleJa: exampleJa,
                 exampleEn: exampleEn,
                 exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 position: position,
                 rowid: rowid,
               ),
@@ -5018,6 +5151,7 @@ typedef $$OfflineDeckCardsTableCreateCompanionBuilder =
       Value<String?> exampleJa,
       Value<String?> exampleEn,
       Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       Value<bool> inQueue,
       Value<int> rowid,
     });
@@ -5041,6 +5175,7 @@ typedef $$OfflineDeckCardsTableUpdateCompanionBuilder =
       Value<String?> exampleJa,
       Value<String?> exampleEn,
       Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       Value<bool> inQueue,
       Value<int> rowid,
     });
@@ -5141,6 +5276,11 @@ class $$OfflineDeckCardsTableFilterComposer
 
   ColumnFilters<String> get exampleMn => $composableBuilder(
     column: $table.exampleMn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5249,6 +5389,11 @@ class $$OfflineDeckCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get inQueue => $composableBuilder(
     column: $table.inQueue,
     builder: (column) => ColumnOrderings(column),
@@ -5326,6 +5471,11 @@ class $$OfflineDeckCardsTableAnnotationComposer
   GeneratedColumn<String> get exampleMn =>
       $composableBuilder(column: $table.exampleMn, builder: (column) => column);
 
+  GeneratedColumn<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get inQueue =>
       $composableBuilder(column: $table.inQueue, builder: (column) => column);
 }
@@ -5381,6 +5531,7 @@ class $$OfflineDeckCardsTableTableManager
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleEn = const Value.absent(),
                 Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 Value<bool> inQueue = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OfflineDeckCardsCompanion(
@@ -5402,6 +5553,7 @@ class $$OfflineDeckCardsTableTableManager
                 exampleJa: exampleJa,
                 exampleEn: exampleEn,
                 exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 inQueue: inQueue,
                 rowid: rowid,
               ),
@@ -5425,6 +5577,7 @@ class $$OfflineDeckCardsTableTableManager
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleEn = const Value.absent(),
                 Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 Value<bool> inQueue = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OfflineDeckCardsCompanion.insert(
@@ -5446,6 +5599,7 @@ class $$OfflineDeckCardsTableTableManager
                 exampleJa: exampleJa,
                 exampleEn: exampleEn,
                 exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 inQueue: inQueue,
                 rowid: rowid,
               ),

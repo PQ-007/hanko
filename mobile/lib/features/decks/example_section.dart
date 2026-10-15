@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/dictionary.dart';
+import '../../core/furigana.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../models/library.dart';
@@ -22,7 +23,8 @@ class ExampleController extends ChangeNotifier {
   })  : ja = TextEditingController(text: initial?.ja ?? ''),
         en = TextEditingController(text: initial?.en ?? ''),
         mn = TextEditingController(text: initial?.mn ?? ''),
-        _lastEn = initial?.en ?? '';
+        _lastEn = initial?.en ?? '',
+        _furigana = initial?.furigana;
 
   final ExampleSentences _sentences;
   final Dictionary _dictionary;
@@ -44,6 +46,10 @@ class ExampleController extends ChangeNotifier {
   bool translating = false;
   String _lastEn;
 
+  /// The suggestion's reading; kept out of the editable fields, and only
+  /// saved while it still describes the sentence.
+  String? _furigana;
+
   /// The search for [_query], kept so a save can finish it after the form
   /// has moved on ([take]).
   Future<Example?>? _found;
@@ -57,6 +63,7 @@ class ExampleController extends ChangeNotifier {
         ja: ja.text.trim(),
         en: en.text.trim(),
         mn: mn.text.trim(),
+        furigana: furiganaFor(ja.text, _furigana),
       );
 
   void _notify() {
@@ -99,6 +106,7 @@ class ExampleController extends ChangeNotifier {
       return;
     }
     _set(WordExample(ja: hit.ja, en: hit.en));
+    _furigana = hit.furigana;
     _auto = true;
     _notify();
     await _translate(hit.en, mine);
@@ -181,11 +189,11 @@ class ExampleController extends ChangeNotifier {
 
   Future<WordExample?> _finish(Future<Example?> found) async {
     final hit = await found;
-    return hit == null ? null : _translated(WordExample(ja: hit.ja, en: hit.en));
+    return hit == null ? null : _translated(WordExample(ja: hit.ja, en: hit.en, furigana: hit.furigana));
   }
 
   Future<WordExample> _translated(WordExample v) async =>
-      WordExample(ja: v.ja, en: v.en, mn: await _dictionary.translateSentence(v.en));
+      WordExample(ja: v.ja, en: v.en, mn: await _dictionary.translateSentence(v.en), furigana: v.furigana);
 
   @override
   void dispose() {

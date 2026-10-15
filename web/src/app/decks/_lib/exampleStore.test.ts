@@ -7,7 +7,7 @@ import { ExampleStore, exampleOf, exampleRow, type ExampleDeps } from "./example
 
 const EAT = { ja: "りんごを食べる。", en: "I eat an apple, every morning." };
 
-function deps(hit: { ja: string; en: string } | null, queries: string[] = []): ExampleDeps {
+function deps(hit: { ja: string; en: string; furigana?: string } | null, queries: string[] = []): ExampleDeps {
   return {
     find: async (q) => {
       queries.push(q);
@@ -24,7 +24,7 @@ test("rows: no sentence is no example; parts come back trimmed", () => {
 });
 
 test("rows: empty parts are written as null, so clearing really clears", () => {
-  assert.deepEqual(exampleRow({ ja: "a", en: "", mn: " " }), { example_ja: "a", example_en: null, example_mn: null });
+  assert.deepEqual(exampleRow({ ja: "a", en: "", mn: " " }), { example_ja: "a", example_en: null, example_mn: null, example_furigana: null });
 });
 
 /** What a save of `term` ends up writing: what goes in now, or what lands afterwards. */
@@ -107,4 +107,17 @@ test("English typed by hand: the sentence goes in whole, once its Mongolian is b
   const r = s.take("x");
   assert.equal(r.now.ja, "");
   assert.equal((await r.later)?.mn, "MN:A sentence.");
+});
+
+test("furigana: a suggestion's reading is saved with it, and dropped once the sentence is edited", async () => {
+  const f = "[私|わたし]は[群|むれ]を[見|み]た。";
+  const s = new ExampleStore(deps({ ja: "私は群を見た。", en: "I saw a flock.", furigana: f }));
+  s.suggest("群");
+  await idle(s);
+  assert.equal(s.take("群").now.furigana, f);
+  assert.equal(exampleRow(s.value).example_furigana, f);
+  s.edit("ja", "私が群を見た。");
+  assert.equal(s.value.furigana, undefined);
+  assert.equal(exampleRow(s.value).example_furigana, null);
+  assert.equal(exampleOf({ example_ja: "私が群を見た。", example_furigana: f })?.furigana, undefined);
 });

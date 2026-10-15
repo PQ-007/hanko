@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_SENTENCE_CHARS, findExample, highlightParts, pickExample, usesAsWord, wordStem } from "./examples.ts";
+import {
+  MAX_SENTENCE_CHARS,
+  findExample,
+  highlightParts,
+  parseFurigana,
+  pickExample,
+  plainOf,
+  rubyUnits,
+  usesAsWord,
+  wordStem,
+} from "./examples.ts";
 
 // The same cases as mobile/test/example_sentences_test.dart: change one side,
 // change both.
@@ -98,4 +108,47 @@ test("find: two callers at once share one request; a failure isn't remembered", 
   assert.equal(await findExample("量子論", busy), null);
   assert.equal(await findExample("量子論", busy), null);
   assert.equal(failed, 2);
+});
+
+// Readings — the same cases as the furigana tests in
+// mobile/test/word_example_test.dart.
+test("furigana: one reading per kanji when they split, else over the whole word", () => {
+  assert.deepEqual(parseFurigana("[勉強|べん|きょう]は[難|むずか]しい。"), [
+    { text: "勉", reading: "べん" },
+    { text: "強", reading: "きょう" },
+    { text: "は", reading: "" },
+    { text: "難", reading: "むずか" },
+    { text: "し", reading: "" },
+    { text: "い", reading: "" },
+    { text: "。", reading: "" },
+  ]);
+  assert.deepEqual(parseFurigana("[今日|きょう]"), [{ text: "今日", reading: "きょう" }]);
+  assert.equal(plainOf("[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。"), "私は羊の群を見た。");
+});
+
+test("furigana: malformed markup is no reading at all", () => {
+  assert.equal(parseFurigana("[私|わたし"), null);
+  assert.equal(parseFurigana("私]は"), null);
+  assert.equal(parseFurigana("[私|]は"), null);
+  assert.equal(plainOf("[私|わたし"), "");
+});
+
+test("furigana: shown only while it describes the sentence — an edited one goes without", () => {
+  const f = "[私|わたし]は[見|み]た。";
+  assert.equal(rubyUnits("私は見た。", f)[0].reading, "わたし");
+  const edited = rubyUnits("私が見た。", f);
+  assert.equal(edited.map((u) => u.text).join(""), "私が見た。");
+  assert.ok(edited.every((u) => u.reading === ""));
+});
+
+test("pick: the sentence's reading comes with it, if it matches the sentence", () => {
+  const withReading = (ja: string, reading: string) => ({
+    ...s(ja, [en("I saw a flock of sheep.")]),
+    transcriptions: [{ script: "Hrkt", text: reading }],
+  });
+  assert.equal(
+    pickExample("群", [withReading("私は羊の群を見た。", "[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。")])?.furigana,
+    "[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。"
+  );
+  assert.equal(pickExample("群", [withReading("私は羊の群を見た。", "[私|わたし]は")])?.furigana, undefined);
 });

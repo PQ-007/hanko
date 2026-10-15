@@ -6,6 +6,8 @@
 /// the two clients can't grade a word differently.
 library;
 
+import '../core/furigana.dart' show furiganaFor;
+
 class Folder {
   const Folder({
     required this.id,
@@ -210,22 +212,28 @@ class WordDraft {
 /// Any part may be empty; a sentence with no translation is still worth
 /// showing.
 class WordExample {
-  const WordExample({this.ja = '', this.en = '', this.mn = ''});
+  const WordExample({this.ja = '', this.en = '', this.mn = '', this.furigana});
 
   final String ja;
   final String en;
   final String mn;
 
+  /// Reading markup for [ja] (0032), from Tatoeba; null for a sentence the
+  /// user wrote, and dropped once the sentence no longer matches it.
+  final String? furigana;
+
   bool get isEmpty => ja.isEmpty && en.isEmpty && mn.isEmpty;
 
   /// Null when the row has no sentence (or predates 0031).
   static WordExample? fromRow(Map<String, dynamic> j) {
-    final e = WordExample(
-      ja: (j['example_ja'] as String? ?? '').trim(),
+    final ja = (j['example_ja'] as String? ?? '').trim();
+    if (ja.isEmpty) return null;
+    return WordExample(
+      ja: ja,
       en: (j['example_en'] as String? ?? '').trim(),
       mn: (j['example_mn'] as String? ?? '').trim(),
+      furigana: furiganaFor(ja, j['example_furigana'] as String?),
     );
-    return e.ja.isEmpty ? null : e;
   }
 
   /// The row values, empty parts as null.
@@ -233,5 +241,6 @@ class WordExample {
         'example_ja': ja.isEmpty ? null : ja,
         'example_en': en.isEmpty ? null : en,
         'example_mn': mn.isEmpty ? null : mn,
+        'example_furigana': furiganaFor(ja, furigana),
       };
 }

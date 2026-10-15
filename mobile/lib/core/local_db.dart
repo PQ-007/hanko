@@ -58,6 +58,8 @@ class CachedCards extends Table {
   TextColumn get exampleJa => text().named('example_ja').nullable()();
   TextColumn get exampleEn => text().named('example_en').nullable()();
   TextColumn get exampleMn => text().named('example_mn').nullable()();
+  // Its reading, for furigana (schema v6, 0032).
+  TextColumn get exampleFurigana => text().named('example_furigana').nullable()();
   IntColumn get position => integer()();
 
   @override
@@ -140,6 +142,8 @@ class OfflineDeckCards extends Table {
   TextColumn get exampleJa => text().named('example_ja').nullable()();
   TextColumn get exampleEn => text().named('example_en').nullable()();
   TextColumn get exampleMn => text().named('example_mn').nullable()();
+  // Its reading, for furigana (schema v6, 0032).
+  TextColumn get exampleFurigana => text().named('example_furigana').nullable()();
   BoolColumn get inQueue => boolean().named('in_queue').withDefault(const Constant(false))();
 
   @override
@@ -153,7 +157,7 @@ class LocalDb extends _$LocalDb {
   LocalDb.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -183,6 +187,12 @@ class LocalDb extends _$LocalDb {
             await m.addColumn(offlineDeckCards, offlineDeckCards.exampleJa);
             await m.addColumn(offlineDeckCards, offlineDeckCards.exampleEn);
             await m.addColumn(offlineDeckCards, offlineDeckCards.exampleMn);
+          }
+          // v5 → v6: the sentence's reading. Same rule: OfflineDeckCards
+          // created above already has it.
+          if (from < 6) await m.addColumn(cachedCards, cachedCards.exampleFurigana);
+          if (from >= 4 && from < 6) {
+            await m.addColumn(offlineDeckCards, offlineDeckCards.exampleFurigana);
           }
         },
       );

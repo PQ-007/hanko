@@ -38,7 +38,7 @@ Future<FillResult> fillExamples(
         final mn = await translate(hit.en);
         bool saved;
         try {
-          saved = await save(w.id, WordExample(ja: hit.ja, en: hit.en, mn: mn));
+          saved = await save(w.id, WordExample(ja: hit.ja, en: hit.en, mn: mn, furigana: hit.furigana));
         } catch (_) {
           saved = false;
         }

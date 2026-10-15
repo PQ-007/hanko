@@ -7,7 +7,10 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:flutter/material.dart' show MaterialApp, Scaffold, Brightness;
 import 'package:mobile/core/dictionary.dart';
+import 'package:mobile/core/furigana.dart';
+import 'package:mobile/core/theme.dart';
 import 'package:mobile/core/local_db.dart';
 import 'package:mobile/features/audio/example_sentences.dart';
 import 'package:mobile/features/decks/example_section.dart';
@@ -66,7 +69,7 @@ void main() {
     });
 
     test('empty parts are written as null, so clearing really clears', () {
-      expect(const WordExample(ja: 'a').toRow(), {'example_ja': 'a', 'example_en': null, 'example_mn': null});
+      expect(const WordExample(ja: 'a').toRow(), {'example_ja': 'a', 'example_en': null, 'example_mn': null, 'example_furigana': null});
     });
 
     test('queue rows carry the example, and rows from before 0031 still parse', () {
@@ -123,7 +126,7 @@ void main() {
       "values ('c', 'w', 'd', 'recognition', 'new', 0, 0, 0, 0, 2.5, '食べる', 0)",
     );
     for (final t in ['cached_cards', 'offline_deck_cards']) {
-      for (final col in ['example_ja', 'example_en', 'example_mn']) {
+      for (final col in ['example_ja', 'example_en', 'example_mn', 'example_furigana']) {
         await db.customStatement('alter table $t drop column $col');
       }
     }
@@ -142,6 +145,134 @@ void main() {
       "values ('c', 'w', 'd', 'recognition', 'new', 0, 0, 0, 0, 2.5, '食べる', '文。', 'A.', 'Б.')",
     );
     expect((await db.cachedQueue()).single.exampleJa, '文。');
+  });
+
+  test('a v5 database on the phone upgrades to v6: the reading column is added to both tables', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final file = File('${tmp.path}/hanko.sqlite');
+    var db = LocalDb.forTesting(NativeDatabase(file));
+    await db.cachedQueue(); // opens (and creates) it
+    for (final t in ['cached_cards', 'offline_deck_cards']) {
+      await db.customStatement('alter table $t drop column example_furigana');
+    }
+    await db.customStatement('pragma user_version = 5');
+    await db.close();
+
+    db = LocalDb.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+    await db.customStatement(
+      "insert into cached_cards (card_id, word_id, deck_id, template, state, learning_step, due_at, interval_days, repetitions, ease_factor, term, position, example_furigana) "
+      "values ('c', 'w', 'd', 'recognition', 'new', 0, 0, 0, 0, 2.5, '食べる', 0, '[食|た]べる')",
+    );
+    await db.customStatement(
+      "insert into offline_deck_cards (card_id, word_id, deck_id, template, state, learning_step, due_at, interval_days, repetitions, ease_factor, term, example_furigana) "
+      "values ('c', 'w', 'd', 'recognition', 'new', 0, 0, 0, 0, 2.5, '食べる', '[食|た]べる')",
+    );
+    expect((await db.cachedQueue()).single.exampleFurigana, '[食|た]べる');
+  });
+
+  group('furigana', () {
+    // The same cases as the furigana tests in web/src/lib/examples.test.ts.
+    test('one reading per kanji when they split, else over the whole word', () {
+      expect(parseFurigana('[勉強|べん|きょう]は[難|むずか]しい。'), const [
+        RubyUnit('勉', 'べん'),
+        RubyUnit('強', 'きょう'),
+        RubyUnit('は'),
+        RubyUnit('難', 'むずか'),
+        RubyUnit('し'),
+        RubyUnit('い'),
+        RubyUnit('。'),
+      ]);
+      expect(parseFurigana('[今日|きょう]'), const [RubyUnit('今日', 'きょう')]);
+      expect(plainOf('[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。'), '私は羊の群を見た。');
+    });
+
+    test('malformed markup is no reading at all', () {
+      expect(parseFurigana('[私|わたし'), isNull);
+      expect(parseFurigana('私]は'), isNull);
+      expect(parseFurigana('[私|]は'), isNull);
+      expect(plainOf('[私|わたし'), '');
+    });
+
+    test('shown only while it describes the sentence — an edited one goes without', () {
+      const f = '[私|わたし]は[見|み]た。';
+      expect(rubyUnits('私は見た。', f).first.reading, 'わたし');
+      final edited = rubyUnits('私が見た。', f);
+      expect(edited.map((u) => u.text).join(), '私が見た。');
+      expect(edited.every((u) => u.reading.isEmpty), isTrue);
+    });
+
+    test("pick: the sentence's reading comes with it, if it matches the sentence", () {
+      Map<String, dynamic> withReading(String ja, String reading) => {
+            'text': ja,
+            'is_unapproved': false,
+            'translations': [
+              {'text': 'I saw a flock of sheep.', 'lang': 'eng', 'is_direct': true, 'is_unapproved': false},
+            ],
+            'transcriptions': [
+              {'script': 'Hrkt', 'text': reading},
+            ],
+          };
+      expect(pickExample('群', [withReading('私は羊の群を見た。', '[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。')])!.furigana,
+          '[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。');
+      expect(pickExample('群', [withReading('私は羊の群を見た。', '[私|わたし]は')])!.furigana, isNull);
+    });
+
+    test("a suggestion's reading is saved with it, and dropped once the sentence is edited", () async {
+      const f = '[私|わたし]は[群|むれ]を[見|み]た。';
+      final c = controllerFor(MockClient((req) async {
+        if (req.url.host == 'api.tatoeba.org') {
+          return http.Response.bytes(
+              utf8.encode(jsonEncode({
+                'data': [
+                  {
+                    'text': '私は群を見た。',
+                    'is_unapproved': false,
+                    'translations': [
+                      {'text': 'I saw a flock.', 'lang': 'eng', 'is_direct': true, 'is_unapproved': false},
+                    ],
+                    'transcriptions': [
+                      {'script': 'Hrkt', 'text': f},
+                    ],
+                  },
+                ],
+              })),
+              200);
+        }
+        return http.Response.bytes(utf8.encode(jsonEncode([
+          [
+            ['MN', 'x'],
+          ],
+        ])), 200);
+      }));
+      c.suggest('群');
+      while (c.looking || c.translating) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(c.take('群').now.furigana, f);
+      expect(c.value.toRow()['example_furigana'], f);
+      c.ja.text = '私が群を見た。';
+      c.edited();
+      expect(c.value.furigana, isNull);
+      expect(c.value.toRow()['example_furigana'], isNull);
+      expect(WordExample.fromRow({'example_ja': '私が群を見た。', 'example_furigana': f})!.furigana, isNull);
+    });
+
+    testWidgets('the review line draws the reading over its kanji, and the word still marked', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHankoTheme(Brightness.light),
+        home: const Scaffold(
+          body: ExampleLine(
+            term: '群',
+            example: WordExample(ja: '私は羊の群を見た。', en: 'I saw a flock.', mn: 'Би сүрэг харсан.', furigana: '[私|わたし]は[羊|ひつじ]の[群|むれ]を[見|み]た。'),
+          ),
+        ),
+      ));
+      expect(find.text('わたし'), findsOneWidget);
+      expect(find.text('むれ'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('highlight', () {

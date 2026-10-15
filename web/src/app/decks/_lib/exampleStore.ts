@@ -1,4 +1,4 @@
-import type { Example } from "../../../lib/examples.ts";
+import { plainOf, type Example } from "../../../lib/examples.ts";
 
 // The example sentence part of the add and edit dialogs (0031): a Tatoeba
 // suggestion for the word with its English translation, the Mongolian
@@ -16,6 +16,14 @@ export interface WordExample {
   ja: string;
   en: string;
   mn: string;
+  /** Reading markup for `ja` (0032), from Tatoeba; absent for a sentence the user wrote. */
+  furigana?: string;
+}
+
+/** `e.furigana` if it still describes `e.ja` — an edited sentence loses it. */
+export function furiganaFor(e: { ja: string; furigana?: string | null }): string | undefined {
+  const f = e.furigana?.trim();
+  return f && plainOf(f) === e.ja.trim() ? f : undefined;
 }
 
 export const NO_EXAMPLE: WordExample = { ja: "", en: "", mn: "" };
@@ -41,6 +49,7 @@ export function exampleRow(e: WordExample) {
     example_ja: e.ja.trim() || null,
     example_en: e.en.trim() || null,
     example_mn: e.mn.trim() || null,
+    example_furigana: furiganaFor(e) ?? null,
   };
 }
 
@@ -49,10 +58,13 @@ export function exampleOf(row: {
   example_ja?: string | null;
   example_en?: string | null;
   example_mn?: string | null;
+  example_furigana?: string | null;
 }): WordExample | null {
   const ja = (row.example_ja ?? "").trim();
   if (!ja) return null;
-  return { ja, en: (row.example_en ?? "").trim(), mn: (row.example_mn ?? "").trim() };
+  const e: WordExample = { ja, en: (row.example_en ?? "").trim(), mn: (row.example_mn ?? "").trim() };
+  const f = furiganaFor({ ja, furigana: row.example_furigana });
+  return f ? { ...e, furigana: f } : e;
 }
 
 export class ExampleStore {
@@ -62,6 +74,8 @@ export class ExampleStore {
   private query: string | null = null;
   private context: string | null = null;
   private lastEn: string;
+  /** The suggestion's reading; kept out of the editable fields. */
+  private furigana: string | undefined;
   /** The search for `query`, kept so a save can finish it after the form has moved on (take). */
   private found: Promise<Example | null> | null = null;
   private seq = 0;
@@ -73,6 +87,7 @@ export class ExampleStore {
     this.deps = deps;
     this.state = { ...(initial ?? NO_EXAMPLE), looking: false, none: false, translating: false };
     this.lastEn = initial?.en ?? "";
+    this.furigana = initial?.furigana;
   }
 
   // ---- for useSyncExternalStore ----
@@ -92,7 +107,9 @@ export class ExampleStore {
   }
 
   get value(): WordExample {
-    return { ja: this.state.ja.trim(), en: this.state.en.trim(), mn: this.state.mn.trim() };
+    const v = { ja: this.state.ja.trim(), en: this.state.en.trim(), mn: this.state.mn.trim() };
+    const f = furiganaFor({ ja: v.ja, furigana: this.furigana });
+    return f ? { ...v, furigana: f } : v;
   }
 
   /**
@@ -125,6 +142,7 @@ export class ExampleStore {
       return;
     }
     this.auto = true;
+    this.furigana = hit.furigana;
     this.patch({ looking: false, ja: hit.ja, en: hit.en, mn: "" });
     await this.translate(hit.en, mine);
   }
@@ -192,7 +210,7 @@ export class ExampleStore {
 
   private async finish(found: Promise<Example | null>): Promise<WordExample | null> {
     const hit = await found;
-    return hit ? this.translated({ ja: hit.ja, en: hit.en, mn: "" }) : null;
+    return hit ? this.translated({ ja: hit.ja, en: hit.en, mn: "", ...(hit.furigana ? { furigana: hit.furigana } : {}) }) : null;
   }
 
   private async translated(v: WordExample): Promise<WordExample> {

@@ -29,6 +29,7 @@ export interface QueueCard {
   example_ja?: string | null;
   example_en?: string | null;
   example_mn?: string | null;
+  example_furigana?: string | null;
 }
 
 export type WordView = "list" | "grid";

@@ -848,7 +848,15 @@ Two traps found doing this:
   — a suggestion never overwrites what the user typed, and one found for a
   term they've since typed past is dropped on save — are `ExampleStore`
   (`_lib/exampleStore.ts`) ↔ `ExampleController` (`example_section.dart`),
-  same cases. **Saving never waits for a sentence** (Tatoeba measured
+  same cases. **Furigana** (`0032_example_furigana.sql`):
+  `words.example_furigana` holds Tatoeba's own reading markup,
+  `[勉強|べん|きょう]は[難|むずか]しい` (`include=transcriptions` on the search;
+  still no tokenizer). It's trusted only while its plain text equals
+  `example_ja` (`furiganaFor` / `rubyUnits`), so editing the sentence drops
+  it and a user-written sentence shows without readings. Parsing is
+  `furigana.dart` ↔ `lib/examples.ts`, same cases. Web draws `<ruby>`;
+  Flutter has no ruby, so each unit is an inline `WidgetSpan` column
+  (`example_line.dart`). Mobile local DB v6 caches it. **Saving never waits for a sentence** (Tatoeba measured
   1.3–3.8 s, translate ~1.6 s): `take()` returns what's ready plus a `later`
   future that finishes on its own and is written with
   `update … where example_ja is null` (`attachExampleLater` /

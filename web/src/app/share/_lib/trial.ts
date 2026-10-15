@@ -18,6 +18,7 @@ export interface SharedWord {
   example_ja?: string | null;
   example_en?: string | null;
   example_mn?: string | null;
+  example_furigana?: string | null;
 }
 
 export interface SharedDeck {
@@ -55,6 +56,7 @@ export function trialCards(words: SharedWord[]): QueueCard[] {
     example_ja: w.example_ja ?? null,
     example_en: w.example_en ?? null,
     example_mn: w.example_mn ?? null,
+    example_furigana: w.example_furigana ?? null,
   }));
 }
 

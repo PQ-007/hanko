@@ -52,7 +52,7 @@ export async function fillExamples(
         const mn = await deps.translate(hit.en);
         let saved = false;
         try {
-          saved = await deps.save(w.id, { ja: hit.ja, en: hit.en, mn });
+          saved = await deps.save(w.id, { ja: hit.ja, en: hit.en, mn, ...(hit.furigana ? { furigana: hit.furigana } : {}) });
         } catch {
           saved = false;
         }

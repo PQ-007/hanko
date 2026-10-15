@@ -34,6 +34,7 @@ export interface Word {
   example_ja?: string | null;
   example_en?: string | null;
   example_mn?: string | null;
+  example_furigana?: string | null;
   date_added: string;
   updated_at: string;
   deleted: boolean;

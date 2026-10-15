@@ -233,6 +233,7 @@ class OfflineReview {
         exampleJa: Value(c.example?.ja),
         exampleEn: Value(c.example?.en),
         exampleMn: Value(c.example?.mn),
+        exampleFurigana: Value(c.example?.furigana),
         inQueue: Value(inQueue),
       );
 
@@ -256,6 +257,7 @@ class OfflineReview {
           'example_ja': c.exampleJa,
           'example_en': c.exampleEn,
           'example_mn': c.exampleMn,
+          'example_furigana': c.exampleFurigana,
         }),
       );
 
@@ -279,6 +281,7 @@ class OfflineReview {
         exampleJa: Value(c.example?.ja),
         exampleEn: Value(c.example?.en),
         exampleMn: Value(c.example?.mn),
+        exampleFurigana: Value(c.example?.furigana),
         position: position,
       );
 
@@ -302,6 +305,7 @@ class OfflineReview {
           'example_ja': c.exampleJa,
           'example_en': c.exampleEn,
           'example_mn': c.exampleMn,
+          'example_furigana': c.exampleFurigana,
         }),
       );
 }
