@@ -10,6 +10,8 @@ import { T } from "../_lib/strings";
 import { useModalChrome } from "../_lib/useModal";
 import { autofill, pickedMatch, type AutoKey, type Match, type WordFields } from "../_lib/addWord";
 import { insertAt } from "../_lib/handwriting";
+import { exampleRow } from "../_lib/exampleStore";
+import ExampleSection, { attachExampleLater, useExample } from "./ExampleSection";
 import HandwritingPad from "./HandwritingPad";
 
 // Per-device conveniences, not state anything else reads.
@@ -57,6 +59,8 @@ async function translateMn(text: string): Promise<string> {
  *   (担っています → 担う); the term is never rewritten mid-typing.
  * - A handwriting pad for kanji the user can read off a page but can't type.
  * - It stays open after each add: the point is a handful of words at once.
+ * - An example sentence for the word (Tatoeba, with its translations),
+ *   collapsed to one line under the details (ExampleSection).
  *
  * `deckId` fixes the deck (the deck view); without it there is a picker that
  * remembers the last deck. `onAdded` runs per word, for a caller whose list
@@ -111,6 +115,8 @@ export default function AddWordModal({
   // English the Mongolian was last translated from (blur re-translates only on change).
   const lastEn = useRef("");
 
+  const example = useExample();
+
   const fixedDeck = fixedDeckId ? decks.find((d) => d.id === fixedDeckId) : undefined;
   const close = useCallback(() => onClose(added.length), [onClose, added.length]);
   useModalChrome(close);
@@ -144,6 +150,7 @@ export default function AddWordModal({
   // A click on a match: it wins outright, over anything typed.
   function choose(m: Match) {
     pinnedFor.current = m.word;
+    example.suggest(m.word);
     setCaret(null);
     setForm((p) => {
       const keepMn = p.f.meaning === m.meaning;
@@ -160,6 +167,8 @@ export default function AddWordModal({
     (term: string, list: Match[]) => {
       setMatches({ term, list });
       const best = list[0];
+      // The sentence is for the dictionary form, and only for a real word.
+      if (pinnedFor.current !== term) example.suggest(best?.word ?? "", term);
       if (!best) return;
       if (pendingAccept.current === term) {
         pendingAccept.current = null;
@@ -173,7 +182,7 @@ export default function AddWordModal({
         return { f: r.fields, auto: r.auto };
       });
     },
-    [accept]
+    [accept, example]
   );
 
   // Look the term up as it changes. Not mid-IME-composition: that's kana or
@@ -188,6 +197,10 @@ export default function AddWordModal({
     }
     const ctl = new AbortController();
     const timer = setTimeout(async () => {
+      // Tatoeba alongside Jisho rather than after it: most terms are typed in
+      // dictionary form already, so this usually saves Jisho's 1–2 s. A
+      // different dictionary form re-asks in onMatches.
+      if (pinnedFor.current !== term) example.suggest(term, term);
       setLooking(true);
       try {
         const res = await fetch(`/api/lookup?term=${encodeURIComponent(term)}`, { signal: ctl.signal });
@@ -207,7 +220,7 @@ export default function AddWordModal({
       ctl.abort();
       setLooking(false);
     };
-  }, [term, composing, onMatches]);
+  }, [term, composing, onMatches, example]);
 
   // A machine-filled English meaning gets its Mongolian automatically, unless
   // the user has written their own. The answer is dropped if the English has
@@ -308,6 +321,7 @@ export default function AddWordModal({
     pendingAccept.current = null;
     setCaret(null);
     lastEn.current = "";
+    example.clear();
   }
 
   function clearTerm() {
@@ -357,15 +371,21 @@ export default function AddWordModal({
       // Added before its translation came back: wait for it rather than save
       // a word with no Mongolian meaning.
       const meaningMn = f.meaningMn.trim() || (meaning ? await translateMn(meaning) : "");
-      const { error: insErr } = await supabase.from("words").insert({
+      // Never waits for the sentence: one still on its way lands afterwards.
+      const ex = example.take(t);
+      const { data: row, error: insErr } = await supabase.from("words").insert({
         deck_id: deckId,
         user_id: user.id,
         term: t,
         reading: f.reading.trim() || null,
         meaning: meaning || null,
         meaning_mn: meaningMn.trim() || null,
-      });
+        // Only with a sentence, so adding still works on a database without
+        // 0031.
+        ...(ex.now.ja || ex.now.en || ex.now.mn ? exampleRow(ex.now) : {}),
+      }).select("id").single();
       if (insErr) throw insErr;
+      attachExampleLater(row.id, ex.later);
     } catch (e) {
       // Surfaced rather than swallowed: a failed insert that clears the fields
       // looks exactly like a successful one until the word never shows up.
@@ -635,6 +655,8 @@ export default function AddWordModal({
                   </Field>
                 </div>
               </div>
+
+              <ExampleSection store={example} term={f.term.trim()} onResearch={() => example.research(f.term)} />
 
               {error !== null && (
                 <p role="alert" className="rounded-control border border-line bg-paper-dim px-3 py-2 text-xs text-red-700 dark:text-red-300">

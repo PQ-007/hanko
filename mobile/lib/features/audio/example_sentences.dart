@@ -1,23 +1,32 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/furigana.dart';
 import 'tts_clips.dart' show fnv1a64;
+
+/// One instance for the add and edit forms, so their lookups share the
+/// on-disk cache with the audio decks'.
+final exampleSentencesProvider = Provider<ExampleSentences>((ref) => ExampleSentences());
 
 /// An example sentence for a word, with its English translation.
 class Example {
-  const Example(this.ja, this.en);
+  const Example(this.ja, this.en, {this.furigana});
   final String ja;
   final String en;
 
-  Map<String, dynamic> toJson() => {'ja': ja, 'en': en};
+  /// Tatoeba's reading of [ja] (0032), see furigana.dart.
+  final String? furigana;
+
+  Map<String, dynamic> toJson() => {'ja': ja, 'en': en, 'furigana': ?furigana};
 
   static Example? fromJson(Map<String, dynamic> j) {
-    final ja = j['ja'], en = j['en'];
+    final ja = j['ja'], en = j['en'], f = j['furigana'];
     return ja is String && en is String && ja.isNotEmpty && en.isNotEmpty
-        ? Example(ja, en)
+        ? Example(ja, en, furigana: f is String && f.isNotEmpty ? f : null)
         : null;
   }
 }
@@ -47,7 +56,9 @@ class ExampleSentences {
   Future<Example?> find(String term) async {
     final t = term.trim();
     if (t.isEmpty) return null;
-    final file = File('${(await _dir()).path}/examples/${fnv1a64(t)}.json');
+    // examples2: answers now carry the reading; the old folder's (without)
+    // are simply asked again.
+    final file = File('${(await _dir()).path}/examples2/${fnv1a64(t)}.json');
     try {
       if (await file.exists()) {
         final j = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
@@ -71,6 +82,7 @@ class ExampleSentences {
               'trans:lang': 'eng',
               'showtrans': 'matching',
               'limit': '50',
+              'include': 'transcriptions',
             }),
             headers: const {
               'User-Agent': 'Mozilla/5.0 (compatible; Hanko/1.0)',
@@ -153,16 +165,28 @@ Example? pickExample(String term, Object? data) {
 
     final en = _translation(s['translations']);
     if (en == null) continue;
+    final furigana = _reading(s['transcriptions'], ja);
 
     final len = ja.length;
     final shape = len < 8 ? 8 - len : (len > 24 ? len - 24 : 0);
     final score = (exact ? 0 : 10) + shape;
     if (score < bestScore) {
-      best = Example(ja, en);
+      best = Example(ja, en, furigana: furigana);
       bestScore = score;
     }
   }
   return best;
+}
+
+/// The Japanese reading among a sentence's transcriptions, if it describes [ja].
+String? _reading(Object? list, String ja) {
+  if (list is! List) return null;
+  for (final t in list) {
+    if (t is! Map || t['script'] != 'Hrkt') continue;
+    final text = (t['text'] as String? ?? '').trim();
+    if (text.isNotEmpty && plainOf(text) == ja) return text;
+  }
+  return null;
 }
 
 /// The first usable English translation, a direct one if there is one.

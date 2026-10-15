@@ -11,7 +11,9 @@ import '../../core/providers.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../models/library.dart';
+import '../audio/example_sentences.dart';
 import '../decks/add_word_rules.dart';
+import '../decks/example_section.dart';
 import '../decks/handwriting_pad.dart';
 import '../decks/word_actions.dart';
 
@@ -34,6 +36,8 @@ const _padKey = 'hanko.addWord.pad';
 ///   the dictionary form (担っています → 担う); never mid-typing.
 /// - A handwriting pad (ML Kit, on the phone) for kanji the user can read
 ///   but can't type.
+/// - An example sentence for the word (Tatoeba, with its translations),
+///   collapsed to one line under the details (example_section.dart).
 /// - It stays open after each add, with the Add button pinned to the bottom.
 Future<void> showQuickAddSheet(
   BuildContext context,
@@ -74,6 +78,10 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
   final _readingFocus = FocusNode();
   final _meaningFocus = FocusNode();
   final _mnFocus = FocusNode();
+  late final _example = ExampleController(
+    sentences: ref.read(exampleSentencesProvider),
+    dictionary: ref.read(dictionaryProvider),
+  );
 
   String? _deckId;
   var _auto = <AutoKey>{};
@@ -142,6 +150,7 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
     for (final f in [_termFocus, _readingFocus, _meaningFocus, _mnFocus]) {
       f.dispose();
     }
+    _example.dispose();
     super.dispose();
   }
 
@@ -237,6 +246,10 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
     }
     final mine = ++_lookupSeq;
     _lookupTimer = Timer(_lookupDelay, () async {
+      // Tatoeba alongside Jisho rather than after it: most terms are typed
+      // in dictionary form already, so this usually saves Jisho's 1–2 s. A
+      // different dictionary form re-asks in _onMatches.
+      if (_pinnedFor != term) _example.suggest(term, context: term);
       setState(() => _looking = true);
       final list = await ref.read(dictionaryProvider).tryLookupAll(term);
       if (!mounted || mine != _lookupSeq) return;
@@ -250,7 +263,10 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
   void _onMatches(String term, List<LookupResult> list) {
     setState(() => _matches = (term: term, list: list));
     final best = list.firstOrNull;
-    if (best == null || _termKey != term) return;
+    if (_termKey != term) return;
+    // The sentence is for the dictionary form, and only for a real word.
+    if (_pinnedFor != term) _example.suggest(best?.word ?? '', context: term);
+    if (best == null) return;
     if (_pendingAccept == term) {
       _pendingAccept = null;
       if (_pinnedFor != term) _accept(best, term);
@@ -273,6 +289,7 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
   /// A tap on a match: it wins outright, over anything typed.
   void _choose(LookupResult m) {
     _pinnedFor = m.word;
+    _example.suggest(m.word);
     final keepMn = _meaning.text == m.meaning;
     final auto = {AutoKey.reading, AutoKey.meaning};
     if (!keepMn || _auto.contains(AutoKey.meaningMn)) auto.add(AutoKey.meaningMn);
@@ -345,6 +362,7 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
     _mnFailedFor = null;
     _matches = null;
     _looking = false;
+    _example.clear();
     _apply(const WordFields(), {});
   }
 
@@ -378,6 +396,8 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
     final mn = _meaningMn.text.trim().isNotEmpty
         ? _meaningMn.text.trim()
         : (meaning.isEmpty ? '' : await ref.read(dictionaryProvider).translate(meaning));
+    // Never waits for the sentence: one still on its way lands afterwards.
+    final example = _example.take(term);
     if (!mounted) return;
     final reading = _reading.text.trim();
     final saved = await addWordChecked(
@@ -389,6 +409,8 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
         reading: reading.isEmpty ? null : reading,
         meaning: meaning.isEmpty ? null : meaning,
         meaningMn: mn.isEmpty ? null : mn,
+        example: example.now,
+        exampleLater: example.later,
       ),
     );
     if (!mounted) return;
@@ -473,6 +495,13 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
                 ],
                 const SizedBox(height: 16),
                 _details(hk),
+                const SizedBox(height: 12),
+                ExampleSection(
+                  controller: _example,
+                  term: _termKey,
+                  onResearch: () => _example.research(_termKey),
+                  onSubmitted: _add,
+                ),
               ],
             ),
           ),

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Download, FolderClosed, GraduationCap, LayoutGrid, LayoutList, MoreHorizontal, Plus, RefreshCw, Share2, Trash2 } from "@/ui/icons";
+import { Download, FolderClosed, GraduationCap, LayoutGrid, LayoutList, MoreHorizontal, Plus, RefreshCw, Share2, Sparkle, Trash2 } from "@/ui/icons";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { buildLibraryTree, flattenTree } from "../_lib/folderTree";
 import { T } from "../_lib/strings";
 import { askConfirm } from "@/ui/Dialog";
 import type { WordView } from "../_lib/types";
+import DeckFillExamples from "./DeckFillExamples";
 import DeckShareModal from "./DeckShareModal";
 
 export default function DeckHeader({
@@ -30,6 +31,7 @@ export default function DeckHeader({
   const [name, setName] = useState(deck.name);
   const [exporting, setExporting] = useState<"apkg" | "txt" | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [filling, setFilling] = useState(false);
   // Phones: the less-used actions live behind "⋯" so the toolbar is one row.
   const [menu, setMenu] = useState(false);
   useEffect(() => {
@@ -188,6 +190,7 @@ export default function DeckHeader({
                 { icon: Share2, label: T.shareDeck, run: () => setSharing(true) },
                 { icon: Download, label: exporting === "apkg" ? T.building : T.exportApkg, run: () => download("apkg") },
                 { icon: Download, label: ".txt", run: () => download("txt") },
+                { icon: Sparkle, label: T.fillExamples, run: () => setFilling(true) },
                 { icon: RefreshCw, label: T.refresh, run: refresh },
                 { icon: Trash2, label: T.delete, run: remove, danger: true },
               ].map(({ icon: Icon, label, run, danger }) => (
@@ -209,6 +212,15 @@ export default function DeckHeader({
         </div>
       </div>
       {sharing && <DeckShareModal deck={deck} onClose={() => setSharing(false)} />}
+      {filling && (
+        <DeckFillExamples
+          deckId={deck.id}
+          onClose={(changed) => {
+            setFilling(false);
+            if (changed) onChanged();
+          }}
+        />
+      )}
     </div>
   );
 }

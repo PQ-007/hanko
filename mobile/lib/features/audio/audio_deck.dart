@@ -211,7 +211,8 @@ List<SpokenPart> planParts(
     ],
     if (o.sentences && w < examples.length && examples[w] != null) ...[
       SpokenPart(w, examples[w]!.ja, 'ja', PartKind.sentence),
-      if (o.english) SpokenPart(w, examples[w]!.en, 'en', PartKind.sentenceEn),
+      if (o.english && examples[w]!.en.isNotEmpty)
+        SpokenPart(w, examples[w]!.en, 'en', PartKind.sentenceEn),
     ],
   ],
 ];
@@ -365,7 +366,11 @@ class AudioDeckStore {
       Future<void> finder() async {
         while (nextWord < ordered.length) {
           final i = nextWord++;
-          examples[i] = await _sentences.find(ordered[i].term);
+          // The word's own sentence (0031) wins; Tatoeba only fills gaps.
+          final saved = ordered[i].example;
+          examples[i] = saved != null
+              ? Example(saved.ja, saved.en)
+              : await _sentences.find(ordered[i].term);
           onSentenceProgress?.call(++found, ordered.length);
         }
       }
@@ -415,7 +420,7 @@ class AudioDeckStore {
             meaningMn: ordered[result.kept[k]].meaningMn,
             meaning: ordered[result.kept[k]].meaning,
             sentence: examples[result.kept[k]]?.ja,
-            sentenceEn: examples[result.kept[k]]?.en,
+            sentenceEn: (examples[result.kept[k]]?.en ?? '').isEmpty ? null : examples[result.kept[k]]!.en,
           ),
       ],
       skipped: ordered.length - result.kept.length,

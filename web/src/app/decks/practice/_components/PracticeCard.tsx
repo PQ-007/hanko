@@ -5,8 +5,10 @@ import { Volume2 } from "@/ui/icons";
 import { gradeFor } from "@/lib/srs";
 import type { QueueCard } from "../../_lib/types";
 import { supabase } from "../../_lib/db";
+import { exampleOf } from "../../_lib/exampleStore";
 import { GRADE_COLOR } from "../../_lib/gradeColors";
 import { T } from "../../_lib/strings";
+import ExampleLine from "./ExampleLine";
 
 // Review card. The prompt stays put and the answer opens beneath it, rather
 // than flipping the card over — you can compare what you recalled against
@@ -23,6 +25,7 @@ export default function PracticeCard({
 }) {
   const [busy, setBusy] = useState(false);
   const grade = gradeFor(card);
+  const example = exampleOf(card);
 
   async function play(e: React.MouseEvent) {
     e.stopPropagation();
@@ -110,6 +113,7 @@ export default function PracticeCard({
           {!card.meaning_mn && !card.meaning && (
             <p className="text-sm text-ink-mute">—</p>
           )}
+          {example && <ExampleLine key={card.card_id} example={example} term={card.term} />}
         </div>
       )}
     </div>

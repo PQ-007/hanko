@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, RotateCcw, Undo2 } from "@/ui/icons";
+import { exampleOf } from "../../decks/_lib/exampleStore";
 import { T } from "../../decks/_lib/strings";
+import ExampleLine from "../../decks/practice/_components/ExampleLine";
 import type { SharedWord } from "../_lib/trial";
 import { useTrialSession } from "../_lib/useTrialSession";
 
@@ -49,6 +51,7 @@ export default function TrialCards({
 
   const progress = words.length ? Math.min(1, (words.length - session.queue!.length) / words.length) : 1;
   const meaning = card ? [card.meaning_mn, card.meaning].filter(Boolean) : [];
+  const example = card ? exampleOf(card) : null;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-xl flex-col gap-4 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:py-6">
@@ -104,6 +107,9 @@ export default function TrialCards({
               </span>
             )}
           </button>
+          {/* Outside the card: it is a button, and the sentence opens its own
+              translation on a click. */}
+          {shown && example && <ExampleLine key={cardKey} example={example} term={card.term} />}
           {shown ? (
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => answer(false)} className="hk-btn bg-red-600 py-3 text-sm text-white hover:bg-red-700">

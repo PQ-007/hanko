@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/strings.dart';
 import '../../core/dictionary.dart';
 import '../../models/library.dart';
+import '../audio/example_sentences.dart';
+import 'example_section.dart';
 
 export '../../models/library.dart' show WordDraft;
 
@@ -20,6 +22,9 @@ export '../../models/library.dart' show WordDraft;
 ///   hasn't changed since the last translation (so a hand-typed Mongolian
 ///   meaning isn't overwritten just by tapping through);
 /// - "re-search" (edit only) overwrites term, reading and English from Jisho.
+/// - a saved word gets the example sentence section; one with no sentence
+///   yet is offered a suggestion as the form opens. Drafts don't: the
+///   camera's outbox doesn't carry sentences.
 ///
 /// [draft] edits an unsaved word (the camera capture's review list) the same
 /// way [existing] edits a saved one.
@@ -71,6 +76,17 @@ class WordFormState extends ConsumerState<WordForm> {
   final _termFocus = FocusNode();
   final _meaningFocus = FocusNode();
 
+  /// Only for a saved word (see the class comment).
+  late final ExampleController? _example = widget.existing == null
+      ? null
+      : ExampleController(
+          sentences: ref.read(exampleSentencesProvider),
+          dictionary: ref.read(dictionaryProvider),
+          initial: widget.existing!.example,
+        );
+  late final _hadExample = widget.existing?.example != null;
+  bool _saving = false;
+
   bool _looking = false;
   bool _translating = false;
 
@@ -89,6 +105,7 @@ class WordFormState extends ConsumerState<WordForm> {
     _meaningFocus.addListener(() {
       if (!_meaningFocus.hasFocus) _translateIfChanged();
     });
+    if (_example != null && !_hadExample) _example.suggest(_term.text);
   }
 
   @override
@@ -99,6 +116,7 @@ class WordFormState extends ConsumerState<WordForm> {
     _meaningMn.dispose();
     _termFocus.dispose();
     _meaningFocus.dispose();
+    _example?.dispose();
     super.dispose();
   }
 
@@ -115,6 +133,7 @@ class WordFormState extends ConsumerState<WordForm> {
       _term.text = r.word;
       _lastLooked = r.word;
     }
+    _example?.suggest(r.word.isNotEmpty ? r.word : t);
     if (r.reading.isNotEmpty && (overwrite || _reading.text.trim().isEmpty)) {
       _reading.text = r.reading;
     }
@@ -145,21 +164,44 @@ class WordFormState extends ConsumerState<WordForm> {
     return v.isEmpty ? null : v;
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final term = _term.text.trim();
-    if (term.isEmpty || widget.busy) return;
+    if (term.isEmpty || widget.busy || _saving) return;
+    WordExample? example;
+    Future<WordExample?>? later;
+    final ex = _example;
+    if (ex != null) {
+      final r = ex.take(term);
+      var now = r.now;
+      later = r.later;
+      // A word that already has a sentence: waiting is rarer than wiping it,
+      // since the later save only fills an empty one.
+      if (_hadExample && later != null) {
+        setState(() => _saving = true);
+        now = await later ?? now;
+        later = null;
+        if (!mounted) return;
+        setState(() => _saving = false);
+      }
+      // Untouched columns stay out of the update (see WordDraft.example).
+      if (_hadExample || !now.isEmpty) example = now;
+    }
     widget.onSubmit(WordDraft(
       term: term,
       reading: _clean(_reading),
       meaning: _clean(_meaning),
       meaningMn: _clean(_meaningMn),
+      example: example,
+      exampleLater: later,
     ));
   }
 
   @override
   Widget build(BuildContext context) {
     final editing = widget.existing != null || widget.draft != null;
-    return Padding(
+    // Scrolls: with the example open and the keyboard up it can outgrow
+    // the sheet.
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -230,9 +272,18 @@ class WordFormState extends ConsumerState<WordForm> {
             ),
             onSubmitted: (_) => _submit(),
           ),
+          if (_example != null) ...[
+            const SizedBox(height: 12),
+            ExampleSection(
+              controller: _example,
+              term: _term.text.trim(),
+              onResearch: () => _example.research(_term.text),
+              onSubmitted: _submit,
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: widget.busy ? null : _submit,
+            onPressed: widget.busy || _saving ? null : _submit,
             child: Text(widget.submitLabel ?? (editing ? T.save : T.add)),
           ),
         ],

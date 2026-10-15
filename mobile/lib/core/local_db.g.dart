@@ -577,6 +577,50 @@ class $CachedCardsTable extends CachedCards
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _exampleJaMeta = const VerificationMeta(
+    'exampleJa',
+  );
+  @override
+  late final GeneratedColumn<String> exampleJa = GeneratedColumn<String>(
+    'example_ja',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exampleEnMeta = const VerificationMeta(
+    'exampleEn',
+  );
+  @override
+  late final GeneratedColumn<String> exampleEn = GeneratedColumn<String>(
+    'example_en',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exampleMnMeta = const VerificationMeta(
+    'exampleMn',
+  );
+  @override
+  late final GeneratedColumn<String> exampleMn = GeneratedColumn<String>(
+    'example_mn',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exampleFuriganaMeta = const VerificationMeta(
+    'exampleFurigana',
+  );
+  @override
+  late final GeneratedColumn<String> exampleFurigana = GeneratedColumn<String>(
+    'example_furigana',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _positionMeta = const VerificationMeta(
     'position',
   );
@@ -605,6 +649,10 @@ class $CachedCardsTable extends CachedCards
     meaning,
     meaningMn,
     audioPath,
+    exampleJa,
+    exampleEn,
+    exampleMn,
+    exampleFurigana,
     position,
   ];
   @override
@@ -740,6 +788,33 @@ class $CachedCardsTable extends CachedCards
         audioPath.isAcceptableOrUnknown(data['audio_path']!, _audioPathMeta),
       );
     }
+    if (data.containsKey('example_ja')) {
+      context.handle(
+        _exampleJaMeta,
+        exampleJa.isAcceptableOrUnknown(data['example_ja']!, _exampleJaMeta),
+      );
+    }
+    if (data.containsKey('example_en')) {
+      context.handle(
+        _exampleEnMeta,
+        exampleEn.isAcceptableOrUnknown(data['example_en']!, _exampleEnMeta),
+      );
+    }
+    if (data.containsKey('example_mn')) {
+      context.handle(
+        _exampleMnMeta,
+        exampleMn.isAcceptableOrUnknown(data['example_mn']!, _exampleMnMeta),
+      );
+    }
+    if (data.containsKey('example_furigana')) {
+      context.handle(
+        _exampleFuriganaMeta,
+        exampleFurigana.isAcceptableOrUnknown(
+          data['example_furigana']!,
+          _exampleFuriganaMeta,
+        ),
+      );
+    }
     if (data.containsKey('position')) {
       context.handle(
         _positionMeta,
@@ -817,6 +892,22 @@ class $CachedCardsTable extends CachedCards
         DriftSqlType.string,
         data['${effectivePrefix}audio_path'],
       ),
+      exampleJa: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_ja'],
+      ),
+      exampleEn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_en'],
+      ),
+      exampleMn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_mn'],
+      ),
+      exampleFurigana: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_furigana'],
+      ),
       position: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}position'],
@@ -846,6 +937,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
   final String? meaning;
   final String? meaningMn;
   final String? audioPath;
+  final String? exampleJa;
+  final String? exampleEn;
+  final String? exampleMn;
+  final String? exampleFurigana;
   final int position;
   const CachedCard({
     required this.cardId,
@@ -863,6 +958,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     this.meaning,
     this.meaningMn,
     this.audioPath,
+    this.exampleJa,
+    this.exampleEn,
+    this.exampleMn,
+    this.exampleFurigana,
     required this.position,
   });
   @override
@@ -890,6 +989,18 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     }
     if (!nullToAbsent || audioPath != null) {
       map['audio_path'] = Variable<String>(audioPath);
+    }
+    if (!nullToAbsent || exampleJa != null) {
+      map['example_ja'] = Variable<String>(exampleJa);
+    }
+    if (!nullToAbsent || exampleEn != null) {
+      map['example_en'] = Variable<String>(exampleEn);
+    }
+    if (!nullToAbsent || exampleMn != null) {
+      map['example_mn'] = Variable<String>(exampleMn);
+    }
+    if (!nullToAbsent || exampleFurigana != null) {
+      map['example_furigana'] = Variable<String>(exampleFurigana);
     }
     map['position'] = Variable<int>(position);
     return map;
@@ -920,6 +1031,18 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       audioPath: audioPath == null && nullToAbsent
           ? const Value.absent()
           : Value(audioPath),
+      exampleJa: exampleJa == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleJa),
+      exampleEn: exampleEn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleEn),
+      exampleMn: exampleMn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleMn),
+      exampleFurigana: exampleFurigana == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleFurigana),
       position: Value(position),
     );
   }
@@ -945,6 +1068,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       meaning: serializer.fromJson<String?>(json['meaning']),
       meaningMn: serializer.fromJson<String?>(json['meaningMn']),
       audioPath: serializer.fromJson<String?>(json['audioPath']),
+      exampleJa: serializer.fromJson<String?>(json['exampleJa']),
+      exampleEn: serializer.fromJson<String?>(json['exampleEn']),
+      exampleMn: serializer.fromJson<String?>(json['exampleMn']),
+      exampleFurigana: serializer.fromJson<String?>(json['exampleFurigana']),
       position: serializer.fromJson<int>(json['position']),
     );
   }
@@ -967,6 +1094,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       'meaning': serializer.toJson<String?>(meaning),
       'meaningMn': serializer.toJson<String?>(meaningMn),
       'audioPath': serializer.toJson<String?>(audioPath),
+      'exampleJa': serializer.toJson<String?>(exampleJa),
+      'exampleEn': serializer.toJson<String?>(exampleEn),
+      'exampleMn': serializer.toJson<String?>(exampleMn),
+      'exampleFurigana': serializer.toJson<String?>(exampleFurigana),
       'position': serializer.toJson<int>(position),
     };
   }
@@ -987,6 +1118,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     Value<String?> meaning = const Value.absent(),
     Value<String?> meaningMn = const Value.absent(),
     Value<String?> audioPath = const Value.absent(),
+    Value<String?> exampleJa = const Value.absent(),
+    Value<String?> exampleEn = const Value.absent(),
+    Value<String?> exampleMn = const Value.absent(),
+    Value<String?> exampleFurigana = const Value.absent(),
     int? position,
   }) => CachedCard(
     cardId: cardId ?? this.cardId,
@@ -1004,6 +1139,12 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     meaning: meaning.present ? meaning.value : this.meaning,
     meaningMn: meaningMn.present ? meaningMn.value : this.meaningMn,
     audioPath: audioPath.present ? audioPath.value : this.audioPath,
+    exampleJa: exampleJa.present ? exampleJa.value : this.exampleJa,
+    exampleEn: exampleEn.present ? exampleEn.value : this.exampleEn,
+    exampleMn: exampleMn.present ? exampleMn.value : this.exampleMn,
+    exampleFurigana: exampleFurigana.present
+        ? exampleFurigana.value
+        : this.exampleFurigana,
     position: position ?? this.position,
   );
   CachedCard copyWithCompanion(CachedCardsCompanion data) {
@@ -1031,6 +1172,12 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
       meaning: data.meaning.present ? data.meaning.value : this.meaning,
       meaningMn: data.meaningMn.present ? data.meaningMn.value : this.meaningMn,
       audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      exampleJa: data.exampleJa.present ? data.exampleJa.value : this.exampleJa,
+      exampleEn: data.exampleEn.present ? data.exampleEn.value : this.exampleEn,
+      exampleMn: data.exampleMn.present ? data.exampleMn.value : this.exampleMn,
+      exampleFurigana: data.exampleFurigana.present
+          ? data.exampleFurigana.value
+          : this.exampleFurigana,
       position: data.position.present ? data.position.value : this.position,
     );
   }
@@ -1053,6 +1200,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
           ..write('meaning: $meaning, ')
           ..write('meaningMn: $meaningMn, ')
           ..write('audioPath: $audioPath, ')
+          ..write('exampleJa: $exampleJa, ')
+          ..write('exampleEn: $exampleEn, ')
+          ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('position: $position')
           ..write(')'))
         .toString();
@@ -1075,6 +1226,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
     meaning,
     meaningMn,
     audioPath,
+    exampleJa,
+    exampleEn,
+    exampleMn,
+    exampleFurigana,
     position,
   );
   @override
@@ -1096,6 +1251,10 @@ class CachedCard extends DataClass implements Insertable<CachedCard> {
           other.meaning == this.meaning &&
           other.meaningMn == this.meaningMn &&
           other.audioPath == this.audioPath &&
+          other.exampleJa == this.exampleJa &&
+          other.exampleEn == this.exampleEn &&
+          other.exampleMn == this.exampleMn &&
+          other.exampleFurigana == this.exampleFurigana &&
           other.position == this.position);
 }
 
@@ -1115,6 +1274,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
   final Value<String?> meaning;
   final Value<String?> meaningMn;
   final Value<String?> audioPath;
+  final Value<String?> exampleJa;
+  final Value<String?> exampleEn;
+  final Value<String?> exampleMn;
+  final Value<String?> exampleFurigana;
   final Value<int> position;
   final Value<int> rowid;
   const CachedCardsCompanion({
@@ -1133,6 +1296,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     this.meaning = const Value.absent(),
     this.meaningMn = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.exampleJa = const Value.absent(),
+    this.exampleEn = const Value.absent(),
+    this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     this.position = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1152,6 +1319,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     this.meaning = const Value.absent(),
     this.meaningMn = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.exampleJa = const Value.absent(),
+    this.exampleEn = const Value.absent(),
+    this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     required int position,
     this.rowid = const Value.absent(),
   }) : cardId = Value(cardId),
@@ -1182,6 +1353,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     Expression<String>? meaning,
     Expression<String>? meaningMn,
     Expression<String>? audioPath,
+    Expression<String>? exampleJa,
+    Expression<String>? exampleEn,
+    Expression<String>? exampleMn,
+    Expression<String>? exampleFurigana,
     Expression<int>? position,
     Expression<int>? rowid,
   }) {
@@ -1201,6 +1376,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
       if (meaning != null) 'meaning': meaning,
       if (meaningMn != null) 'meaning_mn': meaningMn,
       if (audioPath != null) 'audio_path': audioPath,
+      if (exampleJa != null) 'example_ja': exampleJa,
+      if (exampleEn != null) 'example_en': exampleEn,
+      if (exampleMn != null) 'example_mn': exampleMn,
+      if (exampleFurigana != null) 'example_furigana': exampleFurigana,
       if (position != null) 'position': position,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1222,6 +1401,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     Value<String?>? meaning,
     Value<String?>? meaningMn,
     Value<String?>? audioPath,
+    Value<String?>? exampleJa,
+    Value<String?>? exampleEn,
+    Value<String?>? exampleMn,
+    Value<String?>? exampleFurigana,
     Value<int>? position,
     Value<int>? rowid,
   }) {
@@ -1241,6 +1424,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
       meaning: meaning ?? this.meaning,
       meaningMn: meaningMn ?? this.meaningMn,
       audioPath: audioPath ?? this.audioPath,
+      exampleJa: exampleJa ?? this.exampleJa,
+      exampleEn: exampleEn ?? this.exampleEn,
+      exampleMn: exampleMn ?? this.exampleMn,
+      exampleFurigana: exampleFurigana ?? this.exampleFurigana,
       position: position ?? this.position,
       rowid: rowid ?? this.rowid,
     );
@@ -1294,6 +1481,18 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
     if (audioPath.present) {
       map['audio_path'] = Variable<String>(audioPath.value);
     }
+    if (exampleJa.present) {
+      map['example_ja'] = Variable<String>(exampleJa.value);
+    }
+    if (exampleEn.present) {
+      map['example_en'] = Variable<String>(exampleEn.value);
+    }
+    if (exampleMn.present) {
+      map['example_mn'] = Variable<String>(exampleMn.value);
+    }
+    if (exampleFurigana.present) {
+      map['example_furigana'] = Variable<String>(exampleFurigana.value);
+    }
     if (position.present) {
       map['position'] = Variable<int>(position.value);
     }
@@ -1321,6 +1520,10 @@ class CachedCardsCompanion extends UpdateCompanion<CachedCard> {
           ..write('meaning: $meaning, ')
           ..write('meaningMn: $meaningMn, ')
           ..write('audioPath: $audioPath, ')
+          ..write('exampleJa: $exampleJa, ')
+          ..write('exampleEn: $exampleEn, ')
+          ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('position: $position, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2616,6 +2819,50 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _exampleJaMeta = const VerificationMeta(
+    'exampleJa',
+  );
+  @override
+  late final GeneratedColumn<String> exampleJa = GeneratedColumn<String>(
+    'example_ja',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exampleEnMeta = const VerificationMeta(
+    'exampleEn',
+  );
+  @override
+  late final GeneratedColumn<String> exampleEn = GeneratedColumn<String>(
+    'example_en',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exampleMnMeta = const VerificationMeta(
+    'exampleMn',
+  );
+  @override
+  late final GeneratedColumn<String> exampleMn = GeneratedColumn<String>(
+    'example_mn',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exampleFuriganaMeta = const VerificationMeta(
+    'exampleFurigana',
+  );
+  @override
+  late final GeneratedColumn<String> exampleFurigana = GeneratedColumn<String>(
+    'example_furigana',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _inQueueMeta = const VerificationMeta(
     'inQueue',
   );
@@ -2648,6 +2895,10 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
     meaning,
     meaningMn,
     audioPath,
+    exampleJa,
+    exampleEn,
+    exampleMn,
+    exampleFurigana,
     inQueue,
   ];
   @override
@@ -2783,6 +3034,33 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
         audioPath.isAcceptableOrUnknown(data['audio_path']!, _audioPathMeta),
       );
     }
+    if (data.containsKey('example_ja')) {
+      context.handle(
+        _exampleJaMeta,
+        exampleJa.isAcceptableOrUnknown(data['example_ja']!, _exampleJaMeta),
+      );
+    }
+    if (data.containsKey('example_en')) {
+      context.handle(
+        _exampleEnMeta,
+        exampleEn.isAcceptableOrUnknown(data['example_en']!, _exampleEnMeta),
+      );
+    }
+    if (data.containsKey('example_mn')) {
+      context.handle(
+        _exampleMnMeta,
+        exampleMn.isAcceptableOrUnknown(data['example_mn']!, _exampleMnMeta),
+      );
+    }
+    if (data.containsKey('example_furigana')) {
+      context.handle(
+        _exampleFuriganaMeta,
+        exampleFurigana.isAcceptableOrUnknown(
+          data['example_furigana']!,
+          _exampleFuriganaMeta,
+        ),
+      );
+    }
     if (data.containsKey('in_queue')) {
       context.handle(
         _inQueueMeta,
@@ -2858,6 +3136,22 @@ class $OfflineDeckCardsTable extends OfflineDeckCards
         DriftSqlType.string,
         data['${effectivePrefix}audio_path'],
       ),
+      exampleJa: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_ja'],
+      ),
+      exampleEn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_en'],
+      ),
+      exampleMn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_mn'],
+      ),
+      exampleFurigana: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}example_furigana'],
+      ),
       inQueue: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}in_queue'],
@@ -2887,6 +3181,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
   final String? meaning;
   final String? meaningMn;
   final String? audioPath;
+  final String? exampleJa;
+  final String? exampleEn;
+  final String? exampleMn;
+  final String? exampleFurigana;
   final bool inQueue;
   const OfflineDeckCard({
     required this.cardId,
@@ -2904,6 +3202,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     this.meaning,
     this.meaningMn,
     this.audioPath,
+    this.exampleJa,
+    this.exampleEn,
+    this.exampleMn,
+    this.exampleFurigana,
     required this.inQueue,
   });
   @override
@@ -2931,6 +3233,18 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     }
     if (!nullToAbsent || audioPath != null) {
       map['audio_path'] = Variable<String>(audioPath);
+    }
+    if (!nullToAbsent || exampleJa != null) {
+      map['example_ja'] = Variable<String>(exampleJa);
+    }
+    if (!nullToAbsent || exampleEn != null) {
+      map['example_en'] = Variable<String>(exampleEn);
+    }
+    if (!nullToAbsent || exampleMn != null) {
+      map['example_mn'] = Variable<String>(exampleMn);
+    }
+    if (!nullToAbsent || exampleFurigana != null) {
+      map['example_furigana'] = Variable<String>(exampleFurigana);
     }
     map['in_queue'] = Variable<bool>(inQueue);
     return map;
@@ -2961,6 +3275,18 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       audioPath: audioPath == null && nullToAbsent
           ? const Value.absent()
           : Value(audioPath),
+      exampleJa: exampleJa == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleJa),
+      exampleEn: exampleEn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleEn),
+      exampleMn: exampleMn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleMn),
+      exampleFurigana: exampleFurigana == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exampleFurigana),
       inQueue: Value(inQueue),
     );
   }
@@ -2986,6 +3312,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       meaning: serializer.fromJson<String?>(json['meaning']),
       meaningMn: serializer.fromJson<String?>(json['meaningMn']),
       audioPath: serializer.fromJson<String?>(json['audioPath']),
+      exampleJa: serializer.fromJson<String?>(json['exampleJa']),
+      exampleEn: serializer.fromJson<String?>(json['exampleEn']),
+      exampleMn: serializer.fromJson<String?>(json['exampleMn']),
+      exampleFurigana: serializer.fromJson<String?>(json['exampleFurigana']),
       inQueue: serializer.fromJson<bool>(json['inQueue']),
     );
   }
@@ -3008,6 +3338,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       'meaning': serializer.toJson<String?>(meaning),
       'meaningMn': serializer.toJson<String?>(meaningMn),
       'audioPath': serializer.toJson<String?>(audioPath),
+      'exampleJa': serializer.toJson<String?>(exampleJa),
+      'exampleEn': serializer.toJson<String?>(exampleEn),
+      'exampleMn': serializer.toJson<String?>(exampleMn),
+      'exampleFurigana': serializer.toJson<String?>(exampleFurigana),
       'inQueue': serializer.toJson<bool>(inQueue),
     };
   }
@@ -3028,6 +3362,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     Value<String?> meaning = const Value.absent(),
     Value<String?> meaningMn = const Value.absent(),
     Value<String?> audioPath = const Value.absent(),
+    Value<String?> exampleJa = const Value.absent(),
+    Value<String?> exampleEn = const Value.absent(),
+    Value<String?> exampleMn = const Value.absent(),
+    Value<String?> exampleFurigana = const Value.absent(),
     bool? inQueue,
   }) => OfflineDeckCard(
     cardId: cardId ?? this.cardId,
@@ -3045,6 +3383,12 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     meaning: meaning.present ? meaning.value : this.meaning,
     meaningMn: meaningMn.present ? meaningMn.value : this.meaningMn,
     audioPath: audioPath.present ? audioPath.value : this.audioPath,
+    exampleJa: exampleJa.present ? exampleJa.value : this.exampleJa,
+    exampleEn: exampleEn.present ? exampleEn.value : this.exampleEn,
+    exampleMn: exampleMn.present ? exampleMn.value : this.exampleMn,
+    exampleFurigana: exampleFurigana.present
+        ? exampleFurigana.value
+        : this.exampleFurigana,
     inQueue: inQueue ?? this.inQueue,
   );
   OfflineDeckCard copyWithCompanion(OfflineDeckCardsCompanion data) {
@@ -3072,6 +3416,12 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
       meaning: data.meaning.present ? data.meaning.value : this.meaning,
       meaningMn: data.meaningMn.present ? data.meaningMn.value : this.meaningMn,
       audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      exampleJa: data.exampleJa.present ? data.exampleJa.value : this.exampleJa,
+      exampleEn: data.exampleEn.present ? data.exampleEn.value : this.exampleEn,
+      exampleMn: data.exampleMn.present ? data.exampleMn.value : this.exampleMn,
+      exampleFurigana: data.exampleFurigana.present
+          ? data.exampleFurigana.value
+          : this.exampleFurigana,
       inQueue: data.inQueue.present ? data.inQueue.value : this.inQueue,
     );
   }
@@ -3094,6 +3444,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
           ..write('meaning: $meaning, ')
           ..write('meaningMn: $meaningMn, ')
           ..write('audioPath: $audioPath, ')
+          ..write('exampleJa: $exampleJa, ')
+          ..write('exampleEn: $exampleEn, ')
+          ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('inQueue: $inQueue')
           ..write(')'))
         .toString();
@@ -3116,6 +3470,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
     meaning,
     meaningMn,
     audioPath,
+    exampleJa,
+    exampleEn,
+    exampleMn,
+    exampleFurigana,
     inQueue,
   );
   @override
@@ -3137,6 +3495,10 @@ class OfflineDeckCard extends DataClass implements Insertable<OfflineDeckCard> {
           other.meaning == this.meaning &&
           other.meaningMn == this.meaningMn &&
           other.audioPath == this.audioPath &&
+          other.exampleJa == this.exampleJa &&
+          other.exampleEn == this.exampleEn &&
+          other.exampleMn == this.exampleMn &&
+          other.exampleFurigana == this.exampleFurigana &&
           other.inQueue == this.inQueue);
 }
 
@@ -3156,6 +3518,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
   final Value<String?> meaning;
   final Value<String?> meaningMn;
   final Value<String?> audioPath;
+  final Value<String?> exampleJa;
+  final Value<String?> exampleEn;
+  final Value<String?> exampleMn;
+  final Value<String?> exampleFurigana;
   final Value<bool> inQueue;
   final Value<int> rowid;
   const OfflineDeckCardsCompanion({
@@ -3174,6 +3540,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     this.meaning = const Value.absent(),
     this.meaningMn = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.exampleJa = const Value.absent(),
+    this.exampleEn = const Value.absent(),
+    this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     this.inQueue = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3193,6 +3563,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     this.meaning = const Value.absent(),
     this.meaningMn = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.exampleJa = const Value.absent(),
+    this.exampleEn = const Value.absent(),
+    this.exampleMn = const Value.absent(),
+    this.exampleFurigana = const Value.absent(),
     this.inQueue = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : cardId = Value(cardId),
@@ -3222,6 +3596,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     Expression<String>? meaning,
     Expression<String>? meaningMn,
     Expression<String>? audioPath,
+    Expression<String>? exampleJa,
+    Expression<String>? exampleEn,
+    Expression<String>? exampleMn,
+    Expression<String>? exampleFurigana,
     Expression<bool>? inQueue,
     Expression<int>? rowid,
   }) {
@@ -3241,6 +3619,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
       if (meaning != null) 'meaning': meaning,
       if (meaningMn != null) 'meaning_mn': meaningMn,
       if (audioPath != null) 'audio_path': audioPath,
+      if (exampleJa != null) 'example_ja': exampleJa,
+      if (exampleEn != null) 'example_en': exampleEn,
+      if (exampleMn != null) 'example_mn': exampleMn,
+      if (exampleFurigana != null) 'example_furigana': exampleFurigana,
       if (inQueue != null) 'in_queue': inQueue,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3262,6 +3644,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     Value<String?>? meaning,
     Value<String?>? meaningMn,
     Value<String?>? audioPath,
+    Value<String?>? exampleJa,
+    Value<String?>? exampleEn,
+    Value<String?>? exampleMn,
+    Value<String?>? exampleFurigana,
     Value<bool>? inQueue,
     Value<int>? rowid,
   }) {
@@ -3281,6 +3667,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
       meaning: meaning ?? this.meaning,
       meaningMn: meaningMn ?? this.meaningMn,
       audioPath: audioPath ?? this.audioPath,
+      exampleJa: exampleJa ?? this.exampleJa,
+      exampleEn: exampleEn ?? this.exampleEn,
+      exampleMn: exampleMn ?? this.exampleMn,
+      exampleFurigana: exampleFurigana ?? this.exampleFurigana,
       inQueue: inQueue ?? this.inQueue,
       rowid: rowid ?? this.rowid,
     );
@@ -3334,6 +3724,18 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
     if (audioPath.present) {
       map['audio_path'] = Variable<String>(audioPath.value);
     }
+    if (exampleJa.present) {
+      map['example_ja'] = Variable<String>(exampleJa.value);
+    }
+    if (exampleEn.present) {
+      map['example_en'] = Variable<String>(exampleEn.value);
+    }
+    if (exampleMn.present) {
+      map['example_mn'] = Variable<String>(exampleMn.value);
+    }
+    if (exampleFurigana.present) {
+      map['example_furigana'] = Variable<String>(exampleFurigana.value);
+    }
     if (inQueue.present) {
       map['in_queue'] = Variable<bool>(inQueue.value);
     }
@@ -3361,6 +3763,10 @@ class OfflineDeckCardsCompanion extends UpdateCompanion<OfflineDeckCard> {
           ..write('meaning: $meaning, ')
           ..write('meaningMn: $meaningMn, ')
           ..write('audioPath: $audioPath, ')
+          ..write('exampleJa: $exampleJa, ')
+          ..write('exampleEn: $exampleEn, ')
+          ..write('exampleMn: $exampleMn, ')
+          ..write('exampleFurigana: $exampleFurigana, ')
           ..write('inQueue: $inQueue, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3635,6 +4041,10 @@ typedef $$CachedCardsTableCreateCompanionBuilder =
       Value<String?> meaning,
       Value<String?> meaningMn,
       Value<String?> audioPath,
+      Value<String?> exampleJa,
+      Value<String?> exampleEn,
+      Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       required int position,
       Value<int> rowid,
     });
@@ -3655,6 +4065,10 @@ typedef $$CachedCardsTableUpdateCompanionBuilder =
       Value<String?> meaning,
       Value<String?> meaningMn,
       Value<String?> audioPath,
+      Value<String?> exampleJa,
+      Value<String?> exampleEn,
+      Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       Value<int> position,
       Value<int> rowid,
     });
@@ -3740,6 +4154,26 @@ class $$CachedCardsTableFilterComposer
 
   ColumnFilters<String> get audioPath => $composableBuilder(
     column: $table.audioPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleJa => $composableBuilder(
+    column: $table.exampleJa,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleEn => $composableBuilder(
+    column: $table.exampleEn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleMn => $composableBuilder(
+    column: $table.exampleMn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3833,6 +4267,26 @@ class $$CachedCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get exampleJa => $composableBuilder(
+    column: $table.exampleJa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exampleEn => $composableBuilder(
+    column: $table.exampleEn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exampleMn => $composableBuilder(
+    column: $table.exampleMn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get position => $composableBuilder(
     column: $table.position,
     builder: (column) => ColumnOrderings(column),
@@ -3901,6 +4355,20 @@ class $$CachedCardsTableAnnotationComposer
   GeneratedColumn<String> get audioPath =>
       $composableBuilder(column: $table.audioPath, builder: (column) => column);
 
+  GeneratedColumn<String> get exampleJa =>
+      $composableBuilder(column: $table.exampleJa, builder: (column) => column);
+
+  GeneratedColumn<String> get exampleEn =>
+      $composableBuilder(column: $table.exampleEn, builder: (column) => column);
+
+  GeneratedColumn<String> get exampleMn =>
+      $composableBuilder(column: $table.exampleMn, builder: (column) => column);
+
+  GeneratedColumn<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
 }
@@ -3951,6 +4419,10 @@ class $$CachedCardsTableTableManager
                 Value<String?> meaning = const Value.absent(),
                 Value<String?> meaningMn = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String?> exampleJa = const Value.absent(),
+                Value<String?> exampleEn = const Value.absent(),
+                Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedCardsCompanion(
@@ -3969,6 +4441,10 @@ class $$CachedCardsTableTableManager
                 meaning: meaning,
                 meaningMn: meaningMn,
                 audioPath: audioPath,
+                exampleJa: exampleJa,
+                exampleEn: exampleEn,
+                exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 position: position,
                 rowid: rowid,
               ),
@@ -3989,6 +4465,10 @@ class $$CachedCardsTableTableManager
                 Value<String?> meaning = const Value.absent(),
                 Value<String?> meaningMn = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String?> exampleJa = const Value.absent(),
+                Value<String?> exampleEn = const Value.absent(),
+                Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 required int position,
                 Value<int> rowid = const Value.absent(),
               }) => CachedCardsCompanion.insert(
@@ -4007,6 +4487,10 @@ class $$CachedCardsTableTableManager
                 meaning: meaning,
                 meaningMn: meaningMn,
                 audioPath: audioPath,
+                exampleJa: exampleJa,
+                exampleEn: exampleEn,
+                exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 position: position,
                 rowid: rowid,
               ),
@@ -4664,6 +5148,10 @@ typedef $$OfflineDeckCardsTableCreateCompanionBuilder =
       Value<String?> meaning,
       Value<String?> meaningMn,
       Value<String?> audioPath,
+      Value<String?> exampleJa,
+      Value<String?> exampleEn,
+      Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       Value<bool> inQueue,
       Value<int> rowid,
     });
@@ -4684,6 +5172,10 @@ typedef $$OfflineDeckCardsTableUpdateCompanionBuilder =
       Value<String?> meaning,
       Value<String?> meaningMn,
       Value<String?> audioPath,
+      Value<String?> exampleJa,
+      Value<String?> exampleEn,
+      Value<String?> exampleMn,
+      Value<String?> exampleFurigana,
       Value<bool> inQueue,
       Value<int> rowid,
     });
@@ -4769,6 +5261,26 @@ class $$OfflineDeckCardsTableFilterComposer
 
   ColumnFilters<String> get audioPath => $composableBuilder(
     column: $table.audioPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleJa => $composableBuilder(
+    column: $table.exampleJa,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleEn => $composableBuilder(
+    column: $table.exampleEn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleMn => $composableBuilder(
+    column: $table.exampleMn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4862,6 +5374,26 @@ class $$OfflineDeckCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get exampleJa => $composableBuilder(
+    column: $table.exampleJa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exampleEn => $composableBuilder(
+    column: $table.exampleEn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exampleMn => $composableBuilder(
+    column: $table.exampleMn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get inQueue => $composableBuilder(
     column: $table.inQueue,
     builder: (column) => ColumnOrderings(column),
@@ -4930,6 +5462,20 @@ class $$OfflineDeckCardsTableAnnotationComposer
   GeneratedColumn<String> get audioPath =>
       $composableBuilder(column: $table.audioPath, builder: (column) => column);
 
+  GeneratedColumn<String> get exampleJa =>
+      $composableBuilder(column: $table.exampleJa, builder: (column) => column);
+
+  GeneratedColumn<String> get exampleEn =>
+      $composableBuilder(column: $table.exampleEn, builder: (column) => column);
+
+  GeneratedColumn<String> get exampleMn =>
+      $composableBuilder(column: $table.exampleMn, builder: (column) => column);
+
+  GeneratedColumn<String> get exampleFurigana => $composableBuilder(
+    column: $table.exampleFurigana,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get inQueue =>
       $composableBuilder(column: $table.inQueue, builder: (column) => column);
 }
@@ -4982,6 +5528,10 @@ class $$OfflineDeckCardsTableTableManager
                 Value<String?> meaning = const Value.absent(),
                 Value<String?> meaningMn = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String?> exampleJa = const Value.absent(),
+                Value<String?> exampleEn = const Value.absent(),
+                Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 Value<bool> inQueue = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OfflineDeckCardsCompanion(
@@ -5000,6 +5550,10 @@ class $$OfflineDeckCardsTableTableManager
                 meaning: meaning,
                 meaningMn: meaningMn,
                 audioPath: audioPath,
+                exampleJa: exampleJa,
+                exampleEn: exampleEn,
+                exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 inQueue: inQueue,
                 rowid: rowid,
               ),
@@ -5020,6 +5574,10 @@ class $$OfflineDeckCardsTableTableManager
                 Value<String?> meaning = const Value.absent(),
                 Value<String?> meaningMn = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String?> exampleJa = const Value.absent(),
+                Value<String?> exampleEn = const Value.absent(),
+                Value<String?> exampleMn = const Value.absent(),
+                Value<String?> exampleFurigana = const Value.absent(),
                 Value<bool> inQueue = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OfflineDeckCardsCompanion.insert(
@@ -5038,6 +5596,10 @@ class $$OfflineDeckCardsTableTableManager
                 meaning: meaning,
                 meaningMn: meaningMn,
                 audioPath: audioPath,
+                exampleJa: exampleJa,
+                exampleEn: exampleEn,
+                exampleMn: exampleMn,
+                exampleFurigana: exampleFurigana,
                 inQueue: inQueue,
                 rowid: rowid,
               ),

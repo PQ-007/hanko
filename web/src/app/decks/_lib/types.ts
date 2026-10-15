@@ -25,6 +25,11 @@ export interface QueueCard {
   meaning: string | null;
   meaning_mn: string | null;
   audio_path: string | null;
+  /** The word's example sentence (0031); absent from older RPC versions. */
+  example_ja?: string | null;
+  example_en?: string | null;
+  example_mn?: string | null;
+  example_furigana?: string | null;
 }
 
 export type WordView = "list" | "grid";

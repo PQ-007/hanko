@@ -54,6 +54,12 @@ class CachedCards extends Table {
   TextColumn get meaning => text().nullable()();
   TextColumn get meaningMn => text().named('meaning_mn').nullable()();
   TextColumn get audioPath => text().named('audio_path').nullable()();
+  // The word's example sentence (schema v5, 0031).
+  TextColumn get exampleJa => text().named('example_ja').nullable()();
+  TextColumn get exampleEn => text().named('example_en').nullable()();
+  TextColumn get exampleMn => text().named('example_mn').nullable()();
+  // Its reading, for furigana (schema v6, 0032).
+  TextColumn get exampleFurigana => text().named('example_furigana').nullable()();
   IntColumn get position => integer()();
 
   @override
@@ -132,6 +138,12 @@ class OfflineDeckCards extends Table {
   TextColumn get meaning => text().nullable()();
   TextColumn get meaningMn => text().named('meaning_mn').nullable()();
   TextColumn get audioPath => text().named('audio_path').nullable()();
+  // The word's example sentence (schema v5, 0031).
+  TextColumn get exampleJa => text().named('example_ja').nullable()();
+  TextColumn get exampleEn => text().named('example_en').nullable()();
+  TextColumn get exampleMn => text().named('example_mn').nullable()();
+  // Its reading, for furigana (schema v6, 0032).
+  TextColumn get exampleFurigana => text().named('example_furigana').nullable()();
   BoolColumn get inQueue => boolean().named('in_queue').withDefault(const Constant(false))();
 
   @override
@@ -145,7 +157,7 @@ class LocalDb extends _$LocalDb {
   LocalDb.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -162,6 +174,25 @@ class LocalDb extends _$LocalDb {
           if (from < 4) {
             await m.createTable(offlineDecks);
             await m.createTable(offlineDeckCards);
+          }
+          // v4 → v5: example sentences on cached and downloaded cards.
+          // CachedCards (v1) never had them; OfflineDeckCards only lacks them
+          // if it was created at v4 — created just above, it already has them.
+          if (from < 5) {
+            await m.addColumn(cachedCards, cachedCards.exampleJa);
+            await m.addColumn(cachedCards, cachedCards.exampleEn);
+            await m.addColumn(cachedCards, cachedCards.exampleMn);
+          }
+          if (from == 4) {
+            await m.addColumn(offlineDeckCards, offlineDeckCards.exampleJa);
+            await m.addColumn(offlineDeckCards, offlineDeckCards.exampleEn);
+            await m.addColumn(offlineDeckCards, offlineDeckCards.exampleMn);
+          }
+          // v5 → v6: the sentence's reading. Same rule: OfflineDeckCards
+          // created above already has it.
+          if (from < 6) await m.addColumn(cachedCards, cachedCards.exampleFurigana);
+          if (from >= 4 && from < 6) {
+            await m.addColumn(offlineDeckCards, offlineDeckCards.exampleFurigana);
           }
         },
       );

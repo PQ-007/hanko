@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Languages, Search, X } from "@/ui/icons";
 import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
+import { exampleOf, exampleRow } from "../_lib/exampleStore";
+import ExampleSection, { attachExampleLater, useExample } from "./ExampleSection";
 import { T } from "../_lib/strings";
 import { useModalChrome } from "../_lib/useModal";
 
@@ -28,6 +30,13 @@ export default function WordEditModal({
   // The English value we last translated from — so blurring without editing
   // doesn't re-translate (and clobber a manual Mongolian edit).
   const lastEn = useRef((word.meaning ?? "").trim());
+
+  // A word with no sentence yet is offered one as the dialog opens.
+  const [hadExample] = useState(() => exampleOf(word) !== null);
+  const example = useExample(exampleOf(word));
+  useEffect(() => {
+    if (!hadExample) example.suggest(word.term);
+  }, [example, hadExample, word.term]);
 
   useModalChrome(onClose);
 
@@ -68,6 +77,7 @@ export default function WordEditModal({
       if (res.ok) {
         const data = await res.json();
         if (data.word) setTerm(data.word);
+        example.suggest(data.word || t);
         if (data.reading) setReading(data.reading);
         if (data.meaning) {
           setMeaning(data.meaning);
@@ -84,6 +94,13 @@ export default function WordEditModal({
   async function save() {
     if (!term.trim()) return;
     setSaving(true);
+    let { now: ex, later } = example.take(term);
+    // A word that already has a sentence: waiting is rarer than wiping it,
+    // since the later save only fills an empty one.
+    if (hadExample && later) {
+      ex = (await later) ?? ex;
+      later = null;
+    }
     await supabase
       .from("words")
       .update({
@@ -91,8 +108,11 @@ export default function WordEditModal({
         reading: reading.trim() || null,
         meaning: meaning.trim() || null,
         meaning_mn: meaningMn.trim() || null,
+        // Untouched columns stay out, so edits work on a database without 0031.
+        ...(hadExample || ex.ja || ex.en || ex.mn ? exampleRow(ex) : {}),
       })
       .eq("id", word.id);
+    attachExampleLater(word.id, later);
     setSaving(false);
     onSaved();
   }
@@ -109,7 +129,7 @@ export default function WordEditModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-card bg-surface p-5 shadow-2xl"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-card bg-surface p-5 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-semibold text-ink">{T.editWord}</h3>
@@ -172,6 +192,7 @@ export default function WordEditModal({
             </div>
             <textarea value={meaningMn} onChange={(e) => setMeaningMn(e.target.value)} className={areaCls} />
           </div>
+          <ExampleSection store={example} term={term} onResearch={() => example.research(term)} />
         </div>
 
         <div className="mt-5 flex justify-end gap-2">

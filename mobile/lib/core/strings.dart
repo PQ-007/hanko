@@ -629,6 +629,28 @@ class T {
   static const offline = 'Офлайн';
   static const loadFailed = 'Уншиж чадсангүй';
   static const retry = 'Дахин оролдох';
+
+  // Example sentence on a word (0031) — same copy as strings.ts.
+  static const exampleTitle = 'Жишээ өгүүлбэр';
+  static const exampleJa = 'Өгүүлбэр (Япон)';
+  static const exampleEn = 'Орчуулга (Англи)';
+  static const exampleMn = 'Орчуулга (Монгол)';
+  static const exampleNone = 'Олдсонгүй — өөрөө бичиж болно';
+  static const exampleEmpty = 'Байхгүй';
+  static const exampleSuggest = 'Tatoeba-с хайх';
+  static const exampleClear = 'Арилгах';
+  static const exampleShowTranslation = 'Орчуулга харах';
+  static const exampleEdit = 'Өгүүлбэр засах';
+  static const exampleDone = 'Болсон';
+  static const fillExamples = 'Жишээ өгүүлбэр нэмэх';
+  static String fillExamplesBody(int n) =>
+      '$n үгэнд жишээ өгүүлбэр алга. Tatoeba-с хайж, орчуулгатай нь нэмэх үү? Таны бичсэн өгүүлбэрт хүрэхгүй.';
+  static const fillExamplesAllDone = 'Бүх үгэнд жишээ өгүүлбэр байна.';
+  static const fillExamplesStart = 'Эхлэх';
+  static String fillExamplesProgress(int done, int total) => 'Хайж байна… $done / $total';
+  static String fillExamplesResult(int added, int missing) =>
+      '$added үгэнд нэмэгдлээ${missing > 0 ? ' · $missing үгэнд олдсонгүй' : ''}';
+  static const fillExamplesFailed = 'Үгсийг уншиж чадсангүй.';
 }
 
 /// Weekday labels, Sunday first, matching web/src/app/decks/_lib/dates.ts.

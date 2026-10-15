@@ -9,6 +9,7 @@ import '../battle/fight_scene.dart';
 import 'review_screen.dart' show RatingButtonRow;
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import 'example_line.dart';
 
 const _uuid = Uuid();
 
@@ -212,6 +213,14 @@ class _LeechRescueScreenState extends ConsumerState<LeechRescueScreen> {
                               Text(card.meaning!,
                                   style: theme.textTheme.bodyMedium
                                       ?.copyWith(color: context.hk.inkMute)),
+                            if (card.example != null) ...[
+                              const SizedBox(height: 12),
+                              ExampleLine(
+                                key: ValueKey(card.cardId),
+                                example: card.example!,
+                                term: card.term,
+                              ),
+                            ],
                           ],
                         ],
                       ),

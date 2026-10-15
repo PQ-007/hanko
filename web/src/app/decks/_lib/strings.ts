@@ -594,4 +594,26 @@ export const T = {
   settingsTimezone: (tz: string) => `Цагийн бүс: ${tz} (хөтчөөс автоматаар)`,
   settingsLimitsInvalid: "Шинэ үг 0–999, давтлага 0–9999 хооронд байна.",
   settingsPrivacy: "Нууцлал",
+
+  // Example sentence on a word (0031) — same copy as mobile's strings.dart.
+  exampleTitle: "Жишээ өгүүлбэр",
+  exampleJa: "Өгүүлбэр (Япон)",
+  exampleEn: "Орчуулга (Англи)",
+  exampleMn: "Орчуулга (Монгол)",
+  exampleNone: "Олдсонгүй — өөрөө бичиж болно",
+  exampleEmpty: "Байхгүй",
+  exampleSuggest: "Tatoeba-с хайх",
+  exampleClear: "Арилгах",
+  exampleShowTranslation: "Орчуулга харах",
+  exampleEdit: "Өгүүлбэр засах",
+  exampleDone: "Болсон",
+  fillExamples: "Жишээ өгүүлбэр нэмэх",
+  fillExamplesBody: (n: number) =>
+    `${n} үгэнд жишээ өгүүлбэр алга. Tatoeba-с хайж, орчуулгатай нь нэмэх үү? Таны бичсэн өгүүлбэрт хүрэхгүй.`,
+  fillExamplesAllDone: "Бүх үгэнд жишээ өгүүлбэр байна.",
+  fillExamplesStart: "Эхлэх",
+  fillExamplesProgress: (done: number, total: number) => `Хайж байна… ${done} / ${total}`,
+  fillExamplesResult: (added: number, missing: number) =>
+    `${added} үгэнд нэмэгдлээ${missing > 0 ? ` · ${missing} үгэнд олдсонгүй` : ""}`,
+  fillExamplesFailed: "Үгсийг уншиж чадсангүй.",
 };
