@@ -9,6 +9,8 @@
 -- upsert leaves absent columns untouched (CLAUDE.md 0.7), so its sync can't
 -- wipe a sentence added on the web or the phone.
 --
+-- Shared deck links show and copy them too (end of file).
+--
 -- The queue RPCs gain the three columns at the end of their row so the review
 -- screens get them without a second fetch. Appended, never inserted: clients
 -- read rows by name, and older clients simply ignore the extra keys.
@@ -222,3 +224,92 @@ as $$
   order by c.lapses desc, c.due_at
   limit p_limit;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Shared deck links (0028) carry the sentences too: shown on the share page,
+-- and copied with the deck. 0028's bodies otherwise unchanged — still no
+-- owner, ids, SRS state or audio paths.
+-- ---------------------------------------------------------------------------
+drop function if exists public.shared_deck(text);
+create function public.shared_deck(p_token text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'name', d.name,
+    'words', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'term', w.term,
+               'reading', w.reading,
+               'meaning', w.meaning,
+               'meaning_mn', w.meaning_mn,
+               'example_ja', w.example_ja,
+               'example_en', w.example_en,
+               'example_mn', w.example_mn
+             ) order by w.date_added, w.term)
+      from (
+        select term, reading, meaning, meaning_mn, example_ja, example_en, example_mn, date_added
+        from public.words
+        where deck_id = d.id and not deleted
+        order by date_added, term
+        limit 500  -- plenty for a trial; bounds what an anonymous caller gets
+      ) w
+    ), '[]'::jsonb)
+  )
+  from public.decks d
+  where p_token is not null
+    and length(p_token) = 32
+    and d.share_token = p_token
+    and d.share_expires_at > now()
+    and not d.deleted;
+$$;
+
+drop function if exists public.copy_shared_deck(text);
+create function public.copy_shared_deck(p_token text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_me     uuid := auth.uid();
+  v_source public.decks%rowtype;
+  v_new    uuid;
+begin
+  if v_me is null then raise exception 'not signed in'; end if;
+
+  select * into v_source from public.decks
+  where p_token is not null and share_token = p_token
+    and share_expires_at > now() and not deleted;
+  if not found then raise exception 'link not found'; end if;
+
+  insert into public.decks (user_id, name)
+  values (v_me, v_source.name)
+  returning id into v_new;
+
+  insert into public.words (deck_id, user_id, term, reading, meaning, meaning_mn,
+                            example_ja, example_en, example_mn)
+  select v_new, v_me, w.term, w.reading, w.meaning, w.meaning_mn,
+         w.example_ja, w.example_en, w.example_mn
+  from (
+    select term, reading, meaning, meaning_mn, example_ja, example_en, example_mn, date_added
+    from public.words
+    where deck_id = v_source.id and not deleted
+    order by date_added, term
+    limit 500
+  ) w
+  order by w.date_added, w.term;
+
+  return v_new;
+end;
+$$;
+
+-- Dropping a function drops its grants: 0028's, restated.
+revoke execute on function public.shared_deck(text)      from public;
+revoke execute on function public.copy_shared_deck(text) from public;
+revoke execute on function public.copy_shared_deck(text) from anon;
+grant execute on function public.shared_deck(text)      to anon, authenticated;
+grant execute on function public.copy_shared_deck(text) to authenticated;

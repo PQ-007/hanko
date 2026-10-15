@@ -154,6 +154,8 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
                           await downloadDeckOffline(context, ref, deck);
                         case 'offlineRemove':
                           await removeDeckOffline(context, ref, deck);
+                        case 'examples':
+                          await fillDeckExamples(context, ref, deck);
                         case 'delete':
                           if (await deleteDeck(context, ref, deck) && context.mounted) {
                             context.pop();
@@ -171,6 +173,7 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
                         ),
                         if (downloaded)
                           const PopupMenuItem(value: 'offlineRemove', child: Text(T.offlineRemove)),
+                        const PopupMenuItem(value: 'examples', child: Text(T.fillExamples)),
                         const PopupMenuDivider(),
                         const PopupMenuItem(value: 'rename', child: Text(T.rename)),
                         const PopupMenuItem(value: 'move', child: Text(T.moveTo)),

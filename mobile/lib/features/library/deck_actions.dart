@@ -6,12 +6,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/audio.dart';
+import '../../core/dictionary.dart';
 import '../../core/offline_review.dart';
 import '../../core/providers.dart';
 import '../../core/repository.dart';
 import '../../core/confirm_dialog.dart';
 import '../../core/strings.dart';
 import '../../models/library.dart';
+import '../audio/example_sentences.dart';
+import '../decks/fill_examples.dart';
 import '../decks/word_actions.dart';
 import 'export_text.dart';
 import 'folder_picker.dart';
@@ -357,5 +360,117 @@ Future<void> removeDeckOffline(BuildContext context, WidgetRef ref, Deck deck) a
   ref.invalidate(offlineDecksProvider);
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(T.offlineRemoved)));
+  }
+}
+
+/// "Add example sentences" (the deck menu): one Tatoeba sentence for every
+/// word that has none, with a count first, progress, and a way to stop.
+/// Rules in fill_examples.dart; the web side is DeckFillExamples.tsx.
+Future<void> fillDeckExamples(BuildContext context, WidgetRef ref, Deck deck) async {
+  final added = await showDialog<int>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _FillExamplesDialog(deckId: deck.id),
+  );
+  if ((added ?? 0) > 0) ref.refreshLibrary(deckId: deck.id);
+}
+
+class _FillExamplesDialog extends ConsumerStatefulWidget {
+  const _FillExamplesDialog({required this.deckId});
+  final String deckId;
+
+  @override
+  ConsumerState<_FillExamplesDialog> createState() => _FillExamplesDialogState();
+}
+
+class _FillExamplesDialogState extends ConsumerState<_FillExamplesDialog> {
+  List<({String id, String term})>? _words;
+  var _failed = false;
+  var _running = false;
+  var _done = 0;
+  FillResult? _result;
+  var _added = 0;
+  var _cancelled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(repositoryProvider).wordsWithoutExample(widget.deckId).then(
+      (w) {
+        if (mounted) setState(() => _words = w);
+      },
+      onError: (_) {
+        if (mounted) setState(() => _failed = true);
+      },
+    );
+  }
+
+  Future<void> _start() async {
+    final words = _words!;
+    final repo = ref.read(repositoryProvider);
+    final sentences = ref.read(exampleSentencesProvider);
+    final dictionary = ref.read(dictionaryProvider);
+    setState(() => _running = true);
+    final r = await fillExamples(
+      words,
+      find: sentences.find,
+      translate: dictionary.translateSentence,
+      save: (id, e) async {
+        final ok = await repo.saveExampleIfEmpty(id, e);
+        if (ok) _added++;
+        return ok;
+      },
+      onProgress: (done, _) {
+        if (mounted) setState(() => _done = done);
+      },
+      cancelled: () => _cancelled,
+    );
+    if (mounted && !_cancelled) {
+      setState(() {
+        _running = false;
+        _result = r;
+      });
+    }
+  }
+
+  void _close() {
+    _cancelled = true;
+    Navigator.of(context).pop(_added);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final words = _words;
+    final r = _result;
+    final Widget body;
+    if (_failed) {
+      body = const Text(T.fillExamplesFailed);
+    } else if (words == null) {
+      body = const Text(T.lookingUp);
+    } else if (r != null) {
+      body = Text(T.fillExamplesResult(r.added, r.missing));
+    } else if (_running) {
+      body = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(T.fillExamplesProgress(_done, words.length)),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(value: words.isEmpty ? null : _done / words.length),
+        ],
+      );
+    } else {
+      body = Text(words.isEmpty ? T.fillExamplesAllDone : T.fillExamplesBody(words.length));
+    }
+    final finished = r != null || _failed || (words != null && words.isEmpty);
+    return AlertDialog(
+      title: const Text(T.fillExamples),
+      content: body,
+      actions: [
+        TextButton(onPressed: _close, child: Text(finished ? T.closeLabel : T.cancel)),
+        if (words != null && words.isNotEmpty && !_running && r == null)
+          FilledButton(onPressed: _start, child: const Text(T.fillExamplesStart)),
+      ],
+    );
   }
 }

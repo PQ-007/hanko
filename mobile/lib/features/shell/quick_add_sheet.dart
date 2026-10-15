@@ -246,6 +246,10 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
     }
     final mine = ++_lookupSeq;
     _lookupTimer = Timer(_lookupDelay, () async {
+      // Tatoeba alongside Jisho rather than after it: most terms are typed
+      // in dictionary form already, so this usually saves Jisho's 1–2 s. A
+      // different dictionary form re-asks in _onMatches.
+      if (_pinnedFor != term) _example.suggest(term, context: term);
       setState(() => _looking = true);
       final list = await ref.read(dictionaryProvider).tryLookupAll(term);
       if (!mounted || mine != _lookupSeq) return;
@@ -392,7 +396,8 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
     final mn = _meaningMn.text.trim().isNotEmpty
         ? _meaningMn.text.trim()
         : (meaning.isEmpty ? '' : await ref.read(dictionaryProvider).translate(meaning));
-    final example = await _example.settle(term);
+    // Never waits for the sentence: one still on its way lands afterwards.
+    final example = _example.take(term);
     if (!mounted) return;
     final reading = _reading.text.trim();
     final saved = await addWordChecked(
@@ -404,7 +409,8 @@ class _AddWordSheetState extends ConsumerState<_AddWordSheet> {
         reading: reading.isEmpty ? null : reading,
         meaning: meaning.isEmpty ? null : meaning,
         meaningMn: mn.isEmpty ? null : mn,
-        example: example,
+        example: example.now,
+        exampleLater: example.later,
       ),
     );
     if (!mounted) return;

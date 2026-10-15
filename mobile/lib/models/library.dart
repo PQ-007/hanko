@@ -187,12 +187,18 @@ class WordDraft {
     this.meaning,
     this.meaningMn,
     this.example,
+    this.exampleLater,
   });
 
   final String term;
   final String? reading;
   final String? meaning;
   final String? meaningMn;
+
+  /// A sentence still being looked up when the word was saved
+  /// (ExampleController.take): the repository writes it onto the word when
+  /// it lands, if the word has none by then. Never queued offline.
+  final Future<WordExample?>? exampleLater;
 
   /// Null leaves the word's sentence as it is; an empty one clears it. Kept
   /// apart from "empty" so a save never names the 0031 columns unless it has

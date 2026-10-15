@@ -119,13 +119,56 @@ export function highlightParts(sentence: string, term: string): { before: string
   return { before: sentence.slice(0, at), mark: sentence.slice(at, at + len), after: sentence.slice(at + len) };
 }
 
-const found = new Map<string, Example | null>();
+/** "Tatoeba has nothing for this word" is remembered too, but retried after this long — the corpus grows. */
+export const RETRY_NONE_AFTER_MS = 30 * 24 * 3600 * 1000;
 
-/** The sentence for `term`, or null when there's no good one or the request failed. */
-export async function findExample(term: string, fetcher: typeof fetch = fetch): Promise<Example | null> {
+const STORE_PREFIX = "hanko.example:";
+const found = new Map<string, Example | null>();
+const inFlight = new Map<string, Promise<Example | null>>();
+
+/** This browser's copy of an earlier answer (like mobile's on-disk cache): a repeated word is instant. */
+function remembered(t: string): Example | null | undefined {
+  try {
+    const raw = window.localStorage.getItem(STORE_PREFIX + t);
+    if (!raw) return undefined;
+    const j = JSON.parse(raw) as { ja?: string; en?: string; at?: number };
+    if (j.ja && j.en) return { ja: j.ja, en: j.en };
+    return typeof j.at === "number" && Date.now() - j.at < RETRY_NONE_AFTER_MS ? null : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function remember(t: string, e: Example | null) {
+  try {
+    window.localStorage.setItem(STORE_PREFIX + t, JSON.stringify({ ...e, at: Date.now() }));
+  } catch {
+    // No storage (private window, node tests): the in-memory copy still works.
+  }
+}
+
+/**
+ * The sentence for `term`, or null when there's no good one or the request
+ * failed. Answers are remembered in this tab and in this browser; a failure
+ * isn't, so it's retried. Two callers asking at once share one request.
+ */
+export function findExample(term: string, fetcher: typeof fetch = fetch): Promise<Example | null> {
   const t = term.trim();
-  if (!t) return null;
-  if (found.has(t)) return found.get(t)!;
+  if (!t) return Promise.resolve(null);
+  if (found.has(t)) return Promise.resolve(found.get(t)!);
+  const kept = typeof window === "undefined" ? undefined : remembered(t);
+  if (kept !== undefined) {
+    found.set(t, kept);
+    return Promise.resolve(kept);
+  }
+  const running = inFlight.get(t);
+  if (running) return running;
+  const p = ask(t, fetcher).finally(() => inFlight.delete(t));
+  inFlight.set(t, p);
+  return p;
+}
+
+async function ask(t: string, fetcher: typeof fetch): Promise<Example | null> {
   const url = new URL("https://api.tatoeba.org/unstable/sentences");
   for (const [k, v] of Object.entries({
     lang: "jpn",
@@ -143,6 +186,7 @@ export async function findExample(term: string, fetcher: typeof fetch = fetch): 
     const body = await res.json();
     const picked = pickExample(t, body?.data);
     found.set(t, picked);
+    if (typeof window !== "undefined") remember(t, picked);
     return picked;
   } catch {
     return null;

@@ -43,7 +43,10 @@ class ExampleController extends ChangeNotifier {
 
   bool translating = false;
   String _lastEn;
-  Future<void>? _pending;
+
+  /// The search for [_query], kept so a save can finish it after the form
+  /// has moved on ([take]).
+  Future<Example?>? _found;
   var _seq = 0;
   bool _disposed = false;
 
@@ -75,14 +78,15 @@ class ExampleController extends ChangeNotifier {
     looking = q.isNotEmpty;
     _notify();
     if (q.isEmpty) {
-      _pending = null;
+      _found = null;
       return;
     }
-    _pending = _fetch(q, mine);
+    final found = _found = _sentences.find(q);
+    _fetch(found, mine);
   }
 
-  Future<void> _fetch(String q, int mine) async {
-    final hit = await _sentences.find(q);
+  Future<void> _fetch(Future<Example?> found, int mine) async {
+    final hit = await found;
     if (_disposed || mine != _seq) return;
     looking = false;
     if (!isEmpty) {
@@ -147,29 +151,41 @@ class ExampleController extends ChangeNotifier {
     _auto = false;
     _query = null;
     _context = null;
+    _found = null;
     looking = false;
     none = false;
     _notify();
   }
 
-  /// What to save with [term]: waits a moment for a suggestion or a
-  /// translation still on its way. A suggestion found for some other term —
-  /// the user typed on before it settled — is dropped rather than saved
-  /// under the wrong word.
-  Future<WordExample> settle(String term) async {
-    final p = _pending;
-    if (p != null && looking) {
-      await p.timeout(const Duration(seconds: 6), onTimeout: () {});
+  /// What to save with [term], without waiting — Tatoeba alone takes 1–4 s,
+  /// and the word must not. [now] goes in with the word. [later], when a
+  /// sentence or its translation is still on its way, finishes on its own
+  /// (even after the form is cleared or closed) for the caller to attach once
+  /// it lands (`WordDraft.exampleLater`). A suggestion found for some other
+  /// term — the user typed on before it settled — is dropped rather than
+  /// saved under the wrong word.
+  ({WordExample now, Future<WordExample?>? later}) take(String term) {
+    const nothing = WordExample();
+    final t = term.trim();
+    final stale = t != _context && t != _query;
+    final found = _found;
+    if (looking && isEmpty) {
+      return (now: nothing, later: stale || found == null ? null : _finish(found));
     }
-    if (_auto && term.trim() != _context && term.trim() != _query) {
-      return const WordExample();
-    }
-    if (en.text.trim().isNotEmpty && mn.text.trim().isEmpty) {
-      final out = await _dictionary.translateSentence(en.text.trim());
-      if (out.isNotEmpty) mn.text = out;
-    }
-    return value;
+    if (_auto && stale) return (now: nothing, later: null);
+    final v = value;
+    // Mongolian not in yet: the sentence goes in whole, a moment later.
+    if (v.en.isNotEmpty && v.mn.isEmpty) return (now: nothing, later: _translated(v));
+    return (now: v, later: null);
   }
+
+  Future<WordExample?> _finish(Future<Example?> found) async {
+    final hit = await found;
+    return hit == null ? null : _translated(WordExample(ja: hit.ja, en: hit.en));
+  }
+
+  Future<WordExample> _translated(WordExample v) async =>
+      WordExample(ja: v.ja, en: v.en, mn: await _dictionary.translateSentence(v.en));
 
   @override
   void dispose() {
@@ -224,10 +240,12 @@ class _ExampleSectionState extends State<ExampleSection> {
         final c = widget.controller;
         final busy = c.looking || c.translating;
         final preview = c.ja.text.trim();
+        // No "searching…" while closed: the field is optional, so nobody
+        // needs to watch it fill — the sentence just appears.
         final status = preview.isNotEmpty
             ? preview
             : c.looking
-                ? T.lookingUp
+                ? ''
                 : c.none
                     ? T.exampleNone
                     : T.exampleEmpty;
@@ -254,17 +272,23 @@ class _ExampleSectionState extends State<ExampleSection> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          status,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: preview.isNotEmpty ? hk.ink : hk.inkMute,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          layoutBuilder: (cur, prev) =>
+                              Stack(alignment: Alignment.centerLeft, children: [...prev, ?cur]),
+                          child: Text(
+                            status,
+                            key: ValueKey(status),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: preview.isNotEmpty ? hk.ink : hk.inkMute,
+                            ),
                           ),
                         ),
                       ),
-                      if (busy)
+                      if (busy && _open)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: SizedBox.square(

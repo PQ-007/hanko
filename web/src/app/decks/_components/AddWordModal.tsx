@@ -11,7 +11,7 @@ import { useModalChrome } from "../_lib/useModal";
 import { autofill, pickedMatch, type AutoKey, type Match, type WordFields } from "../_lib/addWord";
 import { insertAt } from "../_lib/handwriting";
 import { exampleRow } from "../_lib/exampleStore";
-import ExampleSection, { useExample } from "./ExampleSection";
+import ExampleSection, { attachExampleLater, useExample } from "./ExampleSection";
 import HandwritingPad from "./HandwritingPad";
 
 // Per-device conveniences, not state anything else reads.
@@ -197,6 +197,10 @@ export default function AddWordModal({
     }
     const ctl = new AbortController();
     const timer = setTimeout(async () => {
+      // Tatoeba alongside Jisho rather than after it: most terms are typed in
+      // dictionary form already, so this usually saves Jisho's 1–2 s. A
+      // different dictionary form re-asks in onMatches.
+      if (pinnedFor.current !== term) example.suggest(term, term);
       setLooking(true);
       try {
         const res = await fetch(`/api/lookup?term=${encodeURIComponent(term)}`, { signal: ctl.signal });
@@ -216,7 +220,7 @@ export default function AddWordModal({
       ctl.abort();
       setLooking(false);
     };
-  }, [term, composing, onMatches]);
+  }, [term, composing, onMatches, example]);
 
   // A machine-filled English meaning gets its Mongolian automatically, unless
   // the user has written their own. The answer is dropped if the English has
@@ -367,8 +371,9 @@ export default function AddWordModal({
       // Added before its translation came back: wait for it rather than save
       // a word with no Mongolian meaning.
       const meaningMn = f.meaningMn.trim() || (meaning ? await translateMn(meaning) : "");
-      const ex = await example.settle(t);
-      const { error: insErr } = await supabase.from("words").insert({
+      // Never waits for the sentence: one still on its way lands afterwards.
+      const ex = example.take(t);
+      const { data: row, error: insErr } = await supabase.from("words").insert({
         deck_id: deckId,
         user_id: user.id,
         term: t,
@@ -377,9 +382,10 @@ export default function AddWordModal({
         meaning_mn: meaningMn.trim() || null,
         // Only with a sentence, so adding still works on a database without
         // 0031.
-        ...(ex.ja || ex.en || ex.mn ? exampleRow(ex) : {}),
-      });
+        ...(ex.now.ja || ex.now.en || ex.now.mn ? exampleRow(ex.now) : {}),
+      }).select("id").single();
       if (insErr) throw insErr;
+      attachExampleLater(row.id, ex.later);
     } catch (e) {
       // Surfaced rather than swallowed: a failed insert that clears the fields
       // looks exactly like a successful one until the word never shows up.

@@ -640,6 +640,15 @@ class T {
   static const exampleSuggest = 'Tatoeba-с хайх';
   static const exampleClear = 'Арилгах';
   static const exampleShowTranslation = 'Орчуулга харах';
+  static const fillExamples = 'Жишээ өгүүлбэр нэмэх';
+  static String fillExamplesBody(int n) =>
+      '$n үгэнд жишээ өгүүлбэр алга. Tatoeba-с хайж, орчуулгатай нь нэмэх үү? Таны бичсэн өгүүлбэрт хүрэхгүй.';
+  static const fillExamplesAllDone = 'Бүх үгэнд жишээ өгүүлбэр байна.';
+  static const fillExamplesStart = 'Эхлэх';
+  static String fillExamplesProgress(int done, int total) => 'Хайж байна… $done / $total';
+  static String fillExamplesResult(int added, int missing) =>
+      '$added үгэнд нэмэгдлээ${missing > 0 ? ' · $missing үгэнд олдсонгүй' : ''}';
+  static const fillExamplesFailed = 'Үгсийг уншиж чадсангүй.';
 }
 
 /// Weekday labels, Sunday first, matching web/src/app/decks/_lib/dates.ts.

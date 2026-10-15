@@ -3,16 +3,51 @@
 import { useState, useSyncExternalStore } from "react";
 import { ChevronDown, Loader2, Search } from "@/ui/icons";
 import { findExample } from "@/lib/examples";
-import { ExampleStore, type WordExample } from "../_lib/exampleStore";
+import { supabase } from "../_lib/db";
+import { ExampleStore, exampleRow, type WordExample } from "../_lib/exampleStore";
 import { T } from "../_lib/strings";
 
-async function translateSentence(text: string): Promise<string> {
-  try {
-    const res = await fetch(`/api/translate?sentence=1&text=${encodeURIComponent(text)}`);
-    return res.ok ? ((await res.json()).mongolian ?? "") : "";
-  } catch {
-    return "";
-  }
+const translated = new Map<string, Promise<string>>();
+
+/**
+ * English → Mongolian, kept whole. Shared per sentence: the form and a save
+ * finishing the same sentence ask once. A failure ("") is forgotten so it's
+ * retried.
+ */
+export function translateSentence(text: string): Promise<string> {
+  const t = text.trim();
+  if (!t) return Promise.resolve("");
+  const hit = translated.get(t);
+  if (hit) return hit;
+  const p = (async () => {
+    try {
+      const res = await fetch(`/api/translate?sentence=1&text=${encodeURIComponent(t)}`);
+      return res.ok ? (((await res.json()).mongolian as string) ?? "") : "";
+    } catch {
+      return "";
+    }
+  })();
+  translated.set(t, p);
+  p.then((out) => {
+    if (!out) translated.delete(t);
+  });
+  return p;
+}
+
+/**
+ * A sentence that was still on its way when the word was saved
+ * (ExampleStore.take) lands on it once it arrives — and only if the word
+ * still has none. Best effort: a failure leaves the word without one, which
+ * the edit dialog or the deck's fill can make up later.
+ */
+export function attachExampleLater(wordId: string, later: Promise<WordExample | null> | null) {
+  if (!later) return;
+  later
+    .then(async (e) => {
+      if (!e || !(e.ja || e.en || e.mn)) return;
+      await supabase.from("words").update(exampleRow(e)).eq("id", wordId).is("example_ja", null);
+    })
+    .catch(() => {});
 }
 
 /** One store per dialog, kept for its lifetime. */
@@ -40,7 +75,9 @@ export default function ExampleSection({
   const s = useSyncExternalStore(store.subscribe, store.get, store.get);
   const [open, setOpen] = useState(false);
   const preview = s.ja.trim();
-  const status = preview || (s.looking ? T.lookingUp : s.none ? T.exampleNone : T.exampleEmpty);
+  // No "searching…" while closed: the field is optional, so nobody needs to
+  // watch it fill — the sentence just appears.
+  const status = preview || (s.looking ? "" : s.none ? T.exampleNone : T.exampleEmpty);
   const empty = !s.ja.trim() && !s.en.trim() && !s.mn.trim();
 
   const inputCls =
@@ -56,12 +93,13 @@ export default function ExampleSection({
       >
         <span className="shrink-0 text-xs font-medium text-ink-soft">{T.exampleTitle}</span>
         <span
+          key={status}
           lang={preview ? "ja" : undefined}
-          className={`min-w-0 flex-1 truncate text-sm ${preview ? "text-ink" : "text-ink-mute"}`}
+          className={`min-w-0 flex-1 animate-[fadeUp_240ms_ease-out] truncate text-sm ${preview ? "text-ink" : "text-ink-mute"}`}
         >
           {status}
         </span>
-        {(s.looking || s.translating) && <Loader2 size={13} className="shrink-0 animate-spin text-ink-mute" />}
+        {open && (s.looking || s.translating) && <Loader2 size={13} className="shrink-0 animate-spin text-ink-mute" />}
         <ChevronDown size={16} className={`shrink-0 text-ink-mute transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (

@@ -157,28 +157,58 @@ void main() {
   });
 
   group('controller', () {
-    test('a suggestion fills the sentence and translates it whole', () async {
+    /// What a save of [term] ends up writing: what goes in now, or what
+    /// lands afterwards.
+    Future<WordExample> saved(ExampleController c, String term) async {
+      final r = c.take(term);
+      return r.later == null ? r.now : (await r.later) ?? r.now;
+    }
+
+    /// Lets the controller finish what it is fetching.
+    Future<void> idle(ExampleController c) async {
+      while (c.looking || c.translating) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    test('a ready suggestion goes in with the word, translated whole', () async {
       final c = controllerFor(fakeWeb(_eat));
       c.suggest('食べる', context: '食べました');
-      final e = await c.settle('食べました');
-      expect(e.ja, 'りんごを食べる。');
-      expect(e.en, 'I eat an apple, every morning.');
+      await idle(c);
+      final r = c.take('食べました');
+      expect(r.later, isNull);
+      expect(r.now.ja, 'りんごを食べる。');
+      expect(r.now.en, 'I eat an apple, every morning.');
       // Not cut at the comma the way a word's gloss is.
-      expect(e.mn, 'MN:I eat an apple, every morning.');
+      expect(r.now.mn, 'MN:I eat an apple, every morning.');
     });
 
-    test('nothing on Tatoeba: empty, and says so', () async {
+    test('a save never waits: a sentence still on its way lands afterwards, even once the form is cleared', () async {
+      final c = controllerFor(fakeWeb(_eat));
+      c.suggest('食べる');
+      final r = c.take('食べる');
+      expect(r.now.isEmpty, isTrue);
+      expect(r.later, isNotNull);
+      c.clear(); // the add sheet resets right after saving
+      final e = (await r.later)!;
+      expect((e.ja, e.mn), ('りんごを食べる。', 'MN:I eat an apple, every morning.'));
+    });
+
+    test('nothing on Tatoeba: nothing saved, now or later, and it says so', () async {
       final c = controllerFor(fakeWeb({}));
       c.suggest('食べる');
-      expect((await c.settle('食べる')).isEmpty, isTrue);
+      expect(await c.take('食べる').later, isNull);
+      await idle(c);
       expect(c.none, isTrue);
+      expect(c.take('食べる').now.isEmpty, isTrue);
     });
 
     test('a suggestion for a term the user has typed past is not saved under the new one', () async {
       final c = controllerFor(fakeWeb(_eat));
       c.suggest('食べる');
-      await c.settle('食べる');
-      expect((await c.settle('飲む')).isEmpty, isTrue);
+      expect(c.take('飲む').later, isNull, reason: 'still searching');
+      await idle(c);
+      expect((await saved(c, '飲む')).isEmpty, isTrue, reason: 'found');
     });
 
     test('what the user typed wins: no later suggestion replaces it', () async {
@@ -188,14 +218,13 @@ void main() {
       c.edited();
       c.suggest('食べる');
       expect(queries, isEmpty);
-      final e = await c.settle('全然違う');
-      expect(e.ja, '自分の文。');
+      expect((await saved(c, '全然違う')).ja, '自分の文。');
     });
 
     test('a new term replaces an untouched suggestion', () async {
       final c = controllerFor(fakeWeb(_eat));
       c.suggest('食べる');
-      await c.settle('食べる');
+      await idle(c);
       c.suggest('');
       expect(c.isEmpty, isTrue);
     });
@@ -203,17 +232,19 @@ void main() {
     test('a saved sentence is kept as the form opens; research replaces it', () async {
       final c = controllerFor(fakeWeb(_eat), initial: const WordExample(ja: '古い文。', en: 'Old.', mn: 'Хуучин.'));
       c.suggest('食べる');
-      expect((await c.settle('食べる')).ja, '古い文。');
+      expect((await saved(c, '食べる')).ja, '古い文。');
       c.research('食べる');
-      expect((await c.settle('食べる')).ja, 'りんごを食べる。');
+      expect((await saved(c, '食べる')).ja, 'りんごを食べる。');
     });
 
-    test('English typed by hand gets its Mongolian on save', () async {
+    test('English typed by hand: the sentence goes in whole, once its Mongolian is back', () async {
       final c = controllerFor(fakeWeb({}));
       c.ja.text = '文。';
       c.en.text = 'A sentence.';
       c.edited();
-      expect((await c.settle('x')).mn, 'MN:A sentence.');
+      final r = c.take('x');
+      expect(r.now.isEmpty, isTrue);
+      expect((await r.later)!.mn, 'MN:A sentence.');
     });
   });
 }

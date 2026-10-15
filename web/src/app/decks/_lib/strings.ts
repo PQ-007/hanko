@@ -605,4 +605,13 @@ export const T = {
   exampleSuggest: "Tatoeba-с хайх",
   exampleClear: "Арилгах",
   exampleShowTranslation: "Орчуулга харах",
+  fillExamples: "Жишээ өгүүлбэр нэмэх",
+  fillExamplesBody: (n: number) =>
+    `${n} үгэнд жишээ өгүүлбэр алга. Tatoeba-с хайж, орчуулгатай нь нэмэх үү? Таны бичсэн өгүүлбэрт хүрэхгүй.`,
+  fillExamplesAllDone: "Бүх үгэнд жишээ өгүүлбэр байна.",
+  fillExamplesStart: "Эхлэх",
+  fillExamplesProgress: (done: number, total: number) => `Хайж байна… ${done} / ${total}`,
+  fillExamplesResult: (added: number, missing: number) =>
+    `${added} үгэнд нэмэгдлээ${missing > 0 ? ` · ${missing} үгэнд олдсонгүй` : ""}`,
+  fillExamplesFailed: "Үгсийг уншиж чадсангүй.",
 };

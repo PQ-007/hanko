@@ -848,7 +848,13 @@ Two traps found doing this:
   — a suggestion never overwrites what the user typed, and one found for a
   term they've since typed past is dropped on save — are `ExampleStore`
   (`_lib/exampleStore.ts`) ↔ `ExampleController` (`example_section.dart`),
-  same cases. **Sentences use the whole-sentence translate**
+  same cases. **Saving never waits for a sentence** (Tatoeba measured
+  1.3–3.8 s, translate ~1.6 s): `take()` returns what's ready plus a `later`
+  future that finishes on its own and is written with
+  `update … where example_ja is null` (`attachExampleLater` /
+  `WordDraft.exampleLater`). Tatoeba is asked in parallel with Jisho using
+  the typed term; the collapsed row shows no "searching…", the sentence just
+  fades in. Web remembers answers in localStorage, mobile on disk. **Sentences use the whole-sentence translate**
   (`translateSentence` / `/api/translate?sentence=1`): the word translate
   compacts to a 40-char gloss and would cut a sentence at its first comma.
   Shown collapsed to one line in the forms, and as one line under the
@@ -857,7 +863,13 @@ Two traps found doing this:
   `leech_cards` return the columns (appended), and mobile caches them
   offline (Drift v5). Saves name the 0031 columns only when there's a
   sentence, so both clients still add and edit words on a database without
-  the migration. Not copied by `copy_shared_deck` or shown on share pages.
+  the migration. Share links carry them (`shared_deck` /
+  `copy_shared_deck`, redefined in 0031; shown in the trial review under the
+  answer, not on the fixed-height flip cards). **Whole-deck fill**: the deck
+  ⋯ menu's «Жишээ өгүүлбэр нэмэх» runs `fillExamples` (`_lib/fillExamples.ts`
+  ↔ `fill_examples.dart`, same cases, 3 words in flight) over words with no
+  sentence; each save is `update … where example_ja is null`, so a sentence
+  written meanwhile is never overwritten.
 - **No system confirm/prompt boxes.** Web: `askConfirm()` / `askText()`
   from `web/src/ui/Dialog.tsx` (host mounted in `app/layout.tsx`); mobile:
   `askConfirm()` in `core/confirm_dialog.dart`. Both are themed and show a

@@ -31,6 +31,10 @@ class Dictionary {
   final http.Client _http;
   final _translations = <String, String>{};
 
+  /// Requests still on their way: a form and a save asking for the same
+  /// sentence at once share one request.
+  final _inFlight = <String, Future<String>>{};
+
   /// Jisho blocks bare default client user-agents (it 403s Node's "node"), so
   /// identify the app explicitly rather than rely on Dart's default.
   static const _headers = {'User-Agent': 'Hanko/1.0 (mobile; +vocab app)'};
@@ -73,6 +77,18 @@ class Dictionary {
     final key = sentence ? '\u0000$t' : t;
     final cached = _translations[key];
     if (cached != null) return cached;
+    final running = _inFlight[key];
+    if (running != null) return running;
+    final f = _translate(t, key, sentence);
+    _inFlight[key] = f;
+    try {
+      return await f;
+    } finally {
+      _inFlight.remove(key);
+    }
+  }
+
+  Future<String> _translate(String t, String key, bool sentence) async {
     try {
       final res = await _http
           .get(

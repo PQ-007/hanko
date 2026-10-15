@@ -62,7 +62,8 @@ export class ExampleStore {
   private query: string | null = null;
   private context: string | null = null;
   private lastEn: string;
-  private pending: Promise<void> | null = null;
+  /** The search for `query`, kept so a save can finish it after the form has moved on (take). */
+  private found: Promise<Example | null> | null = null;
   private seq = 0;
 
   private deps: ExampleDeps;
@@ -108,11 +109,12 @@ export class ExampleStore {
     const clear = this.auto ? NO_EXAMPLE : {};
     this.auto = false;
     this.patch({ ...clear, none: false, looking: q !== "" });
-    this.pending = q ? this.fetch(q, mine) : null;
+    this.found = q ? this.deps.find(q) : null;
+    if (this.found) void this.fetch(this.found, mine);
   }
 
-  private async fetch(q: string, mine: number) {
-    const hit = await this.deps.find(q);
+  private async fetch(found: Promise<Example | null>, mine: number) {
+    const hit = await found;
     if (mine !== this.seq) return;
     if (!this.isEmpty) {
       this.patch({ looking: false }); // typed in while we waited: theirs wins
@@ -161,28 +163,39 @@ export class ExampleStore {
     this.auto = false;
     this.query = null;
     this.context = null;
-    this.pending = null;
+    this.found = null;
     this.patch({ ...NO_EXAMPLE, looking: false, none: false });
   }
 
   /**
-   * What to save with `term`: waits a moment for a suggestion or a
-   * translation still on its way. A suggestion found for some other term —
+   * What to save with `term`, without waiting — Tatoeba alone takes 1–4 s,
+   * and the word must not. `now` goes in with the word. `later`, when a
+   * sentence or its translation is still on its way, finishes on its own
+   * (even after the form is cleared or closed) for the caller to attach once
+   * it lands (attachExampleLater). A suggestion found for some other term —
    * the user typed on before it settled — is dropped rather than saved under
    * the wrong word.
    */
-  async settle(term: string): Promise<WordExample> {
+  take(term: string): { now: WordExample; later: Promise<WordExample | null> | null } {
     const t = term.trim();
-    if (this.pending && this.state.looking) {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      await Promise.race([this.pending, new Promise((r) => (timer = setTimeout(r, 6000)))]);
-      clearTimeout(timer);
+    const stale = t !== this.context && t !== this.query;
+    const found = this.found;
+    if (this.state.looking && this.isEmpty) {
+      return { now: NO_EXAMPLE, later: stale || !found ? null : this.finish(found) };
     }
-    if (this.auto && t !== this.context && t !== this.query) return NO_EXAMPLE;
-    if (this.state.en.trim() && !this.state.mn.trim()) {
-      const out = await this.deps.translate(this.state.en.trim());
-      if (out) this.patch({ mn: out });
-    }
-    return this.value;
+    if (this.auto && stale) return { now: NO_EXAMPLE, later: null };
+    const v = this.value;
+    // Mongolian not in yet: the sentence goes in whole, a moment later.
+    if (v.en && !v.mn) return { now: NO_EXAMPLE, later: this.translated(v) };
+    return { now: v, later: null };
+  }
+
+  private async finish(found: Promise<Example | null>): Promise<WordExample | null> {
+    const hit = await found;
+    return hit ? this.translated({ ja: hit.ja, en: hit.en, mn: "" }) : null;
+  }
+
+  private async translated(v: WordExample): Promise<WordExample> {
+    return { ...v, mn: await this.deps.translate(v.en) };
   }
 }

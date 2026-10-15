@@ -27,28 +27,52 @@ test("rows: empty parts are written as null, so clearing really clears", () => {
   assert.deepEqual(exampleRow({ ja: "a", en: "", mn: " " }), { example_ja: "a", example_en: null, example_mn: null });
 });
 
-test("a suggestion fills the sentence and translates it whole", async () => {
+/** What a save of `term` ends up writing: what goes in now, or what lands afterwards. */
+async function saved(s: ExampleStore, term: string) {
+  const r = s.take(term);
+  return r.later ? ((await r.later) ?? r.now) : r.now;
+}
+
+/** Lets the store finish what it is fetching. */
+async function idle(s: ExampleStore) {
+  while (s.get().looking || s.get().translating) await new Promise((r) => setTimeout(r, 0));
+}
+
+test("a ready suggestion goes in with the word, translated whole", async () => {
   const s = new ExampleStore(deps(EAT));
   s.suggest("食べる", "食べました");
-  const e = await s.settle("食べました");
-  assert.equal(e.ja, "りんごを食べる。");
-  assert.equal(e.en, "I eat an apple, every morning.");
-  assert.equal(e.mn, "MN:I eat an apple, every morning.");
+  await idle(s);
+  const r = s.take("食べました");
+  assert.equal(r.later, null);
+  assert.deepEqual(r.now, { ja: "りんごを食べる。", en: "I eat an apple, every morning.", mn: "MN:I eat an apple, every morning." });
 });
 
-test("nothing on Tatoeba: empty, and says so", async () => {
+test("a save never waits: a sentence still on its way lands afterwards, even once the form is cleared", async () => {
+  const s = new ExampleStore(deps(EAT));
+  s.suggest("食べる");
+  const r = s.take("食べる");
+  assert.deepEqual(r.now, { ja: "", en: "", mn: "" });
+  assert.ok(r.later);
+  s.clear(); // the add dialog resets right after saving
+  const e = await r.later;
+  assert.deepEqual([e?.ja, e?.mn], ["りんごを食べる。", "MN:I eat an apple, every morning."]);
+});
+
+test("nothing on Tatoeba: nothing saved, now or later, and it says so", async () => {
   const s = new ExampleStore(deps(null));
   s.suggest("食べる");
-  assert.equal(s.isEmpty, true);
-  await s.settle("食べる");
+  assert.equal(await s.take("食べる").later, null);
+  await idle(s);
   assert.equal(s.get().none, true);
+  assert.equal(s.take("食べる").now.ja, "");
 });
 
 test("a suggestion for a term the user has typed past is not saved under the new one", async () => {
   const s = new ExampleStore(deps(EAT));
   s.suggest("食べる");
-  await s.settle("食べる");
-  assert.deepEqual(await s.settle("飲む"), { ja: "", en: "", mn: "" });
+  assert.equal(s.take("飲む").later, null, "still searching");
+  await idle(s);
+  assert.deepEqual(await saved(s, "飲む"), { ja: "", en: "", mn: "" }, "found");
 });
 
 test("what the user typed wins: no later suggestion replaces it", async () => {
@@ -57,13 +81,13 @@ test("what the user typed wins: no later suggestion replaces it", async () => {
   s.edit("ja", "自分の文。");
   s.suggest("食べる");
   assert.deepEqual(queries, []);
-  assert.equal((await s.settle("全然違う")).ja, "自分の文。");
+  assert.equal((await saved(s, "全然違う")).ja, "自分の文。");
 });
 
 test("a new term replaces an untouched suggestion", async () => {
   const s = new ExampleStore(deps(EAT));
   s.suggest("食べる");
-  await s.settle("食べる");
+  await idle(s);
   s.suggest("");
   assert.equal(s.isEmpty, true);
 });
@@ -71,14 +95,16 @@ test("a new term replaces an untouched suggestion", async () => {
 test("a saved sentence is kept as the dialog opens; research replaces it", async () => {
   const s = new ExampleStore(deps(EAT), { ja: "古い文。", en: "Old.", mn: "Хуучин." });
   s.suggest("食べる");
-  assert.equal((await s.settle("食べる")).ja, "古い文。");
+  assert.equal((await saved(s, "食べる")).ja, "古い文。");
   s.research("食べる");
-  assert.equal((await s.settle("食べる")).ja, "りんごを食べる。");
+  assert.equal((await saved(s, "食べる")).ja, "りんごを食べる。");
 });
 
-test("English typed by hand gets its Mongolian on save", async () => {
+test("English typed by hand: the sentence goes in whole, once its Mongolian is back", async () => {
   const s = new ExampleStore(deps(null));
   s.edit("ja", "文。");
   s.edit("en", "A sentence.");
-  assert.equal((await s.settle("x")).mn, "MN:A sentence.");
+  const r = s.take("x");
+  assert.equal(r.now.ja, "");
+  assert.equal((await r.later)?.mn, "MN:A sentence.");
 });

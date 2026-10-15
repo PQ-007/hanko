@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -235,6 +236,9 @@ class Repository {
     await _db
         .from('words')
         .upsert(rows, onConflict: 'id', ignoreDuplicates: true);
+    for (var i = 0; i < drafts.length; i++) {
+      _attachLater(rowIds[i], drafts[i].exampleLater);
+    }
     return rowIds;
   }
 
@@ -299,6 +303,45 @@ class Repository {
           ...?draft.example?.toRow(),
         })
         .eq('id', wordId);
+    _attachLater(wordId, draft.exampleLater);
+  }
+
+  /// Live words in a deck with no example sentence yet (0031), oldest first.
+  Future<List<({String id, String term})>> wordsWithoutExample(String deckId) async {
+    final rows = await _db
+        .from('words')
+        .select('id, term')
+        .eq('deck_id', deckId)
+        .eq('deleted', false)
+        .isFilter('example_ja', null)
+        .order('date_added');
+    return [for (final r in rows) (id: r['id'] as String, term: r['term'] as String? ?? '')];
+  }
+
+  /// Writes [e] only if the word still has no sentence — one added meanwhile,
+  /// here or on another device, wins. True when it wrote.
+  Future<bool> saveExampleIfEmpty(String wordId, WordExample e) async {
+    final rows = await _db
+        .from('words')
+        .update(e.toRow())
+        .eq('id', wordId)
+        .isFilter('example_ja', null)
+        .select('id');
+    return rows.isNotEmpty;
+  }
+
+  /// A sentence that was still on its way when the word was saved lands on
+  /// it once it arrives — and only if the word still has none. Best effort:
+  /// a failure leaves the word without one, which the edit form or the
+  /// deck's fill can make up later.
+  void _attachLater(String wordId, Future<WordExample?>? later) {
+    if (later == null) return;
+    unawaited(() async {
+      try {
+        final e = await later;
+        if (e != null && !e.isEmpty) await saveExampleIfEmpty(wordId, e);
+      } catch (_) {}
+    }());
   }
 
   /// Tombstone rather than a hard delete: the extension syncs by last-write-wins

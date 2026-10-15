@@ -5,7 +5,7 @@ import { Languages, Search, X } from "@/ui/icons";
 import type { Word } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { exampleOf, exampleRow } from "../_lib/exampleStore";
-import ExampleSection, { useExample } from "./ExampleSection";
+import ExampleSection, { attachExampleLater, useExample } from "./ExampleSection";
 import { T } from "../_lib/strings";
 import { useModalChrome } from "../_lib/useModal";
 
@@ -94,7 +94,13 @@ export default function WordEditModal({
   async function save() {
     if (!term.trim()) return;
     setSaving(true);
-    const ex = await example.settle(term);
+    let { now: ex, later } = example.take(term);
+    // A word that already has a sentence: waiting is rarer than wiping it,
+    // since the later save only fills an empty one.
+    if (hadExample && later) {
+      ex = (await later) ?? ex;
+      later = null;
+    }
     await supabase
       .from("words")
       .update({
@@ -106,6 +112,7 @@ export default function WordEditModal({
         ...(hadExample || ex.ja || ex.en || ex.mn ? exampleRow(ex) : {}),
       })
       .eq("id", word.id);
+    attachExampleLater(word.id, later);
     setSaving(false);
     onSaved();
   }

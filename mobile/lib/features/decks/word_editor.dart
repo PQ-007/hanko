@@ -168,14 +168,23 @@ class WordFormState extends ConsumerState<WordForm> {
     final term = _term.text.trim();
     if (term.isEmpty || widget.busy || _saving) return;
     WordExample? example;
+    Future<WordExample?>? later;
     final ex = _example;
     if (ex != null) {
-      setState(() => _saving = true);
-      final v = await ex.settle(term);
-      if (!mounted) return;
-      setState(() => _saving = false);
+      final r = ex.take(term);
+      var now = r.now;
+      later = r.later;
+      // A word that already has a sentence: waiting is rarer than wiping it,
+      // since the later save only fills an empty one.
+      if (_hadExample && later != null) {
+        setState(() => _saving = true);
+        now = await later ?? now;
+        later = null;
+        if (!mounted) return;
+        setState(() => _saving = false);
+      }
       // Untouched columns stay out of the update (see WordDraft.example).
-      if (_hadExample || !v.isEmpty) example = v;
+      if (_hadExample || !now.isEmpty) example = now;
     }
     widget.onSubmit(WordDraft(
       term: term,
@@ -183,6 +192,7 @@ class WordFormState extends ConsumerState<WordForm> {
       meaning: _clean(_meaning),
       meaningMn: _clean(_meaningMn),
       example: example,
+      exampleLater: later,
     ));
   }
 

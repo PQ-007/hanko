@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_SENTENCE_CHARS, highlightParts, pickExample, usesAsWord, wordStem } from "./examples.ts";
+import { MAX_SENTENCE_CHARS, findExample, highlightParts, pickExample, usesAsWord, wordStem } from "./examples.ts";
 
 // The same cases as mobile/test/example_sentences_test.dart: change one side,
 // change both.
@@ -75,4 +75,27 @@ test("highlight: the word itself, else its stem, else nothing", () => {
   assert.equal(highlightParts("こんにちは。", "食べる").mark, "");
   const p = highlightParts("りんごを食べた。", "食べる");
   assert.equal(p.before + p.mark + p.after, "りんごを食べた。");
+});
+
+test("find: two callers at once share one request; a failure isn't remembered", async () => {
+  let calls = 0;
+  const ok = (async () => {
+    calls++;
+    await new Promise((r) => setTimeout(r, 5));
+    return new Response(JSON.stringify({ data: [s("私は羊の群を見た。", [en("I saw a flock of sheep.")])] }));
+  }) as unknown as typeof fetch;
+  const [a, b] = await Promise.all([findExample("群", ok), findExample("群", ok)]);
+  assert.equal(calls, 1);
+  assert.deepEqual(a, b);
+  assert.equal((await findExample("群", ok))?.en, "I saw a flock of sheep.");
+  assert.equal(calls, 1, "remembered");
+
+  let failed = 0;
+  const busy = (async () => {
+    failed++;
+    return new Response("busy", { status: 503 });
+  }) as unknown as typeof fetch;
+  assert.equal(await findExample("量子論", busy), null);
+  assert.equal(await findExample("量子論", busy), null);
+  assert.equal(failed, 2);
 });
