@@ -15,6 +15,19 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/doc", destination: "/doc/index.html" }];
   },
+  // The service worker (public/sw.js) must never be served from a cache, or a
+  // fix to it — the kill switch included — wouldn't reach anyone.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Download, FolderClosed, GraduationCap, LayoutGrid, LayoutList, MoreHorizontal, Plus, RefreshCw, Share2, Sparkle, Trash2 } from "@/ui/icons";
+import { Download, FolderClosed, GraduationCap, LayoutGrid, LayoutList, Image as ImageIcon, MoreHorizontal, Plus, RefreshCw, Share2, Sparkle, Trash2, Volume2 } from "@/ui/icons";
+import { useRouter } from "next/navigation";
 import type { DeckWithCount, Folder } from "@/lib/types";
 import { supabase } from "../_lib/db";
 import { buildLibraryTree, flattenTree } from "../_lib/folderTree";
@@ -32,6 +33,7 @@ export default function DeckHeader({
   const [exporting, setExporting] = useState<"apkg" | "txt" | null>(null);
   const [sharing, setSharing] = useState(false);
   const [filling, setFilling] = useState(false);
+  const router = useRouter();
   // Phones: the less-used actions live behind "⋯" so the toolbar is one row.
   const [menu, setMenu] = useState(false);
   useEffect(() => {
@@ -191,6 +193,8 @@ export default function DeckHeader({
                 { icon: Download, label: exporting === "apkg" ? T.building : T.exportApkg, run: () => download("apkg") },
                 { icon: Download, label: ".txt", run: () => download("txt") },
                 { icon: Sparkle, label: T.fillExamples, run: () => setFilling(true) },
+                { icon: ImageIcon, label: T.captureTitle, run: () => router.push(`/decks/capture?deck=${deck.id}`) },
+                { icon: Volume2, label: T.audioTitle, run: () => router.push(`/decks/audio?deck=${deck.id}`) },
                 { icon: RefreshCw, label: T.refresh, run: refresh },
                 { icon: Trash2, label: T.delete, run: remove, danger: true },
               ].map(({ icon: Icon, label, run, danger }) => (

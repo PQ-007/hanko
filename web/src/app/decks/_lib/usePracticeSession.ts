@@ -5,6 +5,21 @@ import type { Card } from "@/lib/types";
 import type { Rating } from "@/lib/srs";
 import type { QueueCard } from "./types";
 import { supabase } from "./db";
+import { cachedQueue, cacheQueue, dropPending, enqueue, flush, isNetworkError } from "./offline";
+import { kv } from "./offlineStore";
+
+/** Replays answers saved offline (offline.ts); safe to call any time. */
+export function flushOfflineAnswers() {
+  return flush(kv, (a) =>
+    supabase.rpc("review_card", {
+      p_card_id: a.cardId,
+      p_rating: a.rating,
+      p_duration_ms: a.durationMs,
+      p_log_id: a.logId,
+      p_source: a.source,
+    })
+  );
+}
 
 // Extracted from PracticeSession.tsx (Phase B of the Davtah/Monster Hunt
 // plan) so the real review-session logic — the review_queue()/review_card()/
@@ -25,12 +40,23 @@ export interface AnsweredStep {
   card: QueueCard;
   requeued: boolean;
   rating: Rating;
+  /** Saved offline, not yet sent (offline.ts): undo just drops it. */
+  queued?: boolean;
 }
 
 // "due"  — the real scheduled queue (review_queue), answers reschedule cards.
 // "free" — any card regardless of due date (practice_cards), answers change no
 //          scheduling state at all.
-export type SessionMode = "due" | "free";
+// "leech" — the cards you keep forgetting (leech_cards, 4+ lapses), reached
+//          before they're due. Answered as real reviews: a rescue is genuine
+//          practice and reschedules the card, as on mobile's rescue screen.
+export type SessionMode = "due" | "free" | "leech";
+
+const QUEUE_RPC: Record<SessionMode, string> = {
+  due: "review_queue",
+  free: "practice_cards",
+  leech: "leech_cards",
+};
 
 // What review_card() is told the answer was. Deliberately separate from
 // SessionMode: the mode picks which queue to read, the source decides what the
@@ -62,6 +88,12 @@ export interface UsePracticeSessionResult {
   // both leave `queue` as [] and show the same friendly empty state, which
   // makes a real outage look like a normal quiet day.
   loadError: string | null;
+  /**
+   * The network is gone and the session is running on the last queue this
+   * browser saw, with answers kept until it's back (offline.ts). Always false
+   * while online: nothing about the online session changes.
+   */
+  offline: boolean;
   rate: (rating: Rating) => Promise<void>;
   undo: () => Promise<void>;
   remaining: number;
@@ -97,6 +129,7 @@ export function usePracticeSession(
   const [history, setHistory] = useState<AnsweredStep[]>([]);
   const [error, setError] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   // When the current card was first shown, so each answer can report how long
   // it actually took. review_log.duration_ms is what battle mode later scales
@@ -109,10 +142,22 @@ export function usePracticeSession(
   const load = useCallback(async () => {
     // The server owns "what's due": the day cutoff and the per-day new/review
     // caps live in review_queue(), so web and mobile can't disagree about it.
-    const { data, error: rpcError } = await supabase.rpc(
-      mode === "free" ? "practice_cards" : "review_queue",
-      { p_deck_id: deckId, p_limit: 60 }
-    );
+    const { data, error: rpcError } = await supabase.rpc(QUEUE_RPC[mode], {
+      p_deck_id: deckId,
+      p_limit: 60,
+    });
+    if (!rpcError) {
+      // Kept for a session with no connection; never read while online.
+      cacheQueue(kv, deckId, mode, (data as QueueCard[]) ?? []).catch(() => {});
+    } else if (isNetworkError(rpcError)) {
+      const cached = await cachedQueue(kv, deckId, mode).catch(() => null);
+      if (cached) {
+        setOffline(true);
+        setLoadError(null);
+        setQueue(cached);
+        return;
+      }
+    }
     // Surfaced rather than swallowed: an RPC failure previously fell through
     // to `[]` and rendered as the ordinary "nothing due" empty state, hiding
     // real breakage (a missing migration, an RLS change, a network drop)
@@ -154,6 +199,28 @@ export function usePracticeSession(
         p_source: source,
       });
 
+      // No connection: keep the answer and move on; it's sent when the network
+      // is back (offline.ts). Without a learning-step reply it can't come
+      // back this session — the server schedules it on replay.
+      if (rpcError && isNetworkError(rpcError)) {
+        const saved = await enqueue(kv, {
+          logId,
+          cardId: card.card_id,
+          rating,
+          durationMs,
+          source,
+          answeredAt: Date.now(),
+        }).then(
+          () => true,
+          () => false
+        );
+        if (saved) {
+          setOffline(true);
+          setHistory((h) => [...h, { logId, card, requeued: false, rating, queued: true }]);
+          return;
+        }
+      }
+
       if (rpcError) {
         // Put the card back rather than silently dropping the answer, which is
         // what the old two-call write did when the log insert failed.
@@ -167,6 +234,12 @@ export function usePracticeSession(
       // A card still inside the learning or relearning steps is due again in
       // minutes, so it comes back before the session ends — that's the whole
       // point of the steps. Anything that graduated is gone until its day.
+      // Back online with answers still waiting: send them now.
+      if (offline) {
+        setOffline(false);
+        flushOfflineAnswers().catch(() => {});
+      }
+
       const updated = data as Card | null;
       const requeued =
         updated?.state === "learning" || updated?.state === "relearning";
@@ -189,7 +262,7 @@ export function usePracticeSession(
     },
     // `mode` is no longer read here — it picks the queue RPC, not the answer's
     // meaning. That split is the point of ReviewSource.
-    [card, source]
+    [card, source, offline]
   );
 
   const undo = useCallback(async () => {
@@ -200,6 +273,12 @@ export function usePracticeSession(
     setReviewedCount((c) => Math.max(0, c - 1));
     setRevealed(true); // you were looking at the answer when you mis-clicked
     setError(false);
+
+    // Never sent: dropping it from the outbox is the whole undo.
+    if (last.queued && (await dropPending(kv, last.logId).catch(() => false))) {
+      setQueue((prev) => [last.card, ...(prev ?? []).filter((c) => c.card_id !== last.card.card_id)]);
+      return;
+    }
 
     // undo_review() restores the card from the snapshot taken before the answer
     // and marks the log row undone (the log itself is append-only, so nothing
@@ -277,6 +356,7 @@ export function usePracticeSession(
     history,
     error,
     loadError,
+    offline,
     rate,
     undo,
     remaining,

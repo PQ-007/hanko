@@ -15,6 +15,8 @@ export default function PracticeSession() {
   useImmersive();
   const params = useSearchParams();
   const deckId = params.get("deck");
+  // ?mode=leech: the rescue session from the hard-words list.
+  const mode = params.get("mode") === "leech" ? "leech" : "due";
 
   const {
     queue,
@@ -25,12 +27,13 @@ export default function PracticeSession() {
     history,
     error,
     loadError,
+    offline,
     rate,
     undo,
     remaining,
     total,
     pct,
-  } = usePracticeSession(deckId);
+  } = usePracticeSession(deckId, { mode });
 
   if (queue === null) {
     return <LoadingScene label={T.loadingWords} />;
@@ -94,6 +97,12 @@ export default function PracticeSession() {
           />
         </div>
       </div>
+
+      {offline && (
+        <p className="rounded-control border border-line bg-paper-dim px-3 py-2 text-center text-xs text-ink-soft">
+          {T.offlineBanner}
+        </p>
+      )}
 
       {error && (
         <p className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-center text-xs text-red-700">

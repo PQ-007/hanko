@@ -694,6 +694,63 @@ hides a user's numbers even from friends.
   `share/[token]/opengraph-image.tsx`, which pulls a Noto Sans JP subset from
   Google Fonts at render time (falls back to the default face offline).
 
+## The web as an installable app (the iPhone answer)
+
+No native iOS build: iPhone users "Add to Home Screen" the web app instead.
+Everything here is additive — the online site behaves exactly as before.
+
+- **Service worker** (`public/sw.js`): only same-origin GETs; never `/api`,
+  `/auth`, `/login`, `/extension`; `/decks` pages network-first with the saved
+  copy only as an offline fallback; `/_next/static` cache-first (trimmed to
+  400). Registered in production only (`OfflineSync.tsx`); `?dev=1` (used by
+  the reminder card under `next dev`) disables all caching. `/sw.js` is
+  served `no-store` (next.config) so its **kill switch** — in the file's
+  header comment — reaches everyone. It also "warms" the session pages
+  (stats, review, practice, hunt) twice a day so they open offline.
+- **Offline review** (`_lib/offline.ts`, IndexedDB in `offlineStore.ts`):
+  mobile's model — cached queue + answer outbox replayed through
+  `review_card()` (idempotent log id). **Only network failures are queued**
+  (`isNetworkError`: no error code + fetch-failure message); a server error
+  still puts the card back, as before. Hooked into `usePracticeSession`'s
+  failure paths only, so classic review and Monster Hunt both work offline;
+  a deck never opened online falls back to its share of the all-decks queue
+  `OfflineSync` refreshes. Sign-out clears IndexedDB, the caches and this
+  browser's push subscription.
+- **Install hint** (`InstallHint.tsx`): iOS Safari only, dismissible. Safari
+  evicts a site's storage after 7 unused days unless it's installed — the
+  reason offline and reminders want the install.
+- **Hard words** (`/decks/review/leeches`): the leech list (lapses ≥ 4,
+  `_lib/leech.ts`) with fix (WordEditModal), drill (`usePracticeSession`
+  mode `"leech"` → `leech_cards()`, answered as real reviews) and set aside
+  (`cards.suspended`, which every queue already skips) / restore. Picker row
+  shows only when there are some. Mobile's rescue is the drill alone.
+- **Reminders** (`0033_web_push.sql`): `push_subscriptions` (one row per
+  browser, own-row RLS) + `push_targets()` (service role only) which claims
+  the subscriptions whose local hour it is and returns `due_summary()`'s
+  `due_now` per user, computed **as that user** via
+  `set_config('request.jwt.claim.sub')` rather than a second copy of
+  "what's due". `/api/push/remind` (CRON_SECRET) sends via `web-push`;
+  410/404 → `push_drop()`. Hourly trigger is a **pg_cron snippet run by hand**
+  (in the migration's footer — URL and secret stay out of the repo). Needs
+  env `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`; without the VAPID key the
+  settings card is hidden. iPhone: installed app only (iOS 16.4+).
+- **Audio decks** (`/decks/audio`, `_lib/audioDeck.ts`, `lib/mp3.ts`): ports
+  of mobile's, pinned by the same cases on the same recorded clips
+  (`mobile/test/fixtures/tts_*.mp3`). Clips come through `/api/tts`
+  (signed-in, per-user bucket) because Google's voice sends no CORS headers;
+  kept in Cache Storage `hanko-tts`, built decks in IndexedDB. Download
+  button for lock-screen listening.
+- **Camera capture** (`/decks/capture`): Tesseract.js in the browser
+  (`_lib/ocr.ts`, loaded only on that page; models from jsDelivr, cached by
+  the library). Measured 95–99% on clean and photo-like renders. **Must run
+  with `PSM.AUTO`** — the default single-block mode turns vertical text to
+  garbage — and falls back to `jpn_vert` when horizontal confidence < 60
+  (right model scored 85–92, wrong 11–25). `segment.ts` /
+  `captureLookup.ts` port mobile's, same cases. Real phone photos with
+  glare/perspective are untested. No crop/draw-select (text selection
+  instead).
+
 ## Web app shell (phones and tablets)
 
 `decks/layout.tsx` is a fixed shell, not a scrolling page: `h-dvh`, header and

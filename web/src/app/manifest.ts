@@ -19,6 +19,12 @@ export default function manifest(): MetadataRoute.Manifest {
       // app/icon.svg is gone (the tab icon is set per theme by the theme script).
       { src: "/favicon-paper.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+      // PNGs at the sizes Android's install prompt asks for; the maskable one
+      // is full-bleed with the ensō inside the safe zone, so a round or
+      // squircle launcher mask never clips it.
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

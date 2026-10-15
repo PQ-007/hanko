@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Dumbbell, GraduationCap, Layers, Lock, PenLine, Swords, Versus } from "@/ui/icons";
+import { ArrowRight, Check, Dumbbell, Flame, GraduationCap, Layers, Lock, PenLine, Swords, Versus } from "@/ui/icons";
+import { LEECH_LAPSES } from "../../_lib/leech";
 import { supabase } from "../../_lib/db";
 import { T } from "../../_lib/strings";
 import { MIN_WORDS_FOR_BATTLE } from "../battle/_lib/quiz";
@@ -94,6 +95,27 @@ export default function ReviewModePicker() {
       cancelled = true;
     };
   }, [deckId]);
+
+  // Hard words in this scope (the leech list): its row only shows when
+  // there are some, so a clean library never sees it.
+  const [leeches, setLeeches] = useState<{ deckId: string | null; n: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let q = supabase
+      .from("cards")
+      .select("id, word:words!inner(deleted)", { count: "exact", head: true })
+      .gte("lapses", LEECH_LAPSES)
+      .eq("suspended", false)
+      .eq("word.deleted", false);
+    if (deckId) q = q.eq("word.deck_id", deckId);
+    q.then(({ count, error }) => {
+      if (!cancelled) setLeeches({ deckId, n: error ? 0 : (count ?? 0) });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deckId]);
+  const leechCount = leeches?.deckId === deckId ? leeches.n : 0;
 
   function withDeck(href: string) {
     if (!deckId) return href;
@@ -323,6 +345,17 @@ export default function ReviewModePicker() {
             title={T.classicModeTitle}
             desc={T.classicModeDesc}
           />
+
+          {/* Hard words: listed, fixed, drilled or set aside. */}
+          {leechCount > 0 && (
+            <ModeRow
+              href={withDeck("/decks/review/leeches")}
+              icon={<Flame size={19} />}
+              iconClass="bg-rose-50 text-rose-700 ring-1 ring-rose-100 dark:bg-rose-400/10 dark:text-rose-300 dark:ring-rose-400/20"
+              title={`${T.leechTitle} · ${leechCount}`}
+              desc={T.leechDesc}
+            />
+          )}
         </div>
       </div>
     </div>

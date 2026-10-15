@@ -7,6 +7,9 @@ import { T } from "../_lib/strings";
 import { normalizeHandle } from "../_lib/social";
 import { readTheme, saveTheme, type ThemeChoice } from "../_lib/theme";
 import LoadingScene from "../review/battle/_components/LoadingScene";
+import { clearOfflineData } from "../_lib/offlineStore";
+import { disableReminder } from "../_lib/pushClient";
+import ReminderSettings from "./ReminderSettings";
 
 // Тохиргоо: your profile (picture, name, username), how the app looks, how
 // much it asks of you each day, and who sees your activity. Everything here
@@ -72,7 +75,23 @@ export default function SettingsPage() {
       <ThemeCard />
       <LearningCard profile={p} onChanged={load} />
       <PrivacyCard profile={p} onChanged={load} />
-      <form action="/auth/signout" method="post" className="hk-card flex items-center justify-between gap-3 p-5">
+      <ReminderSettings />
+      <form
+        action="/auth/signout"
+        method="post"
+        // What this browser kept for offline review goes with the session.
+        onSubmit={(e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          // This browser's reminders stop with the session too — the next
+          // person here shouldn't get them.
+          disableReminder()
+            .catch(() => {})
+            .then(clearOfflineData)
+            .finally(() => form.submit());
+        }}
+        className="hk-card flex items-center justify-between gap-3 p-5"
+      >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-ink">{T.settingsSignedInAs}</p>
           <p className="truncate text-sm text-ink-mute">{p.email}</p>

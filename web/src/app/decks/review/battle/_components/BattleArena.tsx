@@ -8,6 +8,8 @@ import { ArrowLeft, Check, Pause, Play, Skull, Undo2, X } from "@/ui/icons";
 import type { Rating } from "@/lib/srs";
 import { usePracticeSession, type UsePracticeSessionResult } from "../../../_lib/usePracticeSession";
 import { supabase } from "../../../_lib/db";
+import { cachedWords, cacheWords, isNetworkError } from "../../../_lib/offline";
+import { kv } from "../../../_lib/offlineStore";
 import { T } from "../../../_lib/strings";
 import { buildQuiz, MIN_WORDS_FOR_BATTLE, type OwnWord, type QuizOption } from "../_lib/quiz";
 import {
@@ -168,8 +170,11 @@ export default function BattleArena() {
       .from("words")
       .select("id, term, reading, meaning, meaning_mn")
       .eq("deleted", false)
-      .then(({ data }) => {
-        if (!cancelled) setAllWords((data as OwnWord[]) ?? []);
+      .then(async ({ data, error }) => {
+        // Kept for a hunt with no connection (offline.ts); read only then.
+        if (!error && data) cacheWords(kv, data).catch(() => {});
+        const words = error && isNetworkError(error) ? await cachedWords<OwnWord>(kv).catch(() => undefined) : null;
+        if (!cancelled) setAllWords(words ?? (data as OwnWord[]) ?? []);
       });
     return () => {
       cancelled = true;

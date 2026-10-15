@@ -5,6 +5,8 @@ import EnsureTimezone from "./_components/EnsureTimezone";
 import TabBar from "./_components/TabBar";
 import PageTitle from "./_components/PageTitle";
 import DuelInviteToast from "./_components/DuelInviteToast";
+import OfflineSync from "./_components/OfflineSync";
+import InstallHint from "./_components/InstallHint";
 import { T } from "./_lib/strings";
 import { HelpCircle, Settings2 } from "@/ui/icons";
 
@@ -76,6 +78,8 @@ export default async function DecksLayout({
       </main>
       <TabBar />
       <DuelInviteToast />
+      <OfflineSync />
+      <InstallHint />
     </div>
   );
 }
